@@ -312,6 +312,24 @@ GRAILS_GPG_KEY, GPG_KEY_ID, SVC_DIST_GRAILS_USERNAME/PASSWORD, CERTIFICATE_CHAIN
 PRIVATE_KEY, PRIVATE_KEY_PASSWORD, PUBLISH_TOKEN. Needs a dry-run against a test tag
 before first use (Phase 8).
 
+### Secrets chart (all used by `release.yml` only; CI needs none)
+
+| Secret | Used by (job → step) | Value / how to obtain |
+|---|---|---|
+| `GRAILS_GPG_KEY` | `publish` + `source` → "Set up GPG" | ASCII-armored GPG **private** key of the Grails release key: `gpg --armor --export-secret-keys <keyid>`. Must be passphrase-less (the workflow signs with `--pinentry-mode loopback` and no passphrase). Public key must be in the Grails `KEYS` file on dist.apache.org. Same secret grails-core uses — likely already an org-level secret. |
+| `GPG_KEY_ID` | `publish` + `source` → GPG-sign steps | The key id of that same key (`gpg --list-keys --keyid-format long`). Passed as `--default-key`. |
+| `SVC_DIST_GRAILS_USERNAME` | `upload` + `release` → svn steps | ASF service account username for dist.apache.org svn, provisioned by INFRA for the Grails PMC. Same org secret as grails-core. |
+| `SVC_DIST_GRAILS_PASSWORD` | `upload` + `release` → svn steps | Password for that service account. |
+| `CERTIFICATE_CHAIN` | `publish` → `signPlugin`; `release` → `publishPlugin` | PEM X.509 certificate chain for JetBrains Marketplace plugin signing. Generate per JetBrains docs (RSA key + cert, self-generated is fine): `openssl req -x509 -newkey rsa:4096 -keyout private.pem -out chain.crt -days 3650`. NOT the GPG key — Marketplace signing is PKI, not PGP. |
+| `PRIVATE_KEY` | `publish` → `signPlugin`; `release` → `publishPlugin` | PEM RSA private key matching `CERTIFICATE_CHAIN` (the `private.pem` above, optionally encrypted). |
+| `PRIVATE_KEY_PASSWORD` | `publish` → `signPlugin`; `release` → `publishPlugin` | Password for `PRIVATE_KEY` (empty-value secret if the key is unencrypted). |
+| `PUBLISH_TOKEN` | `release` → `publishPlugin` | JetBrains Marketplace API token, minted under the ASF-controlled Marketplace vendor account (Profile → My Tokens) that owns the transferred `org.intellij.grails` listing. |
+
+`GITHUB_TOKEN` is provided automatically by Actions (used to upload release assets); no
+repository variables (`vars.*`) are required. Secrets for ASF repos are provisioned via
+an INFRA Jira ticket (or inherited if already defined at the `apache` org level for
+Grails, as grails-core's are).
+
 One commit: "ASF Compliance - release workflow". Modeled on grails-core's `release.yml`
 and the `apache/grails-github-actions` composite actions, adapted because the deliverable
 is a plugin ZIP, not Maven artifacts (no Nexus staging at all):
