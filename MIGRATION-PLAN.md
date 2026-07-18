@@ -306,8 +306,9 @@ DONE (2026-07-18, initial draft): committed as "Add release workflow and Marketp
 signing config" (Maven/Nexus staging later removed per decision 6). `release.yml` jobs:
 `publish` (check/buildPlugin/signPlugin, GPG-sign + sha512, attach ZIP to GitHub
 release), `source` (src zip without wrapper/.github, GPG-sign + sha512), `upload` (svn
-to dist/dev for the vote), `release` (environment-gated: svn mv dev->release,
-`publishPlugin` to Marketplace, reporter/email reminders). Secrets needed:
+to dist/dev for the vote), `release` (environment-gated: manual dev->release promotion
+via `.github/scripts/releaseDistributions.sh` run locally by the RM, `publishPlugin` to
+Marketplace, reporter/email reminders). Secrets needed:
 GRAILS_GPG_KEY, GPG_KEY_ID, SVC_DIST_GRAILS_USERNAME/PASSWORD, CERTIFICATE_CHAIN,
 PRIVATE_KEY, PRIVATE_KEY_PASSWORD, PUBLISH_TOKEN. Needs a dry-run against a test tag
 before first use (Phase 8).
@@ -318,8 +319,8 @@ before first use (Phase 8).
 |---|---|---|
 | `GRAILS_GPG_KEY` | `publish` + `source` → "Set up GPG" | ASCII-armored GPG **private** key of the Grails release key: `gpg --armor --export-secret-keys <keyid>`. Must be passphrase-less (the workflow signs with `--pinentry-mode loopback` and no passphrase). Public key must be in the Grails `KEYS` file on dist.apache.org. Same secret grails-core uses — likely already an org-level secret. |
 | `GPG_KEY_ID` | `publish` + `source` → GPG-sign steps | The key id of that same key (`gpg --list-keys --keyid-format long`). Passed as `--default-key`. |
-| `SVC_DIST_GRAILS_USERNAME` | `upload` + `release` → svn steps | ASF service account username for dist.apache.org svn, provisioned by INFRA for the Grails PMC. Same org secret as grails-core. |
-| `SVC_DIST_GRAILS_PASSWORD` | `upload` + `release` → svn steps | Password for that service account. |
+| `SVC_DIST_GRAILS_USERNAME` | `upload` → svn steps | ASF service account username for dist.apache.org svn, provisioned by INFRA for the Grails PMC. Same org secret as grails-core. |
+| `SVC_DIST_GRAILS_PASSWORD` | `upload` → svn steps | Password for that service account. (The post-vote dev → release promotion is NOT automated — the release manager runs `.github/scripts/releaseDistributions.sh` locally with their own ASF credentials, per grails-core.) |
 | `CERTIFICATE_CHAIN` | `publish` → `signPlugin`; `release` → `publishPlugin` | PEM X.509 certificate chain for JetBrains Marketplace plugin signing. Generate per JetBrains docs (RSA key + cert, self-generated is fine): `openssl req -x509 -newkey rsa:4096 -keyout private.pem -out chain.crt -days 3650`. NOT the GPG key — Marketplace signing is PKI, not PGP. |
 | `PRIVATE_KEY` | `publish` → `signPlugin`; `release` → `publishPlugin` | PEM RSA private key matching `CERTIFICATE_CHAIN` (the `private.pem` above, optionally encrypted). |
 | `PRIVATE_KEY_PASSWORD` | `publish` → `signPlugin`; `release` → `publishPlugin` | Password for `PRIVATE_KEY` (empty-value secret if the key is unencrypted). |
