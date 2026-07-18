@@ -122,6 +122,12 @@ intellijPlatform {
 
         changeNotes = ""
     }
+
+    pluginVerification {
+        ides {
+            recommended()
+        }
+    }
 }
 
 tasks {
@@ -131,7 +137,11 @@ tasks {
     }
 
     test {
-        systemProperty("idea.home.path", properties("test.idea.home.path"))
+        // local override for tests that need IDE sources; unset/nonexistent on CI
+        val ideaHome = project.findProperty("test.idea.home.path")?.toString()
+        if (ideaHome != null && file(ideaHome).exists()) {
+            systemProperty("idea.home.path", ideaHome)
+        }
     }
 
     // ASF policy: ship LICENSE and NOTICE inside the plugin jar
