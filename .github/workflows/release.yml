@@ -23,6 +23,7 @@ on:
 permissions: { }
 env:
   DIST_NAME: apache-grails-intellij-plugin
+  GRAILS_PUBLISH_RELEASE: 'true'
   JAVA_DISTRIBUTION: liberica
   JAVA_VERSION: 21
   PROJECT_NAME: Apache Grails IntelliJ Plugin
@@ -57,13 +58,13 @@ jobs:
         with:
           cache-provider: basic # 'basic' uses the MIT-licensed, open-source cache provider; the default 'enhanced' provider (v6+) is proprietary (Gradle commercial Terms of Use)
       - name: "🏗️ Build & Test"
-        run: ./gradlew check buildPlugin -PpluginVersion=${VERSION}
+        run: ./gradlew check buildPlugin -Pversion=${VERSION}
       - name: "🔏 Sign plugin ZIP for JetBrains Marketplace"
         env:
           CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
-        run: ./gradlew signPlugin -PpluginVersion=${VERSION}
+        run: ./gradlew signPlugin -Pversion=${VERSION}
       - name: "📦 Rename plugin ZIP to distribution name"
         run: cp build/distributions/Grails-${VERSION}-signed.zip ${DIST_NAME}-${VERSION}-bin.zip
       - name: "🔐 Set up GPG" # use env var to not expose the key
@@ -84,13 +85,41 @@ jobs:
           ${DIST_NAME}-${VERSION}-bin.zip
       - name: "📦 Create plugin ZIP checksum"
         run: sha512sum ${DIST_NAME}-${VERSION}-bin.zip > ${DIST_NAME}-${VERSION}-bin.zip.sha512
-      - name: "📤 Stage Maven artifacts to repository.apache.org"
+      - name: "✨ Create Staging Repository"
         env:
-          ASF_NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-          ASF_NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
-          SIGNING_KEY: ${{ secrets.GRAILS_GPG_KEY }}
-          SIGNING_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: ./gradlew publishPluginZipPublicationToApacheRepository -PpluginVersion=${VERSION}
+          NEXUS_PUBLISH_USERNAME: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }}
+          NEXUS_PUBLISH_PASSWORD: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }}
+          NEXUS_PUBLISH_URL: ${{ vars.STAGING_URL }}
+          NEXUS_PUBLISH_STAGING_PROFILE_ID: ${{ secrets.STAGING_PROFILE_ID }}
+          NEXUS_PUBLISH_DESCRIPTION: '${{ github.event.repository.name }}:${{ env.VERSION }}'
+        run: ./gradlew initializeSonatypeStagingRepository -Pversion=${VERSION}
+      - name: "📤 Publish to Staging Repository"
+        env:
+          NEXUS_PUBLISH_USERNAME: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }}
+          NEXUS_PUBLISH_PASSWORD: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }}
+          NEXUS_PUBLISH_URL: ${{ vars.STAGING_URL }}
+          NEXUS_PUBLISH_STAGING_PROFILE_ID: ${{ secrets.STAGING_PROFILE_ID }}
+          NEXUS_PUBLISH_DESCRIPTION: '${{ github.event.repository.name }}:${{ env.VERSION }}'
+          SIGNING_KEY: ${{ secrets.GPG_KEY_ID }}
+        run: >
+          ./gradlew
+          -x initializeSonatypeStagingRepository
+          findSonatypeStagingRepository
+          publishToSonatype
+          -Pversion=${VERSION}
+      - name: "✅ Close Staging Repository"
+        env:
+          NEXUS_PUBLISH_USERNAME: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }}
+          NEXUS_PUBLISH_PASSWORD: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }}
+          NEXUS_PUBLISH_URL: ${{ vars.STAGING_URL }}
+          NEXUS_PUBLISH_STAGING_PROFILE_ID: ${{ secrets.STAGING_PROFILE_ID }}
+          NEXUS_PUBLISH_DESCRIPTION: '${{ github.event.repository.name }}:${{ env.VERSION }}'
+        run: >
+          ./gradlew
+          -x initializeSonatypeStagingRepository
+          findSonatypeStagingRepository
+          closeSonatypeStagingRepository
+          -Pversion=${VERSION}
       - name: "🚀 Upload plugin ZIP to GitHub Release"
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
@@ -265,12 +294,11 @@ jobs:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-        run: ./gradlew publishPlugin -PpluginVersion=${VERSION}
+        run: ./gradlew publishPlugin -Pversion=${VERSION}
       - name: "🚀 MANUAL - Release Maven staging repository"
         run: |
           echo "::group::Manual Nexus Staging Release"
-          echo "Log in to https://repository.apache.org, find the org.apache.grails staging"
-          echo "repository for ${VERSION}, and Release it (artifacts sync to Maven Central)."
+          echo "Run .github/scripts/releaseJarFiles.sh ${{ github.event.repository.name }}:${VERSION} <ASF_USER>"
           echo "::endgroup::"
       - name: "✅ MANUAL - Update ASF Reporter"
         run: |

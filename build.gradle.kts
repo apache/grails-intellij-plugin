@@ -23,12 +23,11 @@ plugins {
     id("org.jetbrains.kotlin.jvm") version "2.3.0"
     id("org.jetbrains.intellij.platform") version "2.11.0"
     id("org.nosphere.apache.rat") version "0.8.1"
-    id("maven-publish")
-    id("signing")
+    id("org.apache.grails.gradle.grails-publish") version "1.0.0-M1"
 }
 
 group = "org.apache.grails.intellij"
-version = properties("pluginVersion")
+// project version comes from gradle.properties `version` (read by grails-publish at apply time)
 
 repositories {
     mavenCentral()
@@ -226,62 +225,35 @@ tasks.rat {
     outputs.upToDateWhen { false }
 }
 
-// Publish the plugin ZIP to the ASF Nexus (repository.apache.org). Maven coordinates
-// are independent of the JetBrains Marketplace plugin id (org.intellij.grails).
-publishing {
-    publications {
-        create<MavenPublication>("pluginZip") {
-            groupId = "org.apache.grails"
-            artifactId = "grails-intellij-plugin"
-            version = project.version.toString()
-            artifact(tasks.buildPlugin)
-            pom {
-                name = "Apache Grails IntelliJ Plugin"
-                description = "IntelliJ IDEA plugin for the Apache Grails framework"
-                url = "https://github.com/apache/grails-intellij-plugin"
-                licenses {
-                    license {
-                        name = "The Apache License, Version 2.0"
-                        url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
-                    }
-                }
-                scm {
-                    connection = "scm:git:git://github.com/apache/grails-intellij-plugin.git"
-                    developerConnection = "scm:git:ssh://github.com:apache/grails-intellij-plugin.git"
-                    url = "https://github.com/apache/grails-intellij-plugin"
-                }
-                developers {
-                    developer {
-                        name = "Apache Grails Team"
-                        url = "https://grails.apache.org/"
-                    }
-                }
-            }
-        }
-    }
-    repositories {
-        maven {
-            name = "apache"
-            url = uri(
-                if (version.toString().endsWith("SNAPSHOT")) {
-                    "https://repository.apache.org/content/repositories/snapshots"
-                } else {
-                    "https://repository.apache.org/service/local/staging/deploy/maven2"
-                }
-            )
-            credentials {
-                username = providers.environmentVariable("ASF_NEXUS_USERNAME").orNull
-                password = providers.environmentVariable("ASF_NEXUS_PASSWORD").orNull
-            }
-        }
+// Publish the plugin ZIP to the ASF Nexus via the Grails Publish plugin (same flow as
+// grails-core: NEXUS_PUBLISH_* env vars, initialize/publishToSonatype/close staging tasks,
+// post-vote promotion with .github/scripts/releaseJarFiles.sh). Maven coordinates are
+// independent of the JetBrains Marketplace plugin id (org.intellij.grails).
+grailsPublish {
+    groupId.set("org.apache.grails")
+    artifactId.set("grails-intellij-plugin")
+    // the deliverable is the plugin ZIP, not the java component/sources/javadoc jars
+    addComponents.set(false)
+    githubSlug.set("apache/grails-intellij-plugin")
+    license.name = "Apache-2.0"
+    title.set("Apache Grails IntelliJ Plugin")
+    desc.set("IntelliJ IDEA plugin for the Apache Grails framework")
+    developer {
+        id.set("grails")
+        name.set("Apache Grails Team")
     }
 }
 
-// GPG-sign the Maven publication (ASF release requirement); no-op when the key is absent
-signing {
-    val signingKey = providers.environmentVariable("SIGNING_KEY").orNull
-    if (signingKey != null) {
-        useInMemoryPgpKeys(signingKey, providers.environmentVariable("SIGNING_PASSPHRASE").orNull ?: "")
-        sign(publishing.publications["pluginZip"])
+// grails-publish creates the `maven` publication in afterEvaluate; attach the ZIP lazily
+publishing.publications.withType<MavenPublication>().configureEach {
+    if (name == "maven") {
+        artifact(tasks.buildPlugin)
     }
+}
+
+// grails-publish 1.0.0-M1 pom generation captures the Project and breaks the
+// configuration cache; degrade gracefully for publish runs. Proper fix belongs on the
+// grails-gradle-publish 1.x branch.
+tasks.withType<org.gradle.api.publish.maven.tasks.GenerateMavenPom>().configureEach {
+    notCompatibleWithConfigurationCache("grails-publish pom generation captures Project")
 }
