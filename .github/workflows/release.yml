@@ -26,7 +26,7 @@ env:
   JAVA_DISTRIBUTION: liberica # .sdkmanrc pins librca = Liberica
   PROJECT_NAME: Apache Grails IntelliJ Plugin
   REPO_SLUG: ${{ github.repository }}
-  SVN_FOLDER: intellij-plugin
+  SVN_FOLDER: INTELLIJ
   SVN_PROJECT: grails
   TAG: ${{ github.event.release.tag_name }}
   VERSION: will be computed in each job
@@ -255,7 +255,7 @@ jobs:
           echo "::group::Manual ASF Reporter Update"
           TODAY=$(date +"%Y-%m-%d")
           echo "Update https://reporter.apache.org/addrelease.html?${SVN_PROJECT} to add"
-          echo "INTELLIJ-PLUGIN-${VERSION} as complete as of ${TODAY}"
+          echo "${SVN_FOLDER}-${VERSION} as complete as of ${TODAY}"
           echo "::endgroup::"
       - name: "📧 MANUAL - Send Vote Result & Announcement Emails"
         run: |
