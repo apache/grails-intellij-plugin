@@ -212,9 +212,6 @@ jobs:
     name: "VOTE SUCCEEDED - Publish Release"
     needs: [ publish, source, upload ]
     runs-on: ubuntu-latest
-    env:
-      SVN_USERNAME: ${{ secrets.SVC_DIST_GRAILS_USERNAME }}
-      SVN_PASSWORD: ${{ secrets.SVC_DIST_GRAILS_PASSWORD }}
     steps:
       - name: "📝 Establish release version"
         run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
@@ -223,22 +220,11 @@ jobs:
           echo "::group::Manual Confirmation"
           echo "🔎 Make sure that the vote confirmation on dev@grails.apache.org completed successfully before proceeding."
           echo "::endgroup::"
-      - name: "🛠️ Install tools"
-        run: sudo apt-get install -y subversion
-      - name: "🚀 Promote distributions dev -> release"
+      - name: "🚀 MANUAL - Release distribution artifacts"
         run: |
-          set -e
-          if svn ls https://dist.apache.org/repos/dist/release/${SVN_PROJECT}/${SVN_FOLDER} --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive; then
-            echo "Release folder exists"
-          else
-            svnmucc --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
-              mkdir https://dist.apache.org/repos/dist/release/${SVN_PROJECT}/${SVN_FOLDER} \
-              -m "Create '${SVN_PROJECT}/${SVN_FOLDER}' release folder"
-          fi
-          svnmucc --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
-            mv https://dist.apache.org/repos/dist/dev/${SVN_PROJECT}/${SVN_FOLDER}/${VERSION} \
-               https://dist.apache.org/repos/dist/release/${SVN_PROJECT}/${SVN_FOLDER}/${VERSION} \
-            -m "Release ${PROJECT_NAME} ${VERSION}"
+          echo "::group::Manual ASF Artifact Promotion"
+          echo "Run .github/scripts/releaseDistributions.sh ${TAG} ${SVN_FOLDER} <ASF_USER>"
+          echo "::endgroup::"
       - name: "📥 Checkout repository"
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
