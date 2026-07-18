@@ -46,10 +46,24 @@ jobs:
       - name: "🏗️ Build & Test"
         run: ./gradlew check buildPlugin
       - name: "📦 Upload plugin ZIP"
+        id: upload-plugin
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: plugin-zip
           path: build/distributions/*.zip
+      - name: "📢 Publish plugin to job summary"
+        env:
+          ARTIFACT_URL: ${{ steps.upload-plugin.outputs.artifact-url }}
+        run: |
+          {
+            echo "## 📦 Plugin Build"
+            echo ""
+            echo "| File | Size | Download |"
+            echo "|------|------|----------|"
+            for zip in build/distributions/*.zip; do
+              echo "| \`$(basename "$zip")\` | $(du -h "$zip" | cut -f1) | [plugin-zip artifact]($ARTIFACT_URL) |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
   verify:
     name: 'Plugin Verifier'
     runs-on: ubuntu-latest
