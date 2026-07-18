@@ -22,6 +22,7 @@ plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "2.3.0"
     id("org.jetbrains.intellij.platform") version "2.11.0"
+    id("org.nosphere.apache.rat") version "0.8.1"
 }
 
 group = "org.intellij.grails"
@@ -141,3 +142,57 @@ tasks {
     }
 }
 
+// ASF license audit (Apache RAT) — see MIGRATION-PLAN.md Phase 3.
+// Every exclude must carry a justification; no blanket excludes to make the audit pass.
+tasks.rat {
+    excludes.addAll(
+        listOf(
+            // planning documents, removed before the first release
+            "MIGRATION-PLAN.md",
+            "IMPROVEMENT-PLAN.md",
+            // documentation
+            "**/README.md",
+            // git configuration isn't code
+            "**/.gitignore",
+            "**/.gitattributes",
+            // gradle wrapper files, excluded from the source distro
+            "gradlew*",
+            "gradle/wrapper/**",
+            "**/.gradle/**",
+            // github/ASF infra configuration, not shipped in the source distro
+            ".github/**",
+            ".asf.yaml",
+            // IDE-generated files
+            ".idea/**",
+            "**/*.iml",
+            "out/**",
+            // IntelliJ Platform Gradle Plugin local cache (generated Ivy descriptors, git-ignored)
+            ".intellijPlatform/**",
+            // generated code (JFlex lexers; headers are injected by the generator config)
+            "gen/**",
+            // test fixtures: content *is* the test input (mock Grails projects/JARs);
+            // adding headers would break parser/position-sensitive tests
+            "testdata/**",
+            "**/testdata/**",
+            // file templates that materialize inside end-user projects
+            "**/resources/fileTemplates/**",
+            // intention/inspection description snippets and before/after templates
+            // rendered verbatim in the IDE settings UI
+            "**/intentionDescriptions/**",
+            "**/inspectionDescriptions/**",
+            // html files are IDE description snippets / template previews only
+            "**/*.html",
+            // GUI-designer .form files are machine-edited XML
+            "**/*.form",
+            // images
+            "**/*.png", "**/*.svg", "**/*.ico", "**/*.jpg", "**/*.gif",
+            // JAR manifest format has no comment syntax
+            "grails-rt/resources/META-INF/MANIFEST.MF",
+        ) + subprojects.map {
+            // per-subproject build directories
+            it.layout.buildDirectory.get().asFile.relativeTo(rootProject.projectDir).path + "/**"
+        } + listOf("build/**")
+    )
+    // never cache license audits
+    outputs.upToDateWhen { false }
+}
