@@ -1,0 +1,274 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# ASF policy framing: the official release is the signed source archive, voted on by
+# the PMC and published to dist.apache.org; the plugin ZIP on JetBrains Marketplace
+# is a convenience binary.
+name: "Release"
+on:
+  release:
+    types: [ published ]
+permissions: { }
+env:
+  DIST_NAME: apache-grails-intellij-plugin
+  JAVA_DISTRIBUTION: liberica
+  JAVA_VERSION: 21
+  PROJECT_NAME: Apache Grails IntelliJ Plugin
+  REPO_SLUG: ${{ github.repository }}
+  SVN_FOLDER: intellij-plugin
+  SVN_PROJECT: grails
+  TAG: ${{ github.event.release.tag_name }}
+  VERSION: will be computed in each job
+concurrency:
+  group: release-pipeline-${{ github.event.release.target_commitish }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    name: "Build & Stage Plugin ZIP"
+    permissions:
+      contents: write # to upload release assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: "📝 Establish release version"
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ env.TAG }}
+      - name: "☕️ Setup JDK"
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+      - name: "🐘 Setup Gradle"
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+        with:
+          cache-provider: basic # 'basic' uses the MIT-licensed, open-source cache provider; the default 'enhanced' provider (v6+) is proprietary (Gradle commercial Terms of Use)
+      - name: "🏗️ Build & Test"
+        run: ./gradlew check buildPlugin -PpluginVersion=${VERSION}
+      - name: "🔏 Sign plugin ZIP for JetBrains Marketplace"
+        env:
+          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
+        run: ./gradlew signPlugin -PpluginVersion=${VERSION}
+      - name: "📦 Rename plugin ZIP to distribution name"
+        run: cp build/distributions/Grails-${VERSION}-signed.zip ${DIST_NAME}-${VERSION}-bin.zip
+      - name: "🔐 Set up GPG" # use env var to not expose the key
+        env:
+          GPG_KEY: ${{ secrets.GRAILS_GPG_KEY }}
+        run: |
+          echo "${GPG_KEY}" | gpg --batch --import
+          gpg --list-keys
+      - name: "🔏 GPG-sign plugin ZIP"
+        run: >
+          gpg
+          --default-key "${{ secrets.GPG_KEY_ID }}"
+          --batch
+          --yes
+          --pinentry-mode loopback
+          --armor
+          --detach-sign
+          ${DIST_NAME}-${VERSION}-bin.zip
+      - name: "📦 Create plugin ZIP checksum"
+        run: sha512sum ${DIST_NAME}-${VERSION}-bin.zip > ${DIST_NAME}-${VERSION}-bin.zip.sha512
+      - name: "🚀 Upload plugin ZIP to GitHub Release"
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        with:
+          tag_name: ${{ env.TAG }}
+          files: |
+            ${{ env.DIST_NAME }}-${{ env.VERSION }}-bin.zip
+            ${{ env.DIST_NAME }}-${{ env.VERSION }}-bin.zip.sha512
+            ${{ env.DIST_NAME }}-${{ env.VERSION }}-bin.zip.asc
+  source:
+    name: "Create Source Distribution"
+    needs: publish
+    permissions:
+      contents: write # to upload release assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: "📝 Establish release version"
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          path: grails-intellij-plugin
+          ref: ${{ env.TAG }}
+      - name: "🗑️ Remove files that must not ship in the source distribution"
+        run: |
+          rm -rf grails-intellij-plugin/.git
+          rm -rf grails-intellij-plugin/.github
+          rm -f grails-intellij-plugin/.asf.yaml
+          rm -f grails-intellij-plugin/gradlew grails-intellij-plugin/gradlew.bat
+          rm -rf grails-intellij-plugin/gradle/wrapper
+      - name: "📦 Create source distribution ZIP"
+        run: zip -r ${DIST_NAME}-${VERSION}-src.zip grails-intellij-plugin
+      - name: "🔐 Set up GPG" # use env var to not expose the key
+        env:
+          GPG_KEY: ${{ secrets.GRAILS_GPG_KEY }}
+        run: |
+          echo "${GPG_KEY}" | gpg --batch --import
+          gpg --list-keys
+      - name: "🔏 Sign source distribution ZIP"
+        run: >
+          gpg
+          --default-key "${{ secrets.GPG_KEY_ID }}"
+          --batch
+          --yes
+          --pinentry-mode loopback
+          --armor
+          --detach-sign
+          ${DIST_NAME}-${VERSION}-src.zip
+      - name: "📦 Create source distribution checksum"
+        run: sha512sum ${DIST_NAME}-${VERSION}-src.zip > ${DIST_NAME}-${VERSION}-src.zip.sha512
+      - name: "🚀 Upload ZIP and Signature to GitHub Release"
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        with:
+          tag_name: ${{ env.TAG }}
+          files: |
+            ${{ env.DIST_NAME }}-${{ env.VERSION }}-src.zip
+            ${{ env.DIST_NAME }}-${{ env.VERSION }}-src.zip.sha512
+            ${{ env.DIST_NAME }}-${{ env.VERSION }}-src.zip.asc
+  upload:
+    name: "Upload Distributions to dist.apache.org"
+    needs: [ publish, source ]
+    runs-on: ubuntu-latest
+    env:
+      SVN_USERNAME: ${{ secrets.SVC_DIST_GRAILS_USERNAME }}
+      SVN_PASSWORD: ${{ secrets.SVC_DIST_GRAILS_PASSWORD }}
+    steps:
+      - name: "📝 Establish release version"
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+      - name: "🛠️ Install tools"
+        run: sudo apt-get install -y subversion tree
+      - name: "👀 Ensure dev/${{ env.SVN_PROJECT }}/${{ env.SVN_FOLDER }} folder exists"
+        run: |
+          set -e
+          if svn ls https://dist.apache.org/repos/dist/dev/${SVN_PROJECT}/${SVN_FOLDER} --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive; then
+            echo "Dev Folder [${SVN_PROJECT}/${SVN_FOLDER}] already exists — skipping creation"
+          else
+            echo "Dev Folder [${SVN_PROJECT}/${SVN_FOLDER}] does not exist, creating"
+            svnmucc --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
+              mkdir https://dist.apache.org/repos/dist/dev/${SVN_PROJECT}/${SVN_FOLDER} \
+              -m "Create '${SVN_PROJECT}/${SVN_FOLDER}' dev folder"
+          fi
+      - name: "📥 Checkout dev repo"
+        run: |
+          svn checkout --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive "https://dist.apache.org/repos/dist/dev/${SVN_PROJECT}/${SVN_FOLDER}" dev-repo
+      - name: "🗑️ Remove existing dev version"
+        run: |
+          cd dev-repo
+          if [ -d "${VERSION}" ]; then
+            svn delete "${VERSION}"
+            svn commit -m "Remove ${SVN_PROJECT} ${SVN_FOLDER} dev version ${VERSION}" --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive
+          else
+            echo "No existing dev version ${VERSION} to remove"
+          fi
+      - name: "📥 Fetch source distribution"
+        run: |
+          cd dev-repo
+          mkdir -p ${VERSION}/sources
+          cd ${VERSION}/sources
+          curl -f -LO https://github.com/${REPO_SLUG}/releases/download/${TAG}/${DIST_NAME}-${VERSION}-src.zip
+          curl -f -LO https://github.com/${REPO_SLUG}/releases/download/${TAG}/${DIST_NAME}-${VERSION}-src.zip.sha512
+          curl -f -LO https://github.com/${REPO_SLUG}/releases/download/${TAG}/${DIST_NAME}-${VERSION}-src.zip.asc
+          ls -l
+      - name: "📥 Fetch binary distribution"
+        run: |
+          cd dev-repo
+          mkdir -p ${VERSION}/distribution
+          cd ${VERSION}/distribution
+          curl -f -LO https://github.com/${REPO_SLUG}/releases/download/${TAG}/${DIST_NAME}-${VERSION}-bin.zip
+          curl -f -LO https://github.com/${REPO_SLUG}/releases/download/${TAG}/${DIST_NAME}-${VERSION}-bin.zip.sha512
+          curl -f -LO https://github.com/${REPO_SLUG}/releases/download/${TAG}/${DIST_NAME}-${VERSION}-bin.zip.asc
+          ls -l
+      - name: "🚀 Upload distributions"
+        run: |
+          cd dev-repo
+          echo "Adding the following files to SVN:"
+          tree
+          svn add ${VERSION} --force
+          svn commit -m "Upload ${PROJECT_NAME} distribution files for ${VERSION}" --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive
+      - name: "🗳 MANUAL - Start PMC Vote"
+        run: |
+          echo "::group::Manual Vote"
+          echo "Distributions staged at https://dist.apache.org/repos/dist/dev/${SVN_PROJECT}/${SVN_FOLDER}/${VERSION}"
+          echo "Start a [VOTE] thread for ${PROJECT_NAME} ${VERSION} on dev@grails.apache.org."
+          echo "::endgroup::"
+  release:
+    environment: release # post-vote gate: required reviewers configured in .asf.yaml
+    name: "VOTE SUCCEEDED - Publish Release"
+    needs: [ publish, source, upload ]
+    runs-on: ubuntu-latest
+    env:
+      SVN_USERNAME: ${{ secrets.SVC_DIST_GRAILS_USERNAME }}
+      SVN_PASSWORD: ${{ secrets.SVC_DIST_GRAILS_PASSWORD }}
+    steps:
+      - name: "📝 Establish release version"
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+      - name: "🗳 MANUAL - Confirm Grails PMC Vote succeeded"
+        run: |
+          echo "::group::Manual Confirmation"
+          echo "🔎 Make sure that the vote confirmation on dev@grails.apache.org completed successfully before proceeding."
+          echo "::endgroup::"
+      - name: "🛠️ Install tools"
+        run: sudo apt-get install -y subversion
+      - name: "🚀 Promote distributions dev -> release"
+        run: |
+          set -e
+          if svn ls https://dist.apache.org/repos/dist/release/${SVN_PROJECT}/${SVN_FOLDER} --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive; then
+            echo "Release folder exists"
+          else
+            svnmucc --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
+              mkdir https://dist.apache.org/repos/dist/release/${SVN_PROJECT}/${SVN_FOLDER} \
+              -m "Create '${SVN_PROJECT}/${SVN_FOLDER}' release folder"
+          fi
+          svnmucc --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
+            mv https://dist.apache.org/repos/dist/dev/${SVN_PROJECT}/${SVN_FOLDER}/${VERSION} \
+               https://dist.apache.org/repos/dist/release/${SVN_PROJECT}/${SVN_FOLDER}/${VERSION} \
+            -m "Release ${PROJECT_NAME} ${VERSION}"
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ env.TAG }}
+      - name: "☕️ Setup JDK"
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+      - name: "🐘 Setup Gradle"
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+        with:
+          cache-provider: basic # see note above
+      - name: "🚀 Publish to JetBrains Marketplace"
+        env:
+          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
+          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+        run: ./gradlew publishPlugin -PpluginVersion=${VERSION}
+      - name: "✅ MANUAL - Update ASF Reporter"
+        run: |
+          echo "::group::Manual ASF Reporter Update"
+          TODAY=$(date +"%Y-%m-%d")
+          echo "Update https://reporter.apache.org/addrelease.html?${SVN_PROJECT} to add"
+          echo "INTELLIJ-PLUGIN-${VERSION} as complete as of ${TODAY}"
+          echo "::endgroup::"
+      - name: "📧 MANUAL - Send Vote Result & Announcement Emails"
+        run: |
+          echo "::group::Manual Emails"
+          echo "Send [RESULT][VOTE] to dev@grails.apache.org and"
+          echo "[ANNOUNCE] ${PROJECT_NAME} ${VERSION} to announce@apache.org, dev@grails.apache.org, users@grails.apache.org."
+          echo "::endgroup::"
