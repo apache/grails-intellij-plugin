@@ -25,7 +25,10 @@ plugins {
 group = "org.apache.grails.intellij.coverage"
 
 kotlin {
-    jvmToolchain(21)
+    // no toolchain on purpose: the JDK is pinned via .sdkmanrc for reproducible builds
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget(properties("platformJavaVersion"))
+    }
 }
 
 repositories {

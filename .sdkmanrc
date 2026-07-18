@@ -15,5 +15,5 @@
 #
 # Enable auto-env through the sdkman_auto_env config
 # Add key=value pairs of SDKs to use below
-java=21.0.7-librca
+java=25.0.3-librca
 gradle=9.3.1

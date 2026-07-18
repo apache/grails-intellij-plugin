@@ -45,11 +45,6 @@ public class Grails2_0_JUnitPatcher extends CompilationUnitPatcher {
           source.getAST().addStaticStarImport(null, ClassHelper.make("org.junit.Assert"));
         }
       }
-
-      @Override
-      public void doPhaseOperation(CompilationUnit unit) throws CompilationFailedException {
-        super.doPhaseOperation(unit);
-      }
     }, Phases.CONVERSION);
 
     compilationUnit.addPhaseOperation(new CompilationUnit.PrimaryClassNodeOperation() {
@@ -86,11 +81,6 @@ public class Grails2_0_JUnitPatcher extends CompilationUnitPatcher {
             method.addAnnotation(annotationNode);
           }
         }
-      }
-
-      @Override
-      public void doPhaseOperation(CompilationUnit unit) throws CompilationFailedException {
-        super.doPhaseOperation(unit);
       }
     }, Phases.INSTRUCTION_SELECTION);
   }

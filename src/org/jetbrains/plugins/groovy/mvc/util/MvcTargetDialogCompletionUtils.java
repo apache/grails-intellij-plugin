@@ -151,7 +151,7 @@ public final class MvcTargetDialogCompletionUtils {
     public static final MyTailTypeEQ INSTANCE = new MyTailTypeEQ();
 
     @Override
-    protected boolean isSpaceAroundAssignmentOperators(Editor editor, int tailOffset) {
+    protected boolean isSpaceAroundAssignmentOperators(PsiFile file, int tailOffset) {
       return false;
     }
 

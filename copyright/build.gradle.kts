@@ -35,6 +35,7 @@ dependencies {
         intellijIdea(properties("platformVersion"))
         bundledPlugin("com.intellij.copyright")
         bundledPlugin("com.intellij.jsp")
+        bundledModule("intellij.javaee.jsp.copyright") // UpdateJspFileCopyright moved here in 2026.2
     }
 
     compileOnly(project(":"))

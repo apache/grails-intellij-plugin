@@ -41,7 +41,10 @@ dependencies {
 }
 
 kotlin {
-    jvmToolchain(21)
+    // no toolchain on purpose: the JDK is pinned via .sdkmanrc for reproducible builds
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget(properties("platformJavaVersion"))
+    }
 }
 
 java.sourceSets["main"].java {

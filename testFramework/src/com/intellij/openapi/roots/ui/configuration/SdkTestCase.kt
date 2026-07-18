@@ -157,7 +157,8 @@ abstract class SdkTestCase : LightPlatformTestCase() {
         override fun pickSdk(sdkTypeId: SdkTypeId,
                              sdkModel: SdkModel,
                              parentComponent: JComponent,
-                             selectedSdk: Sdk?): SdkDownloadTask? = null
+                             selectedSdk: Sdk?,
+                             filter: java.util.function.Predicate<com.intellij.openapi.projectRoots.impl.jdkDownloader.JdkItem>?): SdkDownloadTask? = null
     }
 
     object TestSdkGenerator {

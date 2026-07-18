@@ -10,8 +10,8 @@ This codebase was originally developed by JetBrains s.r.o. and imported from
 
 ## Requirements
 
-- IntelliJ IDEA Ultimate 2025.3+ (`sinceBuild` 253)
-- Java 21 (the `grails-rt`, `grails-compiler-patch`, and `jps-plugin` modules target Java 8/11)
+- IntelliJ IDEA Ultimate 2026.2+ (`sinceBuild` 262)
+- Java 25 (the `grails-rt`, `grails-compiler-patch`, and `jps-plugin` modules target Java 8/11)
 
 ## Building
 

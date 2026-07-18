@@ -24,7 +24,10 @@ plugins {
 group = "org.apache.grails.intellij.maven"
 
 kotlin {
-    jvmToolchain(21)
+    // no toolchain on purpose: the JDK is pinned via .sdkmanrc for reproducible builds
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget(properties("platformJavaVersion"))
+    }
 }
 
 repositories {
@@ -38,6 +41,7 @@ dependencies {
     intellijPlatform {
         intellijIdea(properties("platformVersion"))
         bundledPlugin("org.jetbrains.idea.maven")
+        bundledPlugin("com.intellij.java") // java debugger classes moved into the java plugin modules in 2026.2
     }
 
     compileOnly(project(":grails-rt"))

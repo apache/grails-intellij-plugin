@@ -54,7 +54,6 @@ import org.jetbrains.plugins.grails.runner.GrailsConsole;
 import org.jetbrains.plugins.grails.structure.OldGrailsApplication;
 import org.jetbrains.plugins.groovy.mvc.plugins.actions.AddCustomPluginAction;
 import org.jetbrains.plugins.groovy.mvc.plugins.actions.ReloadMvcPluginListAction;
-import org.jdom.Element;
 
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -140,19 +139,9 @@ public class MvcPluginsMain {
       @SuppressWarnings("deprecation")
       @Override
       public void actionPerformed(@NotNull ActionEvent e) {
-        HttpConfigurable cfg;
-
-        Element serializedCfg = new Element("root");
-        try {
-          HttpConfigurable.getInstance().writeExternal(serializedCfg);
-          cfg = new HttpConfigurable();
-          cfg.readExternal(serializedCfg);
-        }
-        catch (Exception e1) {
-          throw new RuntimeException(e1);
-        }
-
-        doEditProxySettings(cfg);
+        // 2026.2: HttpConfigurable can no longer be cloned via read/writeExternal and
+        // HttpProxyConfigurable edits the global proxy settings directly
+        doEditProxySettings(HttpConfigurable.getInstance());
       }
     });
 
@@ -184,7 +173,7 @@ public class MvcPluginsMain {
   }
 
   private void doEditProxySettings(final HttpConfigurable cfg) {
-    if (!ShowSettingsUtil.getInstance().editConfigurable(main, new HttpProxyConfigurable(cfg))) {
+    if (!ShowSettingsUtil.getInstance().editConfigurable(main, new HttpProxyConfigurable())) {
       return;
     }
 

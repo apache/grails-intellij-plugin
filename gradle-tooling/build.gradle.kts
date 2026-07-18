@@ -32,7 +32,7 @@ repositories {
 dependencies {
     intellijPlatform {
         intellijIdea(properties("platformVersion"))
-        bundledPlugin("org.jetbrains.plugins.gradle")
+        bundledPlugin("com.intellij.gradle")
     }
 }
 

@@ -34,13 +34,17 @@ repositories {
 }
 
 kotlin {
-    jvmToolchain(21)
+    // no toolchain on purpose: the JDK is pinned via .sdkmanrc for reproducible builds
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget(properties("platformJavaVersion"))
+    }
 }
 
 dependencies {
     intellijPlatform {
         intellijIdea(properties("platformVersion"))
         bundledPlugin("org.intellij.groovy")
+        bundledPlugin("com.intellij.gradle") // split out of org.jetbrains.plugins.gradle in 2026.2
         bundledPlugin("org.jetbrains.plugins.gradle")
 
         // add to _production_ deps

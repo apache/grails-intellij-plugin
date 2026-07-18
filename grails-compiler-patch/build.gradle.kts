@@ -35,7 +35,18 @@ dependencies {
         bundledPlugin("org.intellij.groovy")
     }
 
-    compileOnly("org.grails:grails-core:1.2.0")
+    compileOnly("org.grails:grails-core:1.2.0") {
+        exclude(group = "org.codehaus.groovy") // groovy pinned explicitly below
+    }
+    // era-correct Groovy for the Grails 1.x/2.x patchers (superset of the APIs used);
+    // must NOT be the IDE's bundled Groovy 5 — see compileClasspath exclusion below
+    compileOnly("org.codehaus.groovy:groovy-all:2.4.21")
+}
+
+// this patch runs inside Grails 2.x builds, so it must compile against the era-correct
+// Groovy (groovy-all 1.6.7 via grails-core above), not the IDE's bundled Groovy 5
+configurations.compileClasspath {
+    exclude(group = "bundledPlugin", module = "com.intellij.groovy.scripting")
 }
 
 java.sourceSets["main"].java {
@@ -54,3 +65,4 @@ tasks {
     }
 
 }
+

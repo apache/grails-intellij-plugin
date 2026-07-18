@@ -21,7 +21,7 @@ fun properties(key: String) = project.findProperty(key).toString()
 plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "2.3.0"
-    id("org.jetbrains.intellij.platform") version "2.11.0"
+    id("org.jetbrains.intellij.platform") version "2.18.1"
     id("org.nosphere.apache.rat") version "0.8.1"
 }
 
@@ -40,6 +40,7 @@ dependencies {
         intellijIdea(properties("platformVersion"))
 
         bundledPlugin("com.intellij.javaee")
+        bundledPlugin("com.intellij.javaee.el") // no longer transitive in 2026.2
         bundledPlugin("com.intellij.persistence")
         bundledPlugin("com.intellij.javaee.jpa")
         bundledPlugin("com.intellij.jsp")
@@ -47,6 +48,7 @@ dependencies {
         bundledPlugin("org.intellij.groovy")
         bundledPlugin("com.intellij.database")
         bundledPlugin("com.intellij.spring")
+        bundledPlugin("com.intellij.gradle") // split out of org.jetbrains.plugins.gradle in 2026.2
         bundledPlugin("org.jetbrains.plugins.gradle")
         bundledPlugin("com.intellij.modules.ultimate")
         bundledPlugin("com.intellij.microservices.jvm")
@@ -88,7 +90,10 @@ dependencies {
 }
 
 kotlin {
-    jvmToolchain(21)
+    // no toolchain on purpose: the JDK is pinned via .sdkmanrc for reproducible builds
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget(properties("platformJavaVersion"))
+    }
 }
 
 java.sourceSets["main"].java {

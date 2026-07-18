@@ -17,7 +17,7 @@
 package org.jetbrains.plugins.gradle.importing
 
 
-import com.intellij.compiler.CompilerTestUtil
+import com.intellij.compiler.server.BuildManager
 import com.intellij.concurrency.IdeaForkJoinWorkerThreadFactory
 import com.intellij.execution.RunManagerEx
 import com.intellij.execution.process.ProcessOutputType
@@ -233,7 +233,8 @@ abstract class GradleImportingTestCase : JavaExternalSystemImportingTestCase() {
             },
             {
                 TestDialogManager.setTestDialog(TestDialog.DEFAULT)
-                CompilerTestUtil.deleteBuildSystemDirectory(myProject)
+                // inlined from CompilerTestUtil.deleteBuildSystemDirectory (removed in 2026.2)
+                BuildManager.getInstance()?.getBuildSystemDirectory(myProject)?.let { com.intellij.openapi.util.io.FileUtil.delete(it.toFile()) }
             },
             { deprecationError.set(null) },
             { tearDownGradleVmOptions() },
