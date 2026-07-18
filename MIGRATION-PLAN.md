@@ -64,6 +64,17 @@ blind deletion of imported infra).
    channel.
 5. **Versioning**: keep the `<platform-branch>.x.y` scheme (`253.0.0`) or align with a
    Grails-style scheme. Marketplace convention favors the platform-branch scheme — keep it.
+6. **Maven publishing** (added 2026-07-18): also publish the plugin ZIP to the ASF Nexus
+   (`repository.apache.org`, syncs to Maven Central on staging release) under
+   `org.apache.grails:grails-intellij-plugin` — Maven coordinates are independent of the
+   Marketplace plugin id, so the Apache groupId works even though the plugin id stays
+   `org.intellij.grails`.
+7. **Signing keys** (added 2026-07-18): the existing Grails release GPG key (from the
+   project `KEYS` file) covers all ASF signing — source zip, convenience binary, Maven
+   `.asc` files. JetBrains Marketplace plugin signing is a separate mechanism: it
+   requires an X.509 certificate chain + RSA private key (PEM), not PGP, so a dedicated
+   key/cert pair must be generated (per JetBrains docs) and stored as the
+   `CERTIFICATE_CHAIN`/`PRIVATE_KEY`/`PRIVATE_KEY_PASSWORD` secrets.
 
 ---
 
@@ -115,7 +126,11 @@ feasible; the constraints and the plan:
 
 ## Phase 1 — ASF repo metadata
 
-One commit: "ASF Compliance - repository metadata".
+DONE (2026-07-18): committed as "Add ASF repository metadata" — NOTICE, HEADER,
+LICENSE rename, `.asf.yaml` (release environment + branch protection + notifications),
+README.md. Also added later: `INSTALL` + `.sdkmanrc` + `gradle-bootstrap/` (source
+distro ships without the wrapper jar; `cd gradle-bootstrap && gradle bootstrap`
+regenerates it pinned to `.sdkmanrc`, grails-core's pattern).
 
 - **`NOTICE`** (new, required by policy). Model on grails-core's:
 
@@ -230,7 +245,10 @@ generated Ivy descriptors). Remaining details below for reference.
 
 ## Phase 4 — Identity & conventions cleanup
 
-One commit: "ASF Compliance - plugin identity".
+DONE (2026-07-18): committed as "Update plugin vendor and Gradle groups to Apache" —
+vendor is Apache Software Foundation (url grails.apache.org), Gradle groups are
+`org.apache.grails.intellij*`. Plugin id and extension-point namespaces stay
+`org.intellij.grails` per decision 2. Package renames remain out of scope.
 
 - `plugin.xml`: `vendor` → Apache Software Foundation (Grails), vendor URL
   `https://grails.apache.org/`, plugin description/links updated; keep plugin id per
@@ -246,6 +264,13 @@ One commit: "ASF Compliance - plugin identity".
   Kotlin codebase); consider ktlint/detekt later, not in this migration.
 
 ## Phase 5 — GitHub Actions: build & verification CI
+
+DONE (2026-07-18): committed as "Add CI workflows for build, verification, and RAT" —
+`gradle.yml` (build+test with plugin ZIP artifact, Plugin Verifier job with
+`recommended()` IDEs) and `rat.yml` (grails-core's, adapted to `main`, Develocity/
+TestLens dropped per decision 3). All actions pinned to grails-core's SHAs. The
+`test.idea.home.path` property is now only applied when the path exists, so `check`
+runs on CI. NOT yet validated on a real GitHub runner — first PR will shake it out.
 
 One commit: "ASF Compliance - CI workflows". Follow grails-core's patterns: all actions
 **pinned to full commit SHAs**, `concurrency` group per workflow+ref, publish gated on
@@ -271,6 +296,17 @@ test jobs via `needs:` **and** `if:` result guards.
 - Later/optional, mirroring grails-core: `codeql.yml`, dependabot config.
 
 ## Phase 6 — GitHub Actions: ASF release & Marketplace publishing
+
+DONE (2026-07-18, initial draft): committed as "Add release workflow and Marketplace
+signing config" + "Publish plugin ZIP to ASF Maven repository". `release.yml` jobs:
+`publish` (check/buildPlugin/signPlugin, GPG-sign + sha512, attach to GitHub release,
+stage Maven artifacts to repository.apache.org), `source` (src zip without wrapper/
+.github, GPG-sign + sha512), `upload` (svn to dist/dev for the vote), `release`
+(environment-gated: svn mv dev->release, `publishPlugin` to Marketplace, manual Nexus
+staging release + reporter/email reminders). Secrets needed: GRAILS_GPG_KEY,
+GPG_KEY_ID, GPG_PASSPHRASE, SVC_DIST_GRAILS_USERNAME/PASSWORD, NEXUS_USERNAME/PASSWORD,
+CERTIFICATE_CHAIN, PRIVATE_KEY, PRIVATE_KEY_PASSWORD, PUBLISH_TOKEN. Needs a dry-run
+against a test tag before first use (Phase 8).
 
 One commit: "ASF Compliance - release workflow". Modeled on grails-core's `release.yml`
 and the `apache/grails-github-actions` composite actions, adapted because the deliverable
@@ -306,7 +342,8 @@ convenience binary.
 
 ## Phase 7 — Artifact compliance
 
-Part of Phase 5/6 commits or separate:
+DONE (2026-07-18): LICENSE/NOTICE are packaged into the plugin jar META-INF via
+`processResources` (verified in the built ZIP). Stretch goals below remain open.
 
 - Ensure `LICENSE` and `NOTICE` are packaged **inside the plugin ZIP / jar META-INF**
   (grails-core gets this from its shared build-logic plugins; here add a small Gradle
