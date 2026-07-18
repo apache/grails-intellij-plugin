@@ -17,7 +17,7 @@ plugins {
     id("java")
 }
 
-group = "org.intellij.grails.rt"
+group = "org.apache.grails.intellij.rt"
 
 repositories {
     mavenCentral()

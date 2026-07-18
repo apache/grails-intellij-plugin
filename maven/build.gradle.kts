@@ -21,7 +21,7 @@ plugins {
     id("org.jetbrains.intellij.platform.module")
 }
 
-group = "org.intellij.grails.maven"
+group = "org.apache.grails.intellij.maven"
 
 kotlin {
     jvmToolchain(21)

@@ -20,7 +20,7 @@ plugins {
     id("org.jetbrains.intellij.platform.module")
 }
 
-group = "org.intellij.grails.compiler.patch"
+group = "org.apache.grails.intellij.compiler.patch"
 
 repositories {
     mavenCentral()

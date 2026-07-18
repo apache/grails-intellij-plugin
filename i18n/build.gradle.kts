@@ -21,7 +21,7 @@ plugins {
     id("org.jetbrains.intellij.platform.module")
 }
 
-group = "org.intellij.grails.i18n"
+group = "org.apache.grails.intellij.i18n"
 
 repositories {
     mavenCentral()

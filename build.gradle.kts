@@ -25,7 +25,7 @@ plugins {
     id("org.nosphere.apache.rat") version "0.8.1"
 }
 
-group = "org.intellij.grails"
+group = "org.apache.grails.intellij"
 version = properties("pluginVersion")
 
 repositories {

@@ -19,7 +19,7 @@
   <category>JVM Frameworks</category>
   <description>
     <![CDATA[
-   Provides integration with the <a href="https://grails.org">Grails</a> framework.
+   Provides integration with the <a href="https://grails.apache.org">Apache Grails</a> framework.
    <ul>
      <li>Import a generated Grails Application Forge project or create a new one directly from the IDE</li>
      <li>Switch to the <b>Grails</b> view in the <b>Project</b> tool window</li>
@@ -28,7 +28,7 @@
    </ul>
     ]]>
   </description>
-  <vendor>JetBrains</vendor>
+  <vendor url="https://grails.apache.org/">Apache Software Foundation</vendor>
 
   <dependencies>
     <module name="intellij.javaee.platform"/>

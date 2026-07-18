@@ -20,7 +20,7 @@ plugins {
     id("org.jetbrains.intellij.platform.module")
 }
 
-group = "org.intellij.grails.hibernate"
+group = "org.apache.grails.intellij.hibernate"
 
 repositories {
     mavenCentral()

@@ -24,7 +24,7 @@ plugins {
     id("org.jetbrains.intellij.platform.module")
 }
 
-group = "org.intellij.grails.testFramework"
+group = "org.apache.grails.intellij.testFramework"
 
 repositories {
     mavenCentral()

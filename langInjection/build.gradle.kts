@@ -20,7 +20,7 @@ plugins {
     id("org.jetbrains.intellij.platform.module")
 }
 
-group = "org.intellij.grails.langInjection"
+group = "org.apache.grails.intellij.langInjection"
 
 repositories {
     mavenCentral()
