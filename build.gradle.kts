@@ -23,11 +23,10 @@ plugins {
     id("org.jetbrains.kotlin.jvm") version "2.3.0"
     id("org.jetbrains.intellij.platform") version "2.11.0"
     id("org.nosphere.apache.rat") version "0.8.1"
-    id("org.apache.grails.gradle.grails-publish") version "1.0.0-M1"
 }
 
 group = "org.apache.grails.intellij"
-// project version comes from gradle.properties `version` (read by grails-publish at apply time)
+// project version comes from gradle.properties `version` (override with -Pversion=)
 
 repositories {
     mavenCentral()
@@ -225,35 +224,3 @@ tasks.rat {
     outputs.upToDateWhen { false }
 }
 
-// Publish the plugin ZIP to the ASF Nexus via the Grails Publish plugin (same flow as
-// grails-core: NEXUS_PUBLISH_* env vars, initialize/publishToSonatype/close staging tasks,
-// post-vote promotion with .github/scripts/releaseJarFiles.sh). Maven coordinates are
-// independent of the JetBrains Marketplace plugin id (org.intellij.grails).
-grailsPublish {
-    groupId.set("org.apache.grails")
-    artifactId.set("grails-intellij-plugin")
-    // the deliverable is the plugin ZIP, not the java component/sources/javadoc jars
-    addComponents.set(false)
-    githubSlug.set("apache/grails-intellij-plugin")
-    license.name = "Apache-2.0"
-    title.set("Apache Grails IntelliJ Plugin")
-    desc.set("IntelliJ IDEA plugin for the Apache Grails framework")
-    developer {
-        id.set("grails")
-        name.set("Apache Grails Team")
-    }
-}
-
-// grails-publish creates the `maven` publication in afterEvaluate; attach the ZIP lazily
-publishing.publications.withType<MavenPublication>().configureEach {
-    if (name == "maven") {
-        artifact(tasks.buildPlugin)
-    }
-}
-
-// grails-publish 1.0.0-M1 pom generation captures the Project and breaks the
-// configuration cache; degrade gracefully for publish runs. Proper fix belongs on the
-// grails-gradle-publish 1.x branch.
-tasks.withType<org.gradle.api.publish.maven.tasks.GenerateMavenPom>().configureEach {
-    notCompatibleWithConfigurationCache("grails-publish pom generation captures Project")
-}

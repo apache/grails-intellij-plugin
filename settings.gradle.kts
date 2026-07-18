@@ -13,37 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-pluginManagement {
-    repositories {
-        // ASF repos for resolving snapshot/staged builds of the Grails Publish plugin
-        // ONLY — filtered like grails-core's GrailsRepoSettingsPlugin so these repos
-        // can never serve any other dependency.
-        maven {
-            url = uri("https://repository.apache.org/content/groups/snapshots")
-            content {
-                includeVersionByRegex("org[.]apache[.]grails[.]gradle.*", ".*", ".*-SNAPSHOT")
-            }
-            mavenContent {
-                snapshotsOnly()
-            }
-        }
-        maven {
-            url = uri("https://repository.apache.org/content/groups/staging")
-            content {
-                includeModuleByRegex("org[.]apache[.]grails[.]gradle", "grails-publish")
-                includeModuleByRegex("org[.]apache[.]groovy", "groovy.*")
-                // the plugins-block marker artifact
-                includeModule("org.apache.grails.gradle.grails-publish", "org.apache.grails.gradle.grails-publish.gradle.plugin")
-            }
-            mavenContent {
-                releasesOnly()
-            }
-        }
-        mavenCentral() // grails-publish is published to Maven Central, not the plugin portal
-        gradlePluginPortal()
-    }
-}
-
 rootProject.name = "Grails"
 
 include("copyright")

@@ -64,28 +64,16 @@ blind deletion of imported infra).
    channel.
 5. **Versioning**: keep the `<platform-branch>.x.y` scheme (`253.0.0`) or align with a
    Grails-style scheme. Marketplace convention favors the platform-branch scheme — keep it.
-6. **Maven publishing** (added 2026-07-18): also publish the plugin ZIP to the ASF Nexus
-   (`repository.apache.org`, syncs to Maven Central on staging release) under
-   `org.apache.grails:grails-intellij-plugin` — Maven coordinates are independent of the
-   Marketplace plugin id, so the Apache groupId works even though the plugin id stays
-   `org.intellij.grails`. AMENDED (2026-07-18): done via the **Grails Publish plugin**
-   (`org.apache.grails.gradle:grails-publish:1.0.0-M1`, same flow as grails-core) with
-   `addComponents=false` and the ZIP attached to its `maven` publication. Notes:
-   - `settings.gradle.kts` adds the ASF snapshots/staging groups to `pluginManagement`,
-     content-filtered exactly like grails-core's `GrailsRepoSettingsPlugin` (grails-publish
-     modules only, plus `org.apache.groovy` on staging) — never for other dependencies.
-   - the plugin needs `project.version` at apply time, so `pluginVersion` in
-     gradle.properties was renamed to the standard `version` property (release workflow
-     passes `-Pversion=`).
-   - grails-publish 1.0.0-M1 pom generation is not configuration-cache compatible; the
-     build marks `GenerateMavenPom` tasks `notCompatibleWithConfigurationCache`. The
-     proper fix should be made on the grails-gradle-publish **1.x branch** (any changes
-     to that plugin go on 1.x).
-   - staging flow in release.yml mirrors grails-core: `initializeSonatypeStagingRepository`
-     → `publishToSonatype` → `closeSonatypeStagingRepository` (NEXUS_PUBLISH_* env,
-     secrets NEXUS_STAGE_DEPLOYER_USER/PW, vars.STAGING_URL, STAGING_PROFILE_ID,
-     SIGNING_KEY=GPG key id); post-vote promotion via `.github/scripts/releaseJarFiles.sh`
-     (copied from grails-core along with `releaseDistributions.sh`).
+6. **Maven publishing** RESOLVED (2026-07-18): **none**. The plugin ZIP is never
+   consumed from Maven Central/ASF Nexus, so there is no Maven/Nexus publishing at all.
+   Distribution channels are: the GitHub release assets, `dist.apache.org` dev → release
+   via svn as part of the PMC vote, and the JetBrains Marketplace convenience binary.
+   A trial adoption of the Grails Publish plugin was reverted as unnecessary; two rough
+   edges found during that trial are candidate fixes on the grails-gradle-publish **1.x
+   branch** if it is ever adopted here: (a) it requires `project.version` at plugin apply
+   time, and (b) its pom generation is not configuration-cache compatible. Kept from the
+   trial: the project version now uses the standard `version` property in
+   gradle.properties (was `pluginVersion`); workflows pass `-Pversion=`.
 7. **Signing keys** (added 2026-07-18): the existing Grails release GPG key (from the
    project `KEYS` file) covers all ASF signing — source zip, convenience binary, Maven
    `.asc` files. JetBrains Marketplace plugin signing is a separate mechanism: it
@@ -315,15 +303,14 @@ test jobs via `needs:` **and** `if:` result guards.
 ## Phase 6 — GitHub Actions: ASF release & Marketplace publishing
 
 DONE (2026-07-18, initial draft): committed as "Add release workflow and Marketplace
-signing config" + "Publish plugin ZIP to ASF Maven repository". `release.yml` jobs:
-`publish` (check/buildPlugin/signPlugin, GPG-sign + sha512, attach to GitHub release,
-stage Maven artifacts to repository.apache.org), `source` (src zip without wrapper/
-.github, GPG-sign + sha512), `upload` (svn to dist/dev for the vote), `release`
-(environment-gated: svn mv dev->release, `publishPlugin` to Marketplace, manual Nexus
-staging release + reporter/email reminders). Secrets needed: GRAILS_GPG_KEY,
-GPG_KEY_ID, GPG_PASSPHRASE, SVC_DIST_GRAILS_USERNAME/PASSWORD, NEXUS_USERNAME/PASSWORD,
-CERTIFICATE_CHAIN, PRIVATE_KEY, PRIVATE_KEY_PASSWORD, PUBLISH_TOKEN. Needs a dry-run
-against a test tag before first use (Phase 8).
+signing config" (Maven/Nexus staging later removed per decision 6). `release.yml` jobs:
+`publish` (check/buildPlugin/signPlugin, GPG-sign + sha512, attach ZIP to GitHub
+release), `source` (src zip without wrapper/.github, GPG-sign + sha512), `upload` (svn
+to dist/dev for the vote), `release` (environment-gated: svn mv dev->release,
+`publishPlugin` to Marketplace, reporter/email reminders). Secrets needed:
+GRAILS_GPG_KEY, GPG_KEY_ID, SVC_DIST_GRAILS_USERNAME/PASSWORD, CERTIFICATE_CHAIN,
+PRIVATE_KEY, PRIVATE_KEY_PASSWORD, PUBLISH_TOKEN. Needs a dry-run against a test tag
+before first use (Phase 8).
 
 One commit: "ASF Compliance - release workflow". Modeled on grails-core's `release.yml`
 and the `apache/grails-github-actions` composite actions, adapted because the deliverable
