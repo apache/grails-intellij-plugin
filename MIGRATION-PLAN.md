@@ -68,7 +68,24 @@ blind deletion of imported infra).
    (`repository.apache.org`, syncs to Maven Central on staging release) under
    `org.apache.grails:grails-intellij-plugin` — Maven coordinates are independent of the
    Marketplace plugin id, so the Apache groupId works even though the plugin id stays
-   `org.intellij.grails`.
+   `org.intellij.grails`. AMENDED (2026-07-18): done via the **Grails Publish plugin**
+   (`org.apache.grails.gradle:grails-publish:1.0.0-M1`, same flow as grails-core) with
+   `addComponents=false` and the ZIP attached to its `maven` publication. Notes:
+   - `settings.gradle.kts` adds the ASF snapshots/staging groups to `pluginManagement`,
+     content-filtered exactly like grails-core's `GrailsRepoSettingsPlugin` (grails-publish
+     modules only, plus `org.apache.groovy` on staging) — never for other dependencies.
+   - the plugin needs `project.version` at apply time, so `pluginVersion` in
+     gradle.properties was renamed to the standard `version` property (release workflow
+     passes `-Pversion=`).
+   - grails-publish 1.0.0-M1 pom generation is not configuration-cache compatible; the
+     build marks `GenerateMavenPom` tasks `notCompatibleWithConfigurationCache`. The
+     proper fix should be made on the grails-gradle-publish **1.x branch** (any changes
+     to that plugin go on 1.x).
+   - staging flow in release.yml mirrors grails-core: `initializeSonatypeStagingRepository`
+     → `publishToSonatype` → `closeSonatypeStagingRepository` (NEXUS_PUBLISH_* env,
+     secrets NEXUS_STAGE_DEPLOYER_USER/PW, vars.STAGING_URL, STAGING_PROFILE_ID,
+     SIGNING_KEY=GPG key id); post-vote promotion via `.github/scripts/releaseJarFiles.sh`
+     (copied from grails-core along with `releaseDistributions.sh`).
 7. **Signing keys** (added 2026-07-18): the existing Grails release GPG key (from the
    project `KEYS` file) covers all ASF signing — source zip, convenience binary, Maven
    `.asc` files. JetBrains Marketplace plugin signing is a separate mechanism: it
