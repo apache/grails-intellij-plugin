@@ -23,6 +23,8 @@ plugins {
     id("org.jetbrains.kotlin.jvm") version "2.3.0"
     id("org.jetbrains.intellij.platform") version "2.11.0"
     id("org.nosphere.apache.rat") version "0.8.1"
+    id("maven-publish")
+    id("signing")
 }
 
 group = "org.apache.grails.intellij"
@@ -222,4 +224,64 @@ tasks.rat {
     )
     // never cache license audits
     outputs.upToDateWhen { false }
+}
+
+// Publish the plugin ZIP to the ASF Nexus (repository.apache.org). Maven coordinates
+// are independent of the JetBrains Marketplace plugin id (org.intellij.grails).
+publishing {
+    publications {
+        create<MavenPublication>("pluginZip") {
+            groupId = "org.apache.grails"
+            artifactId = "grails-intellij-plugin"
+            version = project.version.toString()
+            artifact(tasks.buildPlugin)
+            pom {
+                name = "Apache Grails IntelliJ Plugin"
+                description = "IntelliJ IDEA plugin for the Apache Grails framework"
+                url = "https://github.com/apache/grails-intellij-plugin"
+                licenses {
+                    license {
+                        name = "The Apache License, Version 2.0"
+                        url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                    }
+                }
+                scm {
+                    connection = "scm:git:git://github.com/apache/grails-intellij-plugin.git"
+                    developerConnection = "scm:git:ssh://github.com:apache/grails-intellij-plugin.git"
+                    url = "https://github.com/apache/grails-intellij-plugin"
+                }
+                developers {
+                    developer {
+                        name = "Apache Grails Team"
+                        url = "https://grails.apache.org/"
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = "apache"
+            url = uri(
+                if (version.toString().endsWith("SNAPSHOT")) {
+                    "https://repository.apache.org/content/repositories/snapshots"
+                } else {
+                    "https://repository.apache.org/service/local/staging/deploy/maven2"
+                }
+            )
+            credentials {
+                username = providers.environmentVariable("ASF_NEXUS_USERNAME").orNull
+                password = providers.environmentVariable("ASF_NEXUS_PASSWORD").orNull
+            }
+        }
+    }
+}
+
+// GPG-sign the Maven publication (ASF release requirement); no-op when the key is absent
+signing {
+    val signingKey = providers.environmentVariable("SIGNING_KEY").orNull
+    if (signingKey != null) {
+        useInMemoryPgpKeys(signingKey, providers.environmentVariable("SIGNING_PASSPHRASE").orNull ?: "")
+        sign(publishing.publications["pluginZip"])
+    }
 }

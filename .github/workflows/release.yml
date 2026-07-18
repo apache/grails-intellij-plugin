@@ -84,6 +84,13 @@ jobs:
           ${DIST_NAME}-${VERSION}-bin.zip
       - name: "📦 Create plugin ZIP checksum"
         run: sha512sum ${DIST_NAME}-${VERSION}-bin.zip > ${DIST_NAME}-${VERSION}-bin.zip.sha512
+      - name: "📤 Stage Maven artifacts to repository.apache.org"
+        env:
+          ASF_NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          ASF_NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          SIGNING_KEY: ${{ secrets.GRAILS_GPG_KEY }}
+          SIGNING_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: ./gradlew publishPluginZipPublicationToApacheRepository -PpluginVersion=${VERSION}
       - name: "🚀 Upload plugin ZIP to GitHub Release"
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
@@ -259,6 +266,12 @@ jobs:
           PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
         run: ./gradlew publishPlugin -PpluginVersion=${VERSION}
+      - name: "🚀 MANUAL - Release Maven staging repository"
+        run: |
+          echo "::group::Manual Nexus Staging Release"
+          echo "Log in to https://repository.apache.org, find the org.apache.grails staging"
+          echo "repository for ${VERSION}, and Release it (artifacts sync to Maven Central)."
+          echo "::endgroup::"
       - name: "✅ MANUAL - Update ASF Reporter"
         run: |
           echo "::group::Manual ASF Reporter Update"
