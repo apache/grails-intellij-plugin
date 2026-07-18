@@ -31,6 +31,9 @@
   <vendor url="https://grails.apache.org/">Apache Software Foundation</vendor>
 
   <dependencies>
+    <plugin id="com.intellij.java"/>
+    <plugin id="com.intellij.javaee"/>
+    <plugin id="com.intellij.javaee.web"/>
     <module name="intellij.javaee.platform"/>
     <module name="intellij.javaee.platform.impl"/>
     <plugin id="com.intellij.persistence"/>
@@ -41,6 +44,7 @@
     <plugin id="com.intellij.properties"/>
     <plugin id="com.intellij.database"/>
 
+    <plugin id="com.intellij.spring"/>
     <module name="intellij.spring"/>
     <module name="intellij.spring.core"/>
 
