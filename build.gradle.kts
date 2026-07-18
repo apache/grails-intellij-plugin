@@ -134,6 +134,12 @@ tasks {
         systemProperty("idea.home.path", properties("test.idea.home.path"))
     }
 
+    // ASF policy: ship LICENSE and NOTICE inside the plugin jar
+    processResources {
+        from(layout.projectDirectory.file("LICENSE")) { into("META-INF") }
+        from(layout.projectDirectory.file("NOTICE")) { into("META-INF") }
+    }
+
     // special handling for /standardDsls/ packaging
     withType<PrepareSandboxTask> {
         from(layout.projectDirectory.dir("resources/standardDsls")) {
