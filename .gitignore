@@ -6,3 +6,4 @@ gradle-bootstrap/gradlew
 gradle-bootstrap/gradlew.bat
 gradle-bootstrap/gradle
 /.claude
+*.hprof
