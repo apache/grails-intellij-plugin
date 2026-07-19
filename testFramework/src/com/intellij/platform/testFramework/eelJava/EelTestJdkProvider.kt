@@ -26,6 +26,7 @@ import com.intellij.openapi.projectRoots.impl.jdkDownloader.ReadJdkItemsForWSL
 import com.intellij.platform.testFramework.eelJava.EelTestUtil.getEelFixtureEngineJavaHome
 import com.intellij.platform.testFramework.eelJava.EelTestUtil.getFixtureEngine
 import com.intellij.platform.testFramework.eelJava.EelTestUtil.getTeamcityWslJdkDefinition
+import com.intellij.platform.eel.EelDescriptor
 import org.jetbrains.annotations.ApiStatus
 import java.nio.file.Path
 import kotlin.io.path.exists
@@ -34,6 +35,11 @@ import kotlin.io.path.exists
 object EelTestJdkProvider {
 
     private val LOG = logger<EelTestJdkProvider>()
+
+    // 2026.2 platform test-framework code calls this overload; for local (non-eel) runs
+    // the platform implementation returns null, matching the no-arg variant below
+    @JvmStatic
+    fun getJdkPath(eelDescriptor: EelDescriptor): Path? = getJdkPath()
 
     @JvmStatic
     fun getJdkPath(): Path? {
