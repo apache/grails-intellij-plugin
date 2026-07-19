@@ -21,9 +21,12 @@
 
   <extensions defaultExtensionNs="org">
     <intellij.grails.commandExecutor implementation="com.intellij.groovy.grails.maven.MavenCommandExecutor" order="FIRST"/>
-    <jetbrains.idea.maven.importer implementation="com.intellij.groovy.grails.maven.GrailsMavenImporter" order="after web"/>
     <intellij.grails.applicationProvider implementation="com.intellij.groovy.grails.maven.GrailsMavenApplicationProvider" order="first"/>
     <intellij.grails.viewNodeProvider implementation="com.intellij.groovy.grails.maven.MavenNodeProvider"/>
+  </extensions>
+
+  <extensions defaultExtensionNs="org.jetbrains.idea.maven.importing">
+    <workspaceConfigurator implementation="com.intellij.groovy.grails.maven.GrailsMavenWorkspaceConfigurator"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">

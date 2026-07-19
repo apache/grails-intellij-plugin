@@ -1,17 +1,20 @@
 /*
- * Copyright 2000-2026 JetBrains s.r.o. and contributors.
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   https://www.apache.org/licenses/LICENSE-2.0
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package com.intellij.groovy.grails.maven
 
@@ -19,6 +22,7 @@ import com.intellij.facet.FacetManager
 import com.intellij.facet.ModifiableFacetModel
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.util.Consumer
+import org.jetbrains.idea.maven.importing.MavenStaticSyncAware
 import org.jetbrains.idea.maven.importing.MavenWorkspaceConfigurator
 import org.jetbrains.idea.maven.project.MavenProject
 import org.jetbrains.plugins.grails.config.GrailsFramework
@@ -31,7 +35,7 @@ import java.util.stream.Stream
  * (2026.2): registers the Grails source/test/resource roots and the Grails facets for
  * projects built with org.grails:grails-maven-plugin.
  */
-internal class GrailsMavenWorkspaceConfigurator : MavenWorkspaceConfigurator {
+internal class GrailsMavenWorkspaceConfigurator : MavenWorkspaceConfigurator, MavenStaticSyncAware {
 
   private fun isApplicable(mavenProject: MavenProject): Boolean =
     mavenProject.findPlugin("org.grails", "grails-maven-plugin") != null
@@ -47,6 +51,14 @@ internal class GrailsMavenWorkspaceConfigurator : MavenWorkspaceConfigurator {
       val folderType = rootType.toFolderType()
       GrailsFramework.GRAILS_SOURCE_FOLDERS.get(rootType)
         .mapTo(folders) { MavenWorkspaceConfigurator.AdditionalFolder(it, folderType) }
+    }
+    // the static preimport repairs default source dirs but not resources
+    // (MavenProjectStaticImporter.resolveDirectories), so restore the Maven defaults here
+    if (context.mavenProject.resources.isEmpty()) {
+      folders.add(MavenWorkspaceConfigurator.AdditionalFolder("src/main/resources", MavenWorkspaceConfigurator.FolderType.RESOURCE))
+    }
+    if (context.mavenProject.testResources.isEmpty()) {
+      folders.add(MavenWorkspaceConfigurator.AdditionalFolder("src/test/resources", MavenWorkspaceConfigurator.FolderType.TEST_RESOURCE))
     }
     return folders.stream()
   }
