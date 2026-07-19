@@ -16,7 +16,12 @@
 <idea-plugin>
 
   <dependencies>
-    <plugin id="com.intellij.modules.coverage"/>
+    <!-- The 'Coverage' plugin (Code Coverage for Java) provides both the
+         com.intellij.javaCoverageEngineExtension EP and the JavaCoverageEngineExtension base
+         class GrailsCoverageExtension extends. Depending on the platform-only
+         com.intellij.modules.coverage alias here left JavaCoverageEngineExtension off the
+         module classloader, causing a NoClassDefFoundError at startup. -->
+    <plugin id="Coverage"/>
   </dependencies>
 
   <extensions defaultExtensionNs="com.intellij">
