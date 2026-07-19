@@ -49,6 +49,10 @@ tasks {
     withType<JavaCompile> {
         sourceCompatibility = "8"
         targetCompatibility = "8"
+        // IPGP 2.18+ force-sets options.release to the platform's Java version (25);
+        // this module must stay Java 8 bytecode (it runs inside user Grails/JPS builds)
+        options.release = 8
     }
 
 }
+
