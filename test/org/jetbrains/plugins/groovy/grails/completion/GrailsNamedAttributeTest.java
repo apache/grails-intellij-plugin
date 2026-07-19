@@ -29,7 +29,7 @@ public class GrailsNamedAttributeTest extends LightJavaCodeInsightFixtureTestCas
   @NotNull
   @Override
   protected LightProjectDescriptor getProjectDescriptor() {
-    return GroovyProjectDescriptors.GROOVY_1_7;
+    return GroovyProjectDescriptors.MOCK_JDK_11;
   }
 
   @Override
