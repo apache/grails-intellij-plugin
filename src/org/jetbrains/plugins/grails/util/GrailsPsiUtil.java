@@ -323,7 +323,7 @@ public final class GrailsPsiUtil {
     PsiType res = PsiUtil.extractIterableTypeParameter(psiType, true);
     if (res != null) return res;
 
-    if (!(psiType instanceof PsiClassType)) return psiType;
+    if (!(psiType instanceof PsiClassType classType)) return psiType;
 
     JavaPsiFacade facade = JavaPsiFacade.getInstance(project);
     PsiElementFactory factory = facade.getElementFactory();
@@ -332,6 +332,13 @@ public final class GrailsPsiUtil {
 
     if (typeMap.isAssignableFrom(psiType)) {
       return factory.createTypeByFQClassName(CommonClassNames.JAVA_UTIL_MAP_ENTRY, scope);
+    }
+
+    // Since IntelliJ 2026.2, PsiUtil.extractIterableTypeParameter() returns null for Groovy
+    // synthetic collection types (ListLiteralType, GrClassReferenceType) whose Iterable supertype
+    // is not walkable in this scope. Fall back to the sole type argument as the element type.
+    if (classType.getParameterCount() == 1) {
+      return classType.getParameters()[0];
     }
 
     return psiType;
