@@ -17,9 +17,17 @@
 package org.jetbrains.plugins.groovy.grails.gsp;
 
 import org.jetbrains.plugins.grails.fileType.GspFileType;
+import com.intellij.testFramework.LightProjectDescriptor;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.plugins.groovy.GroovyProjectDescriptors;
 import org.jetbrains.plugins.groovy.lang.highlighting.GrHighlightingTestBase;
 
 public class GspHighlightingTest extends GrHighlightingTestBase {
+  @Override
+  protected @NotNull LightProjectDescriptor getProjectDescriptor() {
+    return GroovyProjectDescriptors.MOCK_JDK_11;
+  }
+
   public void testGroovyInsideGsp() {
     myFixture.configureByText(GspFileType.GSP_FILE_TYPE, """
       <%@ page contentType="text/html;charset=UTF-8"%>
