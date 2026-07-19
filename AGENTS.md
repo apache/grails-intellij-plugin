@@ -52,6 +52,11 @@ limitations under the License.
    with the new behavior. Run all affected tests and ensure they pass before committing.
 4. **Apache license header required** on all new source files (enforced by `./gradlew rat`).
    Every RAT exclude in `build.gradle.kts` must carry an inline justification.
+   - **New files use the ASF header** (verbatim from the `HEADER` file: *"Licensed to the
+     Apache Software Foundation (ASF) under one or more contributor license agreements…"*),
+     rendered as a `/* … */` block for Java/Kotlin or `<!-- … -->` for XML. **Do NOT** copy
+     the `Copyright 2000-2026 JetBrains s.r.o. and contributors` header — that appears only on
+     files inherited through the migration; new work is ASF-owned.
 5. **Test-fixture JDK conventions (2026.2+)** — Mock JDK 1.7 is no longer shipped:
    - **Light fixtures**: `GrailsTestCase` pins `DefaultLightProjectDescriptor(IdeaTestUtil::getMockJdk11)`
      via `getTestJdk()`. Override `getTestJdk()` to a real JDK only when the test needs
