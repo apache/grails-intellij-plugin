@@ -145,6 +145,21 @@ public class DomainMembersProvider extends MemberProvider {
     return true;
   }
 
+  /**
+   * Enumerates the static domain members ({@code createCriteria}, {@code list}, {@code get},
+   * {@code listOrderBy...} etc.) available on a domain-class reference. Used by code completion:
+   * since 2026.2 the platform treats a bare class-reference qualifier as an instance type and
+   * filters these static-only members out of the completion variants, so completion must contribute
+   * them explicitly.
+   */
+  public static void processStaticMembersForCompletion(@NotNull GrReferenceExpression refExpr,
+                                                       @NotNull PsiClass domainClass,
+                                                       @NotNull PsiScopeProcessor processor) {
+    DomainDescriptor descriptor = DomainDescriptor.getDescriptor(domainClass);
+    descriptor.processStaticMethods(processor, null, ResolveState.initial());
+    testForStaticFinderMethod(refExpr, descriptor, processor);
+  }
+
   private static boolean testForStaticFinderMethod(GrReferenceExpression refExpr,
                                                    DomainDescriptor descriptor,
                                                    PsiScopeProcessor processor) {

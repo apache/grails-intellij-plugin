@@ -20,18 +20,21 @@ import com.intellij.openapi.module.Module;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.ex.temp.TempFileSystem;
+import com.intellij.testFramework.IdeaTestUtil;
+import com.intellij.testFramework.fixtures.DefaultLightProjectDescriptor;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.plugins.groovy.LibraryLightProjectDescriptor;
 
 import java.io.IOException;
 
-import static org.jetbrains.plugins.groovy.GroovyProjectDescriptors.LIB_GROOVY_LATEST;
-
-public class GrailsProjectDescriptor extends LibraryLightProjectDescriptor {
+// Extends the plain DefaultLightProjectDescriptor (Mock JDK 11) rather than
+// LibraryLightProjectDescriptor: since 2026.2 the RepositoryTestLibrary-backed descriptor fails to
+// initialize the light project ("Cannot find IntelliJ IDEA project files"), and Grails trait/artifact
+// support is provided by the plugin, not a downloaded Groovy jar.
+public class GrailsProjectDescriptor extends DefaultLightProjectDescriptor {
   private final String mySourceRootPath;
 
   public GrailsProjectDescriptor(String sourceRootPath) {
-    super(LIB_GROOVY_LATEST);
+    super(IdeaTestUtil::getMockJdk11);
     mySourceRootPath = sourceRootPath;
   }
 

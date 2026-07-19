@@ -17,11 +17,19 @@
 package org.jetbrains.plugins.groovy.grails.gsp;
 
 import com.intellij.psi.PsiFile;
+import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.groovy.GroovyLanguage;
+import org.jetbrains.plugins.groovy.GroovyProjectDescriptors;
 import org.jetbrains.plugins.groovy.grails.GrailsTestCase;
 
 public class GstringAttributeTest extends LightJavaCodeInsightFixtureTestCase {
+  @Override
+  protected @NotNull LightProjectDescriptor getProjectDescriptor() {
+    return GroovyProjectDescriptors.MOCK_JDK_11;
+  }
+
   public void testHighlight() {
     myFixture.configureByText("a.gsp", """
       <g:link action="\\$" />

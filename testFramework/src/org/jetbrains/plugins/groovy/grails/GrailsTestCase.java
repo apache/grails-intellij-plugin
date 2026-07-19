@@ -246,6 +246,14 @@ public abstract class GrailsTestCase extends LightJavaCodeInsightFixtureTestCase
     return false;
   }
 
+  /**
+   * The JDK for the test project. Defaults to Mock JDK 11 (see {@link #getProjectDescriptor()});
+   * override to supply a real JDK when a test needs classes the minimal mock omits (e.g. Swing/AWT).
+   */
+  protected @NotNull java.util.function.Supplier<com.intellij.openapi.projectRoots.Sdk> getTestJdk() {
+    return IdeaTestUtil::getMockJdk11;
+  }
+
   @NotNull
   @Override
   protected LightProjectDescriptor getProjectDescriptor() {
@@ -253,7 +261,9 @@ public abstract class GrailsTestCase extends LightJavaCodeInsightFixtureTestCase
     // by default) no longer exists: mock JDKs with feature <= 9 resolve to a filesystem path that is
     // not shipped with the platform distribution, so java.lang.*/java.util.* become unresolvable.
     // Mock JDK 11+ is resolved from the artifacts repository instead, so pin it explicitly.
-    return new DefaultLightProjectDescriptor(IdeaTestUtil::getMockJdk11) {
+    // Tests that need JDK classes absent from the minimal mock (e.g. javax.swing/java.awt) can
+    // override getTestJdk() to use a real JDK.
+    return new DefaultLightProjectDescriptor(getTestJdk()) {
       @Override
       public void configureModule(@NotNull Module module, @NotNull ModifiableRootModel model, @NotNull ContentEntry contentEntry) {
         super.configureModule(module, model, contentEntry);

@@ -16,12 +16,24 @@
 
 package org.jetbrains.plugins.groovy.grails;
 
+import com.intellij.openapi.projectRoots.JavaSdk;
+import com.intellij.openapi.projectRoots.Sdk;
 import com.intellij.psi.PsiFile;
+import com.intellij.testFramework.IdeaTestUtil;
 import com.intellij.usageView.UsageInfo;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
+import java.util.function.Supplier;
 
 public class GrailsCodecTest extends GrailsTestCase {
+  // MmmCodec returns javax.swing types (JButton/JPanel), so this test needs a real JDK:
+  // the minimal Mock JDK 11 omits javax.swing/java.awt, leaving getBackground()/getUI() unresolved.
+  @Override
+  protected @NotNull Supplier<Sdk> getTestJdk() {
+    return () -> JavaSdk.getInstance().createJdk("TEST_JDK", IdeaTestUtil.requireRealJdkHome(), false);
+  }
+
   public void testHighlighting() {
     myFixture.addFileToProject("grails-app/utils/ccc/MmmCodec.groovy", """
       
