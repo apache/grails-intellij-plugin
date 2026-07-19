@@ -249,7 +249,11 @@ public abstract class GrailsTestCase extends LightJavaCodeInsightFixtureTestCase
   @NotNull
   @Override
   protected LightProjectDescriptor getProjectDescriptor() {
-    return new DefaultLightProjectDescriptor() {
+    // Since IntelliJ 2026.2 the legacy filesystem Mock JDK 1.7 (used by DefaultLightProjectDescriptor
+    // by default) no longer exists: mock JDKs with feature <= 9 resolve to a filesystem path that is
+    // not shipped with the platform distribution, so java.lang.*/java.util.* become unresolvable.
+    // Mock JDK 11+ is resolved from the artifacts repository instead, so pin it explicitly.
+    return new DefaultLightProjectDescriptor(IdeaTestUtil::getMockJdk11) {
       @Override
       public void configureModule(@NotNull Module module, @NotNull ModifiableRootModel model, @NotNull ContentEntry contentEntry) {
         super.configureModule(module, model, contentEntry);
