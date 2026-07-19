@@ -23,6 +23,12 @@ import com.intellij.testFramework.fixtures.DefaultLightProjectDescriptor;
 
 public interface GroovyProjectDescriptors {
 
+    // Since IntelliJ 2026.2 the legacy filesystem Mock JDK 1.7 (the default for
+    // DefaultLightProjectDescriptor / LightJavaCodeInsightFixtureTestCase) is no longer shipped, so
+    // java.lang.*/java.util.* stop resolving. Tests that only need a JDK (not a Groovy library) can
+    // use this descriptor, which pins Mock JDK 11 (provisioned from the artifacts repository).
+    LightProjectDescriptor MOCK_JDK_11 = new DefaultLightProjectDescriptor(IdeaTestUtil::getMockJdk11);
+
     TestLibrary LIB_GROOVY_1_6 = new RepositoryTestLibrary("org.codehaus.groovy:groovy:1.6.9");
     TestLibrary LIB_GROOVY_1_7 = new RepositoryTestLibrary("org.codehaus.groovy:groovy:1.7.11");
     TestLibrary LIB_GROOVY_2_1 = new RepositoryTestLibrary("org.codehaus.groovy:groovy-all:2.1.0");

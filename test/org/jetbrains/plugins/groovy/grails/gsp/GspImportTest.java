@@ -17,11 +17,19 @@
 package org.jetbrains.plugins.groovy.grails.gsp;
 
 import com.intellij.psi.PsiFile;
+import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.groovy.GroovyLanguage;
+import org.jetbrains.plugins.groovy.GroovyProjectDescriptors;
 import org.jetbrains.plugins.groovy.grails.GrailsTestCase;
 
 public class GspImportTest extends LightJavaCodeInsightFixtureTestCase {
+  @Override
+  protected @NotNull LightProjectDescriptor getProjectDescriptor() {
+    return GroovyProjectDescriptors.MOCK_JDK_11;
+  }
+
   public void testImport() {
     myFixture.addFileToProject("aaa/aaa/ClassA1.java", "package aaa.aaa;\n public class ClassA1 {}");
     myFixture.addFileToProject("aaa/aaa/ClassA2.groovy", "package aaa.aaa;\n class ClassA2 {}");

@@ -18,13 +18,21 @@ package org.jetbrains.plugins.groovy.grails.gsp;
 
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.css.inspections.invalid.CssInvalidPropertyValueInspection;
+import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.plugins.groovy.GroovyProjectDescriptors;
 import junit.framework.TestCase;
 import org.jetbrains.plugins.grails.fileType.GspFileType;
 
 import java.util.List;
 
 public class GspCssTest extends LightJavaCodeInsightFixtureTestCase {
+  @Override
+  protected @NotNull LightProjectDescriptor getProjectDescriptor() {
+    return GroovyProjectDescriptors.MOCK_JDK_11;
+  }
+
   public void testIDEA47622() {
     myFixture.configureByText("a.gsp", """
       <p style="margin-left:23423px;margin-right:45px">indent content</p>

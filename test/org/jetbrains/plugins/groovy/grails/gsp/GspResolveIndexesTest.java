@@ -21,15 +21,23 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.PsiVariable;
 import com.intellij.psi.xml.XmlAttributeValue;
+import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.UsefulTestCase;
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.grails.fileType.GspFileType;
 import org.jetbrains.plugins.groovy.GroovyLanguage;
+import org.jetbrains.plugins.groovy.GroovyProjectDescriptors;
 import org.jetbrains.plugins.groovy.codeInspection.untypedUnresolvedAccess.GrUnresolvedAccessInspection;
 import org.jetbrains.plugins.groovy.grails.GrailsTestCase;
 import org.junit.Assert;
 
 public class GspResolveIndexesTest extends LightJavaCodeInsightFixtureTestCase {
+  @Override
+  protected @NotNull LightProjectDescriptor getProjectDescriptor() {
+    return GroovyProjectDescriptors.MOCK_JDK_11;
+  }
+
   private PsiElement getElementAtCaret() {
     int caret = myFixture.getEditor().getCaretModel().getOffset();
     return myFixture.getFile().getViewProvider().findElementAt(caret, GroovyLanguage.INSTANCE);
