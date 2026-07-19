@@ -30,6 +30,7 @@ import com.intellij.psi.PsiModifier;
 import com.intellij.util.ProcessingContext;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.grails.lang.gsp.psi.groovy.api.GrGspDeclarationHolder;
+import org.jetbrains.plugins.grails.references.domain.DomainStaticMemberCompletionProvider;
 import org.jetbrains.plugins.grails.references.domain.GormDynamicFinderCompletionProvider;
 import org.jetbrains.plugins.grails.references.domain.GormFetchModeCompletionProvider;
 import org.jetbrains.plugins.groovy.lang.completion.GroovyCompletionData;
@@ -67,6 +68,7 @@ public final class GrailsCompletionContributor extends CompletionContributor {
 
   public GrailsCompletionContributor() {
     extend(CompletionType.BASIC, grReferencePattern, new GormDynamicFinderCompletionProvider());
+    extend(CompletionType.BASIC, grReferencePattern, new DomainStaticMemberCompletionProvider());
 
     extend(CompletionType.BASIC, PlatformPatterns.psiElement(GroovyTokenTypes.mIDENT).withParent(
       PsiJavaPatterns.psiField().withModifiers(PsiModifier.STATIC)), new GrailsStaticFieldCompletionProvider(true));
