@@ -18,6 +18,7 @@ package org.jetbrains.plugins.grails.references;
 
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiReference;
 import com.intellij.psi.PsiType;
 import com.intellij.psi.ResolveState;
 import com.intellij.psi.scope.PsiScopeProcessor;
@@ -38,6 +39,8 @@ import org.jetbrains.plugins.grails.references.urlMappings.UrlMappingMemberProvi
 import org.jetbrains.plugins.grails.util.GrailsArtifact;
 import org.jetbrains.plugins.grails.util.GrailsPsiUtil;
 import org.jetbrains.plugins.grails.util.GrailsUtils;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
 import org.jetbrains.plugins.groovy.lang.resolve.NonCodeMembersContributor;
 import org.jetbrains.plugins.groovy.lang.resolve.ResolveUtil;
 
@@ -79,22 +82,35 @@ public final class GrailsArtifactNonCodeMemberProcessor extends NonCodeMembersCo
                                      @NotNull PsiScopeProcessor processor,
                                      @NotNull PsiElement place,
                                      @NotNull ResolveState state) {
-    if (psiClass == null) return;
+    // Since 2026.2 a bare class-reference qualifier (e.g. `Domain.findAllBy...`) is passed
+    // with a null psiClass and an Object qualifier type, so recover the referenced class
+    // from the static qualifier. getArtifact() below still gates members to Grails artifacts.
+    final PsiClass targetClass = psiClass != null ? psiClass : resolveStaticQualifierClass(place);
+    if (targetClass == null) return;
 
-    GrailsArtifact artifact = CachedValuesManager.getCachedValue(psiClass, () ->
-      CachedValueProvider.Result.create(getArtifact(psiClass), PsiModificationTracker.MODIFICATION_COUNT));
+    GrailsArtifact artifact = CachedValuesManager.getCachedValue(targetClass, () ->
+      CachedValueProvider.Result.create(getArtifact(targetClass), PsiModificationTracker.MODIFICATION_COUNT));
     if (artifact == null) return;
 
     // See org.codehaus.groovy.grails.compiler.logging.LoggingTransformer
-    if (!GrailsPsiUtil.processLogVariable(processor, psiClass, ResolveUtil.getNameHint(processor))) return;
+    if (!GrailsPsiUtil.processLogVariable(processor, targetClass, ResolveUtil.getNameHint(processor))) return;
 
     MemberProvider[] providers = getMemberProviderMap().get(artifact);
 
     if (providers != null) {
       for (MemberProvider provider : providers) {
-        provider.processMembers(processor, psiClass, place);
+        provider.processMembers(processor, targetClass, place);
       }
     }
+  }
+
+  private static @Nullable PsiClass resolveStaticQualifierClass(@NotNull PsiElement place) {
+    if (!(place instanceof GrReferenceExpression)) return null;
+    GrExpression qualifier = ((GrReferenceExpression)place).getQualifierExpression();
+    if (qualifier == null) return null;
+    PsiReference ref = qualifier.getReference();
+    PsiElement resolved = ref == null ? null : ref.resolve();
+    return resolved instanceof PsiClass ? (PsiClass)resolved : null;
   }
 
   private static @Nullable GrailsArtifact getArtifact(@NotNull PsiClass psiClass) {

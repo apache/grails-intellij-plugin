@@ -29,6 +29,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiClassType;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.PsiType;
 import com.intellij.util.ArrayUtilRt;
@@ -64,19 +65,22 @@ public final class GormDynamicFinderCompletionProvider extends CompletionProvide
     final GrReferenceExpression refExpr = (GrReferenceExpression)parameters.getPosition().getParent();
     final GrExpression qualifier = refExpr.getQualifierExpression();
     if (qualifier == null) return;
-    final PsiType type = GroovyCompletionUtil.getQualifierType(qualifier);
-
-    if (!(type instanceof PsiClassType)) return;
 
     PsiClass domainClass;
 
     if (isStaticMemberReference(qualifier)) {
-      domainClass = ((PsiClassType)type).resolve();
+      // `Domain.findAllBy...`: the qualifier is a class reference. Since 2026.2 a bare class
+      // reference expression no longer has a PsiClassType, so resolve the class from the
+      // reference itself rather than from getQualifierType() (which returns null here).
+      PsiReference ref = qualifier.getReference();
+      PsiElement resolved = ref == null ? null : ref.resolve();
+      if (!(resolved instanceof PsiClass)) return;
+      domainClass = (PsiClass)resolved;
       if (!GormUtils.isGormBean(domainClass)) return;
-
-      assert domainClass != null;
     }
     else {
+      final PsiType type = GroovyCompletionUtil.getQualifierType(qualifier);
+      if (!(type instanceof PsiClassType)) return;
       domainClass = DetachedCriteriaUtil.getDomainClassByDetachedCriteriaExpression(type);
       if (domainClass == null) return;
     }
