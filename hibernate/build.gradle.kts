@@ -53,3 +53,9 @@ tasks {
     }
 
 }
+
+// 2026.2 resolves content-module descriptors from lib/modules/<module-name>.jar,
+// so the composed jar must be named after the content module, not the project
+tasks.named<org.jetbrains.intellij.platform.gradle.tasks.ComposedJarTask>("composedJar") {
+    archiveBaseName = "intellij.groovy.grails.hibernate"
+}
