@@ -36,6 +36,11 @@ public class GspTagReferenceCompletionTest extends CompletionTestBase {
 
   @Override
   protected void tuneFixture(JavaModuleFixtureBuilder fixtureBuilder) {
+    // Since 2026.2 the heavy fixture's default Mock JDK 1.7 is no longer shipped, so the module has
+    // no JDK: java.lang.Object is unresolvable, which silently disables taglib-namespace completion
+    // (TagLibNamespaceDescriptor.getDummyClassVariable returns null) and drops Object-derived
+    // variants (class property, getClass). Use the JDK running the tests.
+    fixtureBuilder.addJdk(System.getProperty("java.home"));
     fixtureBuilder.addLibraryJars("GRAILS", GrailsTestUtil.getMockGrails11LibraryHome(), "/dist/grails-web-1.3.1.jar");
     fixtureBuilder.addLibrary("GROOVY", GrailsTestUtil.getMockGrailsLibraryHome() + '/' + TestUtils.GROOVY_JAR);
     fixtureBuilder.addLibraryJars("Grails", GrailsTestUtil.getMockGrails11LibraryHome(), "/dist/grails-core-1.3.1.jar");

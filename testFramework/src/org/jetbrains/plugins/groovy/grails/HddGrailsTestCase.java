@@ -73,6 +73,9 @@ public abstract class HddGrailsTestCase extends JavaCodeInsightFixtureTestCase {
 
   @Override
   protected void tuneFixture(JavaModuleFixtureBuilder moduleBuilder) {
+    // Since 2026.2 the heavy fixture's default Mock JDK 1.7 is no longer shipped, so the module has
+    // no JDK and java.lang.* does not resolve. Use the JDK running the tests.
+    moduleBuilder.addJdk(System.getProperty("java.home"));
     moduleBuilder.addLibrary("GROOVY", GrailsTestUtil.getMockGrailsLibraryHome() + '/' + TestUtils.GROOVY_JAR);
     moduleBuilder.addLibraryJars("Grails", GrailsTestUtil.getMockGrails11LibraryHome(), "/dist/grails-core-1.3.1.jar",
                                  "/dist/grails-web-1.3.1.jar");
