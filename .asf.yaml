@@ -32,6 +32,9 @@ github:
       prevent_self_review: false
   description: "Grails plugin for IntelliJ IDEA"
   homepage: https://grails.apache.org/
+  # enable the GitHub Issues tracker for this repository
+  features:
+    issues: true
   rulesets:
     - name: "Default Branch Protection"
       type: branch

@@ -20,6 +20,9 @@ fun properties(key: String) = project.findProperty(key).toString()
 
 plugins {
     id("java")
+    id("grails-intellij.reproducible")
+    id("grails-intellij.jacoco")
+    id("grails-intellij.vulnerability-scan")
     id("org.jetbrains.kotlin.jvm") version "2.3.0"
     id("org.jetbrains.intellij.platform.module")
 }

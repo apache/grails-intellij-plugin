@@ -1,0 +1,34 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+// Reproducible-build conventions. Ported from grails-core's CompilePlugin.configureReproducible.
+// Applied to the root project and every module so that the plugin ZIP
+// (build/distributions/*.zip) and all composed/module jars are byte-for-byte stable.
+//
+// preserveFileTimestamps = false pins every archive entry to a constant timestamp, so
+// SOURCE_DATE_EPOCH is not required for archive reproducibility; reproducibleFileOrder
+// removes the only other common source of non-determinism (filesystem iteration order).
+// Fixed permissions guarantee the same entry metadata regardless of the host umask.
+
+tasks.withType<AbstractArchiveTask>().configureEach {
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+    filePermissions { unix("0644") }
+    dirPermissions { unix("0755") }
+}

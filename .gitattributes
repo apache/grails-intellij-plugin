@@ -1,0 +1,8 @@
+# Files that must keep LF line endings on every platform. The reproducible-build
+# Docker image (etc/bin/Dockerfile) refuses shell scripts with CRLF shebangs, and
+# Gradle wrapper/property parsing expects LF. Pin them so a checkout under
+# core.autocrlf=true cannot corrupt the build.
+*.sh            text eol=lf
+gradlew         text eol=lf
+Dockerfile      text eol=lf
+*.properties    text eol=lf
