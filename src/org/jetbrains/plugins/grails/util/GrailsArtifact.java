@@ -313,9 +313,7 @@ public enum GrailsArtifact {
 
     ProjectFileIndex fileIndex = ProjectRootManager.getInstance(module.getProject()).getFileIndex();
 
-    Set<Module> modules = new HashSet<>();
-    ModuleUtilCore.getDependencies(module, modules); // module + its (transitive) dependencies
-    collectDependentModules(module, modules);        // + modules that (transitively) depend on it
+    Set<Module> modules = getRelatedModules(module);
 
     for (Module m : modules) {
       if (GrailsFramework.isCommonPluginsModule(m)) {
@@ -343,6 +341,18 @@ public enum GrailsArtifact {
     collectFromPluginXmls(module, res);
 
     return res;
+  }
+
+  /**
+   * The set of modules that share artefacts/views with {@code module} in a multi-project build:
+   * {@code module} itself, its (transitive) dependencies, and the modules that (transitively) depend
+   * on it. Used both for artefact instance discovery and for cross-module "Go To View" navigation.
+   */
+  public static @NotNull Set<Module> getRelatedModules(@NotNull Module module) {
+    Set<Module> modules = new HashSet<>();
+    ModuleUtilCore.getDependencies(module, modules); // module + its (transitive) dependencies
+    collectDependentModules(module, modules);        // + modules that (transitively) depend on it
+    return modules;
   }
 
   /**
