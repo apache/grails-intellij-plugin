@@ -28,34 +28,19 @@ import org.jetbrains.plugins.grails.gradle.GrailsModuleData
 import org.jetbrains.plugins.grails.structure.GrailsApplication
 import org.jetbrains.plugins.grails.structure.GrailsApplicationProvider
 
-private val LOG = com.intellij.openapi.diagnostic.logger<Grails3ApplicationProvider>()
-
 class Grails3ApplicationProvider : GrailsApplicationProvider() {
 
   override fun createApplication(project: Project, root: VirtualFile): GrailsApplication? {
     val path = root.path
 
     val settings = ExternalSystemApiUtil.getSettings(project, SYSTEM_ID)
-    val linkedProjectSettings = settings.getLinkedProjectSettings(path) as? GradleProjectSettings ?: run {
-      LOG.warn("GRAILS-DBG createApplication: no linkedProjectSettings for path=$path; linked=${settings.linkedProjectsSettings.map { it.externalProjectPath }}")
-      return null
-    }
+    val linkedProjectSettings = settings.getLinkedProjectSettings(path) as? GradleProjectSettings ?: return null
     val gradleProjectInfo = ProjectDataManager.getInstance().getExternalProjectData(
         project, SYSTEM_ID, linkedProjectSettings.externalProjectPath
-    ) ?: run {
-      LOG.warn("GRAILS-DBG createApplication: no externalProjectData for ${linkedProjectSettings.externalProjectPath}")
-      return null
-    }
+    ) ?: return null
 
-    val moduleData = findModule(gradleProjectInfo.externalProjectStructure, path) ?: run {
-      LOG.warn("GRAILS-DBG createApplication: findModule null for path=$path")
-      return null
-    }
-    if (ExternalSystemApiUtil.find(moduleData, GrailsModuleData.KEY) == null) {
-      LOG.warn("GRAILS-DBG createApplication: no GrailsModuleData for path=$path")
-      return null
-    }
-    LOG.warn("GRAILS-DBG createApplication: SUCCESS for path=$path")
+    val moduleData = findModule(gradleProjectInfo.externalProjectStructure, path) ?: return null
+    if (ExternalSystemApiUtil.find(moduleData, GrailsModuleData.KEY) == null) return null
 
     return if (linkedProjectSettings.isResolveModulePerSourceSet) {
       Grails3MultiModuleApplication(project, root, moduleData)

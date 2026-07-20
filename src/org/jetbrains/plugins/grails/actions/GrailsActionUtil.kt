@@ -48,16 +48,13 @@ class ArtefactData(
     val isView: Boolean = false
 )
 
-private val LOG = com.intellij.openapi.diagnostic.logger<ArtefactData>()
-
 fun getArtefactData(context: DataContext?): ArtefactData? {
-  if (context == null) { LOG.warn("GRAILS-DBG getArtefactData: context is null"); return null }
-  val project = context.getData(LangDataKeys.PROJECT) ?: run { LOG.warn("GRAILS-DBG getArtefactData: PROJECT null"); return null }
-  if (DumbService.isDumb(project)) { LOG.warn("GRAILS-DBG getArtefactData: dumb mode"); return null }
-  val module = context.getData(PlatformCoreDataKeys.MODULE) ?: run { LOG.warn("GRAILS-DBG getArtefactData: MODULE null"); return null }
-  val file = context.getData(LangDataKeys.VIRTUAL_FILE) ?: run { LOG.warn("GRAILS-DBG getArtefactData: VIRTUAL_FILE null"); return null }
-  val application = GrailsApplicationManager.getInstance(project).findApplication(file) ?: run { LOG.warn("GRAILS-DBG getArtefactData: findApplication null for ${file.name}"); return null }
-  LOG.warn("GRAILS-DBG getArtefactData: passed gates for ${file.name}, module=${module.name}")
+  if (context == null) return null
+  val project = context.getData(LangDataKeys.PROJECT) ?: return null
+  if (DumbService.isDumb(project)) return null
+  val module = context.getData(PlatformCoreDataKeys.MODULE) ?: return null
+  val file = context.getData(LangDataKeys.VIRTUAL_FILE) ?: return null
+  val application = GrailsApplicationManager.getInstance(project).findApplication(file) ?: return null
   val publicClass = GroovyUtils.getPublicClass(project, file)
 
   val isView: Boolean
@@ -79,12 +76,11 @@ fun getArtefactData(context: DataContext?): ArtefactData? {
     else {
       publicClass
     }
-    artefactClass ?: run { LOG.warn("GRAILS-DBG getArtefactData: artefactClass null"); return null }
+    artefactClass ?: return null
     isView = false
-    packageName = StringUtil.getPackageName(artefactClass.qualifiedName ?: run { LOG.warn("GRAILS-DBG getArtefactData: qualifiedName null"); return null })
-    artefactName = GrailsArtifact.getType(artefactClass)?.getArtifactName(artefactClass) ?: run { LOG.warn("GRAILS-DBG getArtefactData: artifact type/name null for ${artefactClass.qualifiedName}"); return null }
+    packageName = StringUtil.getPackageName(artefactClass.qualifiedName ?: return null)
+    artefactName = GrailsArtifact.getType(artefactClass)?.getArtifactName(artefactClass) ?: return null
   }
-  LOG.warn("GRAILS-DBG getArtefactData: SUCCESS name=$artefactName isView=$isView")
 
   return ArtefactData(project, module, file, packageName, artefactName, application, isView)
 }
