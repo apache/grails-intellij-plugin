@@ -152,6 +152,7 @@ public final class GrailsApplicationManager implements ModificationTracker, Disp
     ProgressManager.checkCanceled();
     final Collection<VirtualFile> appRoots = FilenameIndex
       .getVirtualFilesByName("grails-app", GlobalSearchScope.allScope(myProject));
+    LOG.warn("GRAILS-DBG doGetApplications: found " + appRoots.size() + " grails-app roots: " + ContainerUtil.map(appRoots, VirtualFile::getPath));
     if (appRoots.isEmpty()) return Collections.emptyMap();
 
     final Map<VirtualFile, GrailsApplication> result = new HashMap<>();

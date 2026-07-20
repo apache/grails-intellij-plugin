@@ -45,11 +45,20 @@ public class GrailsModuleModelBuilderImpl implements ModelBuilderService {
     if (context == null) return null;
 
     GrailsVersionInfo grailsVersionInfo = context.myGrailsVersionInfo;
-    DefaultExternalModuleDependency dependency = new DefaultExternalModuleDependency(grailsVersionInfo.gradleDependencyGroup, grailsVersionInfo.shellArtifactId, null);
+
+    // Prefer the explicit grailsVersion project property. This must be known before adding the shell
+    // dependency: the shell artifact is not always version-managed by the platform/BOM (e.g. Grails 7's
+    // org.apache.grails:grails-shell-cli), so adding it without a version fails to resolve and the whole
+    // model build throws, leaving the module untagged as a Grails module.
+    String version = (String) project.getProperties().get("grailsVersion");
+
     Configuration configuration = getConfiguration(project);
+    DefaultExternalModuleDependency dependency = new DefaultExternalModuleDependency(
+      grailsVersionInfo.gradleDependencyGroup,
+      grailsVersionInfo.shellArtifactId,
+      (version == null || version.isEmpty()) ? null : version);
     configuration.getDependencies().add(dependency);
 
-    String version = (String) project.getProperties().get("grailsVersion");
     if (version == null || version.isEmpty()) {
       version = configuration.getResolvedConfiguration().getFirstLevelModuleDependencies()
         .stream()
@@ -97,6 +106,7 @@ public class GrailsModuleModelBuilderImpl implements ModelBuilderService {
      *
      */
     private static final String[] GRAILS_PLUGIN_NAME_ARRAY = {
+      "grails-app",
       "grails-core",
       "grails-plugin",
       "grails-web",
