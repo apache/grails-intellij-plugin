@@ -7,3 +7,4 @@ gradle-bootstrap/gradlew.bat
 gradle-bootstrap/gradle
 /.claude
 *.hprof
+.DS_Store
