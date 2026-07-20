@@ -21,7 +21,7 @@
     <![CDATA[
    Provides integration with the <a href="https://grails.apache.org">Apache Grails</a> framework.
    <ul>
-     <li>Import a generated Grails Application Forge project or create a new one directly from the IDE</li>
+     <li>Import a generated Grails project or create a new one directly from the IDE</li>
      <li>Switch to the <b>Grails</b> view in the <b>Project</b> tool window</li>
      <li>Edit Grails files with coding assistance features, such as code completion, navigation, inspections, refactoring, and much more</li>
      <li>Use dedicated Grails run/debug configurations</li>

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-rootProject.name = "Grails"
+rootProject.name = "Grails IntelliJ Plugin"
 
 include("copyright")
 include("coverage")

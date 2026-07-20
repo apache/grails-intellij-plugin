@@ -64,7 +64,7 @@ internal class GrailsForgeModuleBuilder : WebStarterModuleBuilder() {
   override fun getBuilderId(): String = "grails-6"
   override fun getNodeIcon(): Icon = GroovyMvcIcons.Grails
   @Suppress("HardCodedStringLiteral")
-  override fun getPresentableName(): String = "Grails Application Forge"
+  override fun getPresentableName(): String = "Grails"
   @Suppress("HardCodedStringLiteral")
   override fun getDescription(): String = "Grails"
   override fun isShowProjectTypes(): Boolean = false
