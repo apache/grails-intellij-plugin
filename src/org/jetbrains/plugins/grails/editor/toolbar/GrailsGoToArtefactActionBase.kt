@@ -31,9 +31,13 @@ abstract class GrailsGoToArtefactActionBase(private val artefactType: GrailsArti
     return artefactData.artefactName.replaceFirstChar { it.uppercaseChar() } + artefactType.suffix
   }
 
-  override fun getNavigateTargets(artefactData: ArtefactData): MutableCollection<GrClassDefinition> = artefactType.getInstances(
-      artefactData.module, artefactData.packageName, artefactData.artefactName
-  )
+  override fun getNavigateTargets(artefactData: ArtefactData): Collection<GrClassDefinition> {
+    // Prefer an artefact in the same package as the current one, but fall back to matching by name
+    // alone: in multi-project builds a shared artefact (e.g. a domain in an upstream project) often
+    // lives in a different package than the controller/service that uses it.
+    val samePackage = artefactType.getInstances(artefactData.module, artefactData.packageName, artefactData.artefactName)
+    return samePackage.ifEmpty { artefactType.getInstances(artefactData.module, artefactData.artefactName) }
+  }
 
 
   @ActionText override fun getNavigateTitle(target: PsiClass): String =
