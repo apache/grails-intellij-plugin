@@ -16,11 +16,14 @@
 
 package org.jetbrains.plugins.groovy.grails.gsp;
 
-import com.intellij.codeInsight.documentation.DocumentationManager;
-import com.intellij.psi.PsiElement;
+import com.intellij.lang.documentation.ide.IdeDocumentationTargetProvider;
+import com.intellij.platform.backend.documentation.DocumentationData;
+import com.intellij.platform.backend.documentation.DocumentationTarget;
+import com.intellij.platform.backend.documentation.impl.ImplKt;
 import com.intellij.psi.PsiFile;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.groovy.grails.GrailsTestCase;
+
+import java.util.List;
 
 public class GspTagDocumentationTest extends GrailsTestCase {
   @Override
@@ -40,30 +43,30 @@ public class GspTagDocumentationTest extends GrailsTestCase {
   }
 
   public void testGspDoc() {
-    PsiFile file = configureByView("a.gsp", "<g:xxx va<caret>l='1'/>");
+    configureByView("a.gsp", "<g:xxx va<caret>l='1'/>");
 
-    PsiElement originalElement = file.findElementAt(myFixture.getCaretOffset());
-    assert "The doc text.".equals(getJavadoc(originalElement));
+    assertEquals("The doc text.", getJavadoc());
   }
 
   public void testGroovyDoc() {
-    PsiFile file = configureByController("""
-                                           class CccController {
-                                             def foo = {
-                                               xxx(val<caret>: 1)
-                                             }
-                                           }
-                                           """);
+    configureByController("""
+                            class CccController {
+                              def foo = {
+                                xxx(val<caret>: 1)
+                              }
+                            }
+                            """);
 
-    PsiElement originalElement = file.findElementAt(myFixture.getCaretOffset());
-    assertEquals("The doc text.", getJavadoc(originalElement));
+    assertEquals("The doc text.", getJavadoc());
   }
 
-  private String getJavadoc(@NotNull PsiElement originalElement) {
-    PsiElement targetElement = DocumentationManager.getInstance(getProject())
-      .findTargetElement(myFixture.getEditor(), myFixture.getFile(), originalElement);
+  private String getJavadoc() {
+    PsiFile file = myFixture.getFile();
+    List<? extends DocumentationTarget> targets = IdeDocumentationTargetProvider.getInstance(getProject())
+      .documentationTargets(myFixture.getEditor(), file, myFixture.getCaretOffset());
+    assertOneElement(targets);
 
-    return DocumentationManager.getProviderFromElement(targetElement)
-      .generateDoc(targetElement, originalElement);
+    DocumentationData data = ImplKt.computeDocumentationBlocking(targets.get(0).createPointer());
+    return data == null ? null : data.getHtml();
   }
 }
