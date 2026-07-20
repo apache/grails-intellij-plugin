@@ -77,6 +77,7 @@
     <extensionPoint name="commandProvider" dynamic="true" interface="org.jetbrains.plugins.grails.commands.GrailsCommandProvider"/>
     <extensionPoint name="artefactHandler" dynamic="true" interface="org.jetbrains.plugins.grails.artefact.api.GrailsArtefactHandler"/>
     <extensionPoint name="viewNodeProvider" dynamic="true" interface="org.jetbrains.plugins.grails.projectView.api.GrailsViewNodeProvider"/>
+    <extensionPoint name="gspJsInjectionTag" dynamic="true" beanClass="org.jetbrains.plugins.grails.addins.js.GspJsInjectionTagBean"/>
   </extensionPoints>
 
   <extensions defaultExtensionNs="org.jetbrains.plugins.gradle">
@@ -97,6 +98,9 @@
     <viewNodeProvider implementation="org.jetbrains.plugins.grails.projectView.impl.GrailsAppNodeProvider"/>
     <viewNodeProvider implementation="org.jetbrains.plugins.grails.projectView.impl.OldGrailsNodeProvider"/>
     <viewNodeProvider implementation="org.jetbrains.plugins.grails.projectView.impl.Grails3NodeProvider"/>
+
+    <!-- asset-pipeline: <asset:script> bodies are inline JavaScript (deferred scripts). -->
+    <gspJsInjectionTag name="asset:script"/>
   </extensions>
 
   <extensions defaultExtensionNs="org.intellij.groovy">

@@ -22,6 +22,7 @@ import com.intellij.lang.injection.MultiHostRegistrar
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.html.HtmlScriptLanguageInjector
+import org.jetbrains.plugins.grails.addins.js.JavaScriptIntegrationUtil
 import org.jetbrains.plugins.grails.lang.gsp.psi.groovy.api.GspOuterHtmlElement
 import org.jetbrains.plugins.grails.lang.gsp.psi.gsp.api.gtag.GspGrailsTag
 
@@ -30,6 +31,10 @@ class AssetScriptInjector : MultiHostInjector {
   override fun getLanguagesToInject(registrar: MultiHostRegistrar, context: PsiElement) {
     context as GspGrailsTag
     if (context.namespacePrefix != "asset") return
+    // JavaScript-body tags (e.g. asset:script) are owned by the core JS injector via
+    // JavaScriptIntegrationUtil.isJsInjectionTag, which also grants cross-tag symbol visibility;
+    // injecting here too would double-inject the same host.
+    if (JavaScriptIntegrationUtil.isJsInjectionTag(context.name)) return
     val languageToInject = HtmlScriptLanguageInjector.getScriptLanguageToInject(context) ?: return
     if (!LanguageUtil.isInjectableLanguage(languageToInject)) return
     var started = false

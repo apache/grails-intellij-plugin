@@ -79,6 +79,7 @@ public class GspFileImpl extends PsiFileImpl implements GspFile {
   private Map<GspDirectiveKind, List<GspDirective>> myDirectives;
 
   private volatile List<XmlTag> myJsTagCache;
+  private volatile long myJsTagCacheModCount = -1;
 
   public GspFileImpl(FileViewProvider viewProvider) {
     super(GspParserDefinition.GSP_FILE, GspParserDefinition.GSP_FILE, viewProvider);
@@ -268,8 +269,11 @@ public class GspFileImpl extends PsiFileImpl implements GspFile {
   }
 
   private List<XmlTag> getJsTags() {
+    // The set of JS-injection tags is extensible (see JavaScriptIntegrationUtil.isJsInjectionTag);
+    // drop the cache when contributions change so a dynamic plugin/module load-unload is reflected.
+    long modCount = JavaScriptIntegrationUtil.getInjectionTagModificationCount();
     List<XmlTag> res = myJsTagCache;
-    if (res == null) {
+    if (res == null || myJsTagCacheModCount != modCount) {
       res = new ArrayList<>();
 
       XmlDocument document = (XmlDocument)getFirstChild();
@@ -289,6 +293,7 @@ public class GspFileImpl extends PsiFileImpl implements GspFile {
       });
 
       myJsTagCache = res;
+      myJsTagCacheModCount = modCount;
     }
 
     return res;

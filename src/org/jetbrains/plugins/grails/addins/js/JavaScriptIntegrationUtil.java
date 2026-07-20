@@ -25,12 +25,27 @@ import org.jetbrains.plugins.grails.addins.GrailsIntegrationUtil;
 import org.jetbrains.plugins.grails.lang.gsp.psi.groovy.api.GspOuterHtmlElement;
 import org.jetbrains.plugins.grails.lang.gsp.psi.gsp.api.gtag.GspGrailsTag;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 public final class JavaScriptIntegrationUtil {
 
   private static final String JS_GRAILS_TAG_NAME1 = "g:javascript";
   private static final String JS_GRAILS_TAG_NAME2 = "r:script";
 
+  // Bumped whenever the set of JS-injection-tag contributions changes (dynamic plugin/module
+  // load-unload). Consumers that cache tag lists (e.g. GspFileImpl) compare against this to
+  // invalidate; see GspFileImpl.getJsTags().
+  private static final AtomicLong ourInjectionTagEpModCount = new AtomicLong();
+
+  static {
+    GspJsInjectionTagBean.EP_NAME.addChangeListener(ourInjectionTagEpModCount::incrementAndGet, null);
+  }
+
   private JavaScriptIntegrationUtil() {
+  }
+
+  public static long getInjectionTagModificationCount() {
+    return ourInjectionTagEpModCount.get();
   }
 
   public static boolean isJSEmbeddedContent(final PsiElement element) {
@@ -50,7 +65,13 @@ public final class JavaScriptIntegrationUtil {
   }
 
   public static boolean isJsInjectionTag(String tagName) {
-    return JS_GRAILS_TAG_NAME1.equals(tagName) || JS_GRAILS_TAG_NAME2.equals(tagName);
+    if (JS_GRAILS_TAG_NAME1.equals(tagName) || JS_GRAILS_TAG_NAME2.equals(tagName)) {
+      return true;
+    }
+    for (GspJsInjectionTagBean bean : GspJsInjectionTagBean.EP_NAME.getExtensionList()) {
+      if (tagName.equals(bean.name)) return true;
+    }
+    return false;
   }
 
   public static boolean isJavaScriptInjection(PsiElement element) {
