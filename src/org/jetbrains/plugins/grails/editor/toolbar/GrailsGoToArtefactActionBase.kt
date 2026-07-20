@@ -28,7 +28,7 @@ import javax.swing.Icon
 abstract class GrailsGoToArtefactActionBase(private val artefactType: GrailsArtifact) : GrailsToolbarTargetAction<PsiClass>() {
 
   @NlsSafe override fun getTitle(artefactData: ArtefactData): String {
-    return artefactData.artefactName.capitalize() + artefactType.suffix
+    return artefactData.artefactName.replaceFirstChar { it.uppercaseChar() } + artefactType.suffix
   }
 
   override fun getNavigateTargets(artefactData: ArtefactData): MutableCollection<GrClassDefinition> = artefactType.getInstances(

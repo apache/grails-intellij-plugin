@@ -69,7 +69,7 @@ class OldGrailsNodeProvider : GrailsViewNodeProvider {
         for (child in srcDir.children) {
           manager.findDirectory(child)?.let {
             val name = child.name
-            val icon = (Language.findLanguageByID(name.capitalize()) ?: Language.findLanguageByID(name.uppercase(Locale.getDefault())))
+            val icon = (Language.findLanguageByID(name.replaceFirstChar { it.uppercaseChar() }) ?: Language.findLanguageByID(name.uppercase(Locale.getDefault())))
                 ?.associatedFileType?.icon ?: PlatformIcons.SOURCE_FOLDERS_ICON
             result += GrailsPsiDirectoryNode(it, settings, icon, SRC_FOLDERS, "Sources:$name", ::shouldShowItem)
           }

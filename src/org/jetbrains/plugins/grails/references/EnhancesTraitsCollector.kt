@@ -50,7 +50,7 @@ private fun doFindTraits(project: Project, scope: GlobalSearchScope): Map<String
   val annotationClass = JavaPsiFacade.getInstance(project).findClass(annotationFqn, scope) ?: return emptyMap()
   val annotatedClasses = AnnotatedElementsSearch.searchPsiClasses(annotationClass, scope)
   val result = mutableMapOf<String, MutableCollection<String>>()
-  for (clazz in annotatedClasses.asIterable()) {
+  for (clazz in annotatedClasses.findAll()) {
     if (!GrTraitUtil.isTrait(clazz)) continue
     val traitFqn = clazz.qualifiedName ?: continue
     val annotation = AnnotationUtil.findAnnotation(clazz, annotationFqn) ?: continue

@@ -44,7 +44,7 @@ fun GrailsApplication.getSourcePlugins(): Collection<Grails3SourcePluginDescript
 private fun GrailsApplication.doComputeSourcePlugins(): Collection<Grails3SourcePluginDescriptor> {
   return AllClassesSearch.search(getScope(true, false), project) { className ->
     className.endsWith(pluginClassSuffix)
-  }.asIterable().mapNotNull {
+  }.findAll().mapNotNull {
     val application = GrailsApplicationManager.findApplication(it)
     if (application == null || application == this) null
     else Grails3SourcePluginDescriptor(it, application)

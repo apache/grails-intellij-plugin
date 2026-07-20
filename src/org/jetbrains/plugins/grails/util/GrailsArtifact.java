@@ -340,9 +340,10 @@ public enum GrailsArtifact {
     Project project = module.getProject();
     JavaPsiFacade facade = JavaPsiFacade.getInstance(project);
     GlobalSearchScope scope = module.getModuleWithDependenciesAndLibrariesScope(false);
-    PsiFile[] allFiles = FilenameIndex.getFilesByName(project, "grails-plugin.xml", scope);
+    PsiManager psiManager = PsiManager.getInstance(project);
     JavaDirectoryService directoryService = JavaDirectoryService.getInstance();
-    for (PsiFile file : allFiles) {
+    for (VirtualFile virtualFile : FilenameIndex.getVirtualFilesByName("grails-plugin.xml", scope)) {
+      PsiFile file = psiManager.findFile(virtualFile);
       if (!(file instanceof XmlFile)) continue;
 
       PsiDirectory directory = file.getContainingDirectory();

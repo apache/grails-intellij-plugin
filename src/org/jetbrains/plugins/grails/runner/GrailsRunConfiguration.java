@@ -28,7 +28,6 @@ import com.intellij.openapi.options.SettingsEditor;
 import com.intellij.openapi.options.SettingsEditorGroup;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.InvalidDataException;
-import com.intellij.openapi.util.JDOMExternalizer;
 import com.intellij.openapi.util.NlsContexts.TabTitle;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.WriteExternalException;
@@ -46,7 +45,8 @@ import org.jetbrains.plugins.grails.structure.GrailsApplicationManager;
 import org.jetbrains.plugins.groovy.mvc.MvcCommand;
 
 import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 
 public final class GrailsRunConfiguration
@@ -135,10 +135,9 @@ public final class GrailsRunConfiguration
       String browserUrl = getLaunchBrowserUrl();
       if (browserUrl != null) {
         try {
-          //noinspection ResultOfObjectAllocationIgnored
-          new URL(browserUrl);
+          new URI(browserUrl).toURL();
         }
-        catch (MalformedURLException e) {
+        catch (MalformedURLException | URISyntaxException | IllegalArgumentException e) {
           throw new RuntimeConfigurationException(GrailsBundle.message("run.configuration.error.invalid.launch.url"));
         }
       }
@@ -149,9 +148,9 @@ public final class GrailsRunConfiguration
   public void readExternal(@NotNull Element element) throws InvalidDataException {
     super.readExternal(element);
 
-    myGrailsApplicationRootPath = JDOMExternalizer.readString(element, ROOT_ELEMENT_NAME);
-    myLaunchBrowser = !"false".equals(JDOMExternalizer.readString(element, LAUNCH_BROWSER));
-    myLaunchBrowserUrl = JDOMExternalizer.readString(element, LAUNCH_BROWSER_URL);
+    myGrailsApplicationRootPath = readSetting(element, ROOT_ELEMENT_NAME);
+    myLaunchBrowser = !"false".equals(readSetting(element, LAUNCH_BROWSER));
+    myLaunchBrowserUrl = readSetting(element, LAUNCH_BROWSER_URL);
 
     final List<GrailsRunConfigurationExtension> configurationExtensions = ContainerUtil.findAll(
       GrailsCommandExecutor.EP_NAME.getExtensions(), GrailsRunConfigurationExtension.class
@@ -169,9 +168,9 @@ public final class GrailsRunConfiguration
   public void writeExternal(@NotNull Element element) throws WriteExternalException {
     super.writeExternal(element);
 
-    JDOMExternalizer.write(element, ROOT_ELEMENT_NAME, myGrailsApplicationRootPath);
+    writeSetting(element, ROOT_ELEMENT_NAME, myGrailsApplicationRootPath);
     JdomKt.addOptionTag(element, LAUNCH_BROWSER, Boolean.toString(myLaunchBrowser), "setting");
-    JDOMExternalizer.write(element, LAUNCH_BROWSER_URL, myLaunchBrowserUrl);
+    writeSetting(element, LAUNCH_BROWSER_URL, myLaunchBrowserUrl);
 
     final List<GrailsRunConfigurationExtension> configurationExtensions = ContainerUtil.findAll(
       GrailsCommandExecutor.EP_NAME.getExtensions(), GrailsRunConfigurationExtension.class

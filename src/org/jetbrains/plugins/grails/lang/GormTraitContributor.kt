@@ -85,7 +85,7 @@ class GormTraitContributor : AstTransformationSupport {
       if (initializer is GrLiteral) {
         val value = initializer.value
         if (value is String) {
-          return value.capitalize()
+          return value.replaceFirstChar { it.uppercaseChar() }
         }
       }
     }
@@ -112,7 +112,7 @@ class GormTraitContributor : AstTransformationSupport {
     })
     gormEntity.putUserData(GroovyDirectInheritorsSearcher.IGNORE_INHERITANCE_CHECK, true)
     val query = ClassInheritorsSearch.search(gormEntity, scope, true)
-    val traits = query.asIterable().asSequence().filter {
+    val traits = query.findAll().asSequence().filter {
       GrTraitUtil.isTrait(it)
     }
     gormEntity.removeUserData(GroovyDirectInheritorsSearcher.IGNORE_INHERITANCE_CHECK)

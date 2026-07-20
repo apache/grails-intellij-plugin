@@ -87,7 +87,7 @@ private fun GrailsArtefactHandler.collectConventionalArtefacts(application: Grai
   val resultScope = artefactDirectoryScope.intersectWith(scope)
   return AllClassesSearch.search(resultScope, project) { className ->
     className.endsWith(artefactClassSuffix)
-  }.asIterable().filter { artefactClass ->
+  }.findAll().filter { artefactClass ->
     val file = artefactClass.containingFile?.virtualFile
     file?.nameWithoutExtension == artefactClass.name && file?.fileType == GroovyFileType.GROOVY_FILE_TYPE
   }
@@ -134,7 +134,7 @@ private fun GrailsArtefactHandler.collectAnnotatedArtefacts(application: GrailsA
 
   val annotationClass = JavaPsiFacade.getInstance(project).findClass(GRAILS_ARTEFACT_ARTEFACT,
                                                                      annotationClassSearchScope) ?: return null
-  return AnnotatedElementsSearch.searchPsiClasses(annotationClass, scope).asIterable().filter { artefactClass ->
+  return AnnotatedElementsSearch.searchPsiClasses(annotationClass, scope).findAll().filter { artefactClass ->
     artefactClass.containingFile?.virtualFile?.fileType == GroovyFileType.GROOVY_FILE_TYPE
     && artefactClass.name?.endsWith(artefactClassSuffix) ?: false
     && artefactClass.modifierList?.findAnnotation(GRAILS_ARTEFACT_ARTEFACT)?.let {
@@ -151,7 +151,7 @@ private fun GrailsArtefactHandler.collectSpecificAnnotatedArtefacts(application:
   val project = application.project
   val annotationClassSearchScope = application.getScope(true, false)
   JavaPsiFacade.getInstance(project).findClass(annotationFqn, annotationClassSearchScope)?.let { annotationClass ->
-    AnnotatedElementsSearch.searchPsiClasses(annotationClass, scope).asIterable().filter { artefactClass ->
+    AnnotatedElementsSearch.searchPsiClasses(annotationClass, scope).findAll().filter { artefactClass ->
       artefactClass.containingFile?.virtualFile?.fileType == GroovyFileType.GROOVY_FILE_TYPE &&
       artefactClass.name?.endsWith(artefactClassSuffix) ?: false
     }

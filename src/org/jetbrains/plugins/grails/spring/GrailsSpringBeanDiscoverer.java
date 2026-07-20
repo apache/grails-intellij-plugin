@@ -171,7 +171,7 @@ public final class GrailsSpringBeanDiscoverer extends CustomModuleComponentsDisc
         }
       }
     } else {
-      AllClassesSearch.search(scope, module.getProject(), name -> name.endsWith("GrailsPlugin")).asIterable().forEach((PsiElement clazz) -> {
+      AllClassesSearch.search(scope, module.getProject(), name -> name.endsWith("GrailsPlugin")).findAll().forEach((PsiElement clazz) -> {
         if (!(clazz instanceof GrTypeDefinition)) clazz = clazz.getNavigationElement();
         if (!(clazz instanceof GrTypeDefinition)) return;
         List<GrailsResourceBeanExtractor.BeanDescriptor> descriptors = GrailsResourceBeanExtractor.getBeanDescriptorsFromPluginClass(

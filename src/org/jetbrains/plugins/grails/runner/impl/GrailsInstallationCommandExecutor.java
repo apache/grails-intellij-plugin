@@ -28,7 +28,7 @@ import com.intellij.openapi.projectRoots.JavaSdkVersion;
 import com.intellij.openapi.projectRoots.Sdk;
 import com.intellij.openapi.projectRoots.SdkTypeId;
 import com.intellij.openapi.roots.ModuleRootManager;
-import com.intellij.openapi.util.JDOMExternalizer;
+import com.intellij.openapi.util.Comparing;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.util.text.StringUtil;
@@ -179,7 +179,12 @@ public final class GrailsInstallationCommandExecutor
 
   @Override
   public @Nullable Boolean readAdditionalConfiguration(@NotNull Element element) {
-    return Boolean.parseBoolean(JDOMExternalizer.readString(element, DEPS_CLASSPATH));
+    for (Element setting : element.getChildren("setting")) {
+      if (Comparing.strEqual(setting.getAttributeValue("name"), DEPS_CLASSPATH)) {
+        return Boolean.parseBoolean(setting.getAttributeValue("value"));
+      }
+    }
+    return Boolean.FALSE;
   }
 
   @Override

@@ -19,8 +19,8 @@ package org.jetbrains.plugins.grails.runner;
 import com.intellij.execution.configurations.ConfigurationFactory;
 import com.intellij.execution.configurations.LocatableConfigurationBase;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Comparing;
 import com.intellij.openapi.util.InvalidDataException;
-import com.intellij.openapi.util.JDOMExternalizer;
 import com.intellij.openapi.util.WriteExternalException;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.util.JdomKt;
@@ -30,6 +30,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @ApiStatus.Internal
@@ -82,22 +83,60 @@ public abstract class LocatableRunConfigurationWithCommonParameters extends Loca
   @Override
   public void readExternal(@NotNull Element element) throws InvalidDataException {
     super.readExternal(element);
-    myVMParameters = JDOMExternalizer.readString(element, "vmparams");
-    myProgramParameters = JDOMExternalizer.readString(element, "cmdLine");
+    myVMParameters = readSetting(element, "vmparams");
+    myProgramParameters = readSetting(element, "cmdLine");
 
-    String sPassParentEnvironment = JDOMExternalizer.readString(element, "passParentEnv");
+    String sPassParentEnvironment = readSetting(element, "passParentEnv");
     myPassParentEnv = StringUtil.isEmpty(sPassParentEnvironment) || Boolean.parseBoolean(sPassParentEnvironment);
 
     myEnvs.clear();
-    JDOMExternalizer.readMap(element, myEnvs, null, "env");
+    for (Element env : element.getChildren("env")) {
+      String name = env.getAttributeValue("name");
+      if (name != null) {
+        myEnvs.put(name, env.getAttributeValue("value"));
+      }
+    }
   }
 
   @Override
   public void writeExternal(@NotNull Element element) throws WriteExternalException {
     super.writeExternal(element);
-    JDOMExternalizer.write(element, "vmparams", myVMParameters);
-    JDOMExternalizer.write(element, "cmdLine", myProgramParameters);
-    JDOMExternalizer.writeMap(element, myEnvs, null, "env");
+    writeSetting(element, "vmparams", myVMParameters);
+    writeSetting(element, "cmdLine", myProgramParameters);
+    myEnvs.keySet().stream().sorted().forEach(name -> {
+      Element env = new Element("env");
+      env.setAttribute("name", name);
+      String value = myEnvs.get(name);
+      if (value != null) {
+        env.setAttribute("value", value);
+      }
+      element.addContent(env);
+    });
     JdomKt.addOptionTag(element, "passParentEnv", Boolean.toString(myPassParentEnv), "setting");
+  }
+
+  /**
+   * Writes a {@code <setting name=".." value=".."/>} child element, matching the legacy
+   * {@code JDOMExternalizer.write} XML format so persisted run configurations stay compatible.
+   */
+  protected static void writeSetting(@NotNull Element root, @NotNull String name, @Nullable String value) {
+    Element setting = new Element("setting");
+    setting.setAttribute("name", name);
+    setting.setAttribute("value", value == null ? "" : value);
+    root.addContent(setting);
+  }
+
+  /**
+   * Reads the value of a {@code <setting name=".."/>} child element, matching the legacy
+   * {@code JDOMExternalizer.readString} XML format.
+   */
+  protected static @Nullable String readSetting(@NotNull Element root, @NotNull String name) {
+    List<Element> settings = root.getChildren("setting");
+    for (Element setting : settings) {
+      if (Comparing.strEqual(setting.getAttributeValue("name"), name)) {
+        return setting.getAttributeValue("value");
+      }
+    }
+    return null;
   }
 }

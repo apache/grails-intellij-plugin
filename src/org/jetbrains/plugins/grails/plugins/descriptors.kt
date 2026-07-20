@@ -24,7 +24,7 @@ interface GrailsPluginDescriptor {
   val pluginClass: PsiClass
   val pluginVersion: String?
   val pluginName: String
-    get() = pluginClass.name?.removeSuffix(pluginClassSuffix)?.decapitalize() ?: ""
+    get() = pluginClass.name?.removeSuffix(pluginClassSuffix)?.replaceFirstChar { it.lowercaseChar() } ?: ""
 
 }
 

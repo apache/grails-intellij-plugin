@@ -24,6 +24,7 @@ import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiField;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiManager;
 import com.intellij.psi.PsiModifier;
 import com.intellij.psi.PsiPolyVariantReferenceBase;
 import com.intellij.psi.PsiReference;
@@ -31,6 +32,7 @@ import com.intellij.psi.PsiReferenceProvider;
 import com.intellij.psi.ResolveResult;
 import com.intellij.psi.search.FilenameIndex;
 import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.ProcessingContext;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.grails.GroovyMvcIcons;
@@ -42,6 +44,7 @@ import org.jetbrains.plugins.groovy.lang.psi.impl.statements.expressions.literal
 import org.jetbrains.plugins.groovy.lang.resolve.ElementResolveResult;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -84,11 +87,13 @@ public class GrailsPluginListReferenceProvider extends PsiReferenceProvider {
 
           Project project = element.getProject();
 
+          PsiManager psiManager = PsiManager.getInstance(project);
           for (String fileName : FilenameIndex.getAllFilenames(project)) {
             if (fileName.endsWith("GrailsPlugin.groovy") && fileName.length() > "GrailsPlugin.groovy".length()) {
-              PsiFile[] files = FilenameIndex.getFilesByName(project, fileName, GlobalSearchScope.allScope(project));
+              Collection<VirtualFile> files = FilenameIndex.getVirtualFilesByName(fileName, GlobalSearchScope.allScope(project));
 
-              for (PsiFile file : files) {
+              for (VirtualFile virtualFile : files) {
+                PsiFile file = psiManager.findFile(virtualFile);
                 if (file instanceof GroovyFile) {
                   for (PsiClass psiClass : ((GroovyFile)file).getClasses()) {
                     if (!psiClass.hasModifierProperty(PsiModifier.ABSTRACT) && psiClass.getName().endsWith("GrailsPlugin")) {
@@ -120,13 +125,15 @@ public class GrailsPluginListReferenceProvider extends PsiReferenceProvider {
 
           GlobalSearchScope searchScope = GlobalSearchScope.allScope(project);
 
-          PsiFile[] files = FilenameIndex.getFilesByName(project, fileName, searchScope);
+          Collection<VirtualFile> files = FilenameIndex.getVirtualFilesByName(fileName, searchScope);
 
-          if (files.length == 0) return ResolveResult.EMPTY_ARRAY;
+          if (files.isEmpty()) return ResolveResult.EMPTY_ARRAY;
 
-          List<ResolveResult> res = new ArrayList<>(files.length);
+          PsiManager psiManager = PsiManager.getInstance(project);
+          List<ResolveResult> res = new ArrayList<>(files.size());
 
-          for (PsiFile file : files) {
+          for (VirtualFile virtualFile : files) {
+            PsiFile file = psiManager.findFile(virtualFile);
             if (file instanceof GroovyFile) {
               for (PsiClass psiClass : ((GroovyFile)file).getClasses()) {
                 if (!psiClass.hasModifierProperty(PsiModifier.ABSTRACT) && psiClass.getName().endsWith("GrailsPlugin")) {

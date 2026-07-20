@@ -237,7 +237,7 @@ public final class GrailsMethodNamedArgumentReferenceProvider extends PsiReferen
     private void ensureInit() {
       if (myInstance == null) {
         try {
-          myInstance = myClass.newInstance();
+          myInstance = myClass.getDeclaredConstructor().newInstance();
         }
         catch (Exception e) {
           throw new RuntimeException(e);

@@ -74,7 +74,7 @@ class GoToViewAction : GrailsToolbarVfileAction() {
   override fun isOpenSingle(): Boolean = false
 
   @ActionText override fun getTitle(artefactData: ArtefactData): String =
-    GrailsBundle.message("action.text.go.to.views", artefactData.artefactName.capitalize())
+    GrailsBundle.message("action.text.go.to.views", artefactData.artefactName.replaceFirstChar { it.uppercaseChar() })
 
   override fun getNavigateTargets(artefactData: ArtefactData): Collection<VirtualFile> = VfsUtil.findRelativeFile(
     artefactData.application.appRoot, GrailsUtils.VIEWS_DIRECTORY, artefactData.artefactName
@@ -94,7 +94,7 @@ class GoToTestAction : GrailsToolbarVfileAction() {
   override fun isOpenSingle(): Boolean = false
 
   @ActionText override fun getTitle(artefactData: ArtefactData): String =
-    GrailsBundle.message("action.text.go.to.tests", artefactData.artefactName.capitalize())
+    GrailsBundle.message("action.text.go.to.tests", artefactData.artefactName.replaceFirstChar { it.uppercaseChar() })
 
   override fun getNavigateTargets(artefactData: ArtefactData): Collection<VirtualFile> {
     val result = mutableListOf<VirtualFile>()
@@ -110,7 +110,7 @@ class GoToTestAction : GrailsToolbarVfileAction() {
     return result
   }
 
-  override fun createGenerateActions(artefactData: ArtefactData): Collection<AnAction> = artefactData.artefactName.capitalize().let {
+  override fun createGenerateActions(artefactData: ArtefactData): Collection<AnAction> = artefactData.artefactName.replaceFirstChar { it.uppercaseChar() }.let {
     listOf(
       GenerateTestsAction(false, artefactData.artefactName, GrailsArtifact.DOMAIN).apply {
         templatePresentation.text = GrailsBundle.message("action.text.generate.tests.unit", it)
