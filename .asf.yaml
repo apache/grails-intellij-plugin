@@ -43,6 +43,8 @@ github:
         - root
       restrict_deletion: true
       restrict_force_push: true
+  features:
+    issues: true
 notifications:
   # GitHub related
   commits: commits@grails.apache.org
