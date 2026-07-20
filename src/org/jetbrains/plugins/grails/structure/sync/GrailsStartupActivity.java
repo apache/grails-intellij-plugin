@@ -17,6 +17,7 @@
 package org.jetbrains.plugins.grails.structure.sync;
 
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ModuleRootEvent;
 import com.intellij.openapi.roots.ModuleRootListener;
@@ -67,5 +68,14 @@ public final class GrailsStartupActivity implements StartupActivity.DumbAware {
 
     GrailsApplicationManager.getInstance(project).queueUpdate();
     TraitInjectorService.queueUpdate(project);
+
+    // Gradle-based applications are detected from external system data, which is loaded
+    // asynchronously on project open; recompute once it becomes available, otherwise
+    // applications stay undetected until the next manual Gradle sync.
+    ExternalProjectsManager.getInstance(project).runWhenInitialized(() -> {
+      GrailsApplicationManager.getInstance(project).queueUpdate();
+      TraitInjectorService.queueUpdate(project);
+    });
+
   }
 }
