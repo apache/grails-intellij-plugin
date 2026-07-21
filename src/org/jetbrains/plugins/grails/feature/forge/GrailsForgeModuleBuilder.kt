@@ -233,7 +233,7 @@ internal class GrailsForgeModuleBuilder : WebStarterModuleBuilder() {
   }
 
   private fun getServletType(): ServletType {
-    return starterContext.getUserData(SERVLET_KEY) ?: ServletType.JETTY
+    return starterContext.getUserData(SERVLET_KEY) ?: ServletType.TOMCAT
   }
 
   private fun setGormType(gormType: GormType) {
@@ -255,7 +255,7 @@ internal class GrailsForgeModuleBuilder : WebStarterModuleBuilder() {
             .bind(servletProperty)
         }.bottomGap(BottomGap.SMALL)
 
-        setServletType(ServletType.JETTY)
+        setServletType(servletProperty.get())
         servletProperty.afterChange { setServletType(it) }
 
         layout.row(GrailsBundle.message("module.builder.gorm.type")) {
