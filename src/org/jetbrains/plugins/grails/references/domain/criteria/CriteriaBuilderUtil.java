@@ -29,6 +29,7 @@ import com.intellij.psi.PsiType;
 import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import com.intellij.psi.util.InheritanceUtil;
 import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.psi.util.PsiTypesUtil;
 import com.intellij.util.SmartList;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -120,7 +121,36 @@ public final class CriteriaBuilderUtil {
     if (CriteriaBuilderImplicitMemberContributor.isMine(method)) return true;
 
     PsiClass aClass = method.getContainingClass();
-    return aClass != null && CRITERIA_BUILDER_CLASS.equals(aClass.getQualifiedName());
+    if (aClass == null) return false;
+    if (CRITERIA_BUILDER_CLASS.equals(aClass.getQualifiedName())) return true;
+
+    // Many criteria DSL methods (eq, order, ...) are declared on a supertype/interface implemented by
+    // HibernateCriteriaBuilder (e.g. org.grails.datastore.mapping.query.api.Criteria) rather than on
+    // HibernateCriteriaBuilder itself, so method.getContainingClass() resolves to that supertype.
+    PsiClass hibCriteriaBuilder = JavaPsiFacade.getInstance(aClass.getProject()).findClass(CRITERIA_BUILDER_CLASS, method.getResolveScope());
+    return hibCriteriaBuilder != null && hibCriteriaBuilder.isInheritor(aClass, true);
+  }
+
+  /**
+   * Determines the domain class a GORM member call (e.g. {@code withCriteria}, {@code createCriteria})
+   * is invoked on: the qualifier for {@code Ddd.withCriteria { ... }}, or the enclosing class for an
+   * unqualified call inside a domain class body. Returns {@code null} unless that class is a GORM bean.
+   */
+  private static @Nullable PsiClass resolveGormMemberQualifierClass(@NotNull GrReferenceExpression invoked) {
+    GrExpression qualifier = invoked.getQualifierExpression();
+    PsiClass domainClass;
+
+    if (qualifier == null) {
+      domainClass = PsiTreeUtil.getParentOfType(invoked, PsiClass.class);
+    }
+    else if (qualifier instanceof GrReferenceExpression qualifierRef && qualifierRef.resolve() instanceof PsiClass psiClass) {
+      domainClass = psiClass;
+    }
+    else {
+      domainClass = PsiTypesUtil.getPsiClass(qualifier.getType());
+    }
+
+    return GormUtils.isGormBean(domainClass) ? domainClass : null;
   }
 
   public static @Nullable PsiClass findDomainClassByBuilderExpression(@Nullable GrExpression expression) {
@@ -152,10 +182,15 @@ public final class CriteriaBuilderUtil {
         if (!"createCriteria".equals(methodName)) return null;
 
         PsiMethod method = ((GrMethodCall)expression).resolveMethod();
-        if (!GrLightMethodBuilder.checkKind(method, DomainDescriptor.DOMAIN_DYNAMIC_METHOD)) return null;
-        //noinspection ConstantConditions
+        if (GrLightMethodBuilder.checkKind(method, DomainDescriptor.DOMAIN_DYNAMIC_METHOD)) {
+          //noinspection ConstantConditions
+          return ((GrLightMethodBuilder)method).getData();
+        }
 
-        return ((GrLightMethodBuilder)method).getData();
+        // GORM 4+: createCriteria() comes from the GormEntity trait as a real (non-light) method and
+        // is never marked DOMAIN_DYNAMIC_METHOD (that marker is only produced for GORM < 4, see
+        // GormAstTransformationContributor). Resolve the domain class directly from the qualifier instead.
+        return resolveGormMemberQualifierClass((GrReferenceExpression)invokedExpression);
       }
 
       if (expression instanceof GrNewExpression) {
@@ -227,6 +262,15 @@ public final class CriteriaBuilderUtil {
         if (NamedQueryDescriptor.NAMED_QUERY_METHOD_MARKER.equals(kind)) {
           return lightMethod.<NamedQueryDescriptor>getData().getDomainClass();
         }
+      }
+      else if ("withCriteria".equals(method.getName())) {
+        // GORM 4+: withCriteria comes from the GormEntity trait as a real (non-light) method and is
+        // never marked DOMAIN_DYNAMIC_METHOD (that marker is only produced for GORM < 4, see
+        // GormAstTransformationContributor). Without this, the closure body falls back to whatever
+        // generic (datastore-agnostic) type Groovy infers via @DelegatesTo, which lacks Hibernate-only
+        // members like createAlias and leaves property navigation broken.
+        PsiClass domainClass = resolveGormMemberQualifierClass(ieRef);
+        if (domainClass != null) return domainClass;
       }
 
       PsiClass namedCriteriaProxyClass = method.getContainingClass();
