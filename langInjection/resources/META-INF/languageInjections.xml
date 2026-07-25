@@ -14,9 +14,12 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
+<!--
+  HQL injection into GORM find/findAll/executeQuery/executeUpdate is now performed
+  programmatically by org.jetbrains.plugins.grails.references.domain.GormHqlInjector.
+  The previous IntelliLang matcher relied on the synthetic "Gorm:DomainDescriptor:DynamicMethod"
+  light methods, which are only generated for GORM below 4; on GORM 4+ (Grails 3+) the finder
+  methods come from the GormEntity trait and are not marked, so this matcher never fired there.
+-->
 <component name="LanguageInjectionConfiguration">
-  <injection language="HQL" injector-id="groovy">
-    <display-name>Grails HQL injection</display-name>
-    <place><![CDATA[groovyElement().methodCallParameter(0, grLightMethod("Gorm:DomainDescriptor:DynamicMethod").withName(string().oneOf("find", "findAll", "executeQuery", "executeUpdate")))]]></place>
-  </injection>
 </component>

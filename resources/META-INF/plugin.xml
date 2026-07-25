@@ -321,6 +321,7 @@
 
     <multiHostInjector implementation="org.jetbrains.plugins.grails.lang.gsp.GspCssInjector"/>
     <multiHostInjector implementation="org.jetbrains.plugins.grails.references.constraints.GormRegexInjector"/>
+    <multiHostInjector implementation="org.jetbrains.plugins.grails.references.domain.GormHqlInjector"/>
 
     <gotoRelatedProvider implementation="org.jetbrains.plugins.grails.actions.GrailsGotoRelatedProvider"/>
 
