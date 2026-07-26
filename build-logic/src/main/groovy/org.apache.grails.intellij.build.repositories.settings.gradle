@@ -1,0 +1,48 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+import org.gradle.api.initialization.resolve.RepositoriesMode
+
+// The single source of truth for where dependencies come from.
+//
+// This is a precompiled *settings* script plugin (the .settings.gradle suffix), applied from
+// settings.gradle rather than by a project. It replaces per-project `repositories { }` blocks,
+// which previously appeared in two convention plugins and had to be kept in sync -- and whose
+// absence on the root project broke the licence audit the moment the root stopped applying the
+// java conventions.
+//
+// FAIL_ON_PROJECT_REPOS makes the centralisation real: a project that declares its own
+// repositories now fails the build instead of quietly diverging.
+
+plugins {
+    // Registers the intellijPlatform repositories extension onto dependencyResolutionManagement,
+    // so the IntelliJ Platform artifact repositories can be declared here rather than per project.
+    id 'org.jetbrains.intellij.platform.settings'
+}
+
+dependencyResolutionManagement {
+    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+
+    repositories {
+        mavenCentral()
+        intellijPlatform {
+            defaultRepositories()
+        }
+    }
+}

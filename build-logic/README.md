@@ -7,6 +7,10 @@ Written as **precompiled Groovy script plugins** in `src/main/groovy`, named aft
 so a subproject build file is one `plugins { }` line plus its own dependencies. Deliberately not
 imperative `Plugin<Project>` classes.
 
+One of them targets `Settings` rather than `Project`: the `.settings.gradle` suffix on
+`org.apache.grails.intellij.build.repositories.settings.gradle` makes it a settings plugin, applied
+from `settings.gradle`. That is what keeps repository declarations out of the projects entirely.
+
 ## Why plugin versions live here
 
 `build-logic/build.gradle` declares the IntelliJ Platform, Kotlin, RAT and Sonatype scan plugins as
@@ -37,7 +41,7 @@ build still come from the root `gradle.properties` via `providers.gradleProperty
 | `rat` | root only — the licence audit |
 | `coverage-aggregation` | root only — cross-project JaCoCo |
 | `reproducible`, `jacoco`, `vulnerability-scan` | applied transitively |
-| `legacy-layout` | **transitional** — delete once all tiers use standard source layout |
+| `repositories` | **settings** plugin — applied from `settings.gradle`, not by a project |
 
 ## Groovy DSL gotchas
 
@@ -49,3 +53,22 @@ build still come from the root `gradle.properties` via `providers.gradleProperty
   see how `testFramework(...)` is called in `testFramework/build.gradle`.
 - There are no type-safe accessors. Run a real build after each change; a typo is a
   configuration-time `MissingMethodException`, not a compile error.
+
+## Repositories
+
+All dependency repositories are declared once, by the `repositories` settings plugin, and
+`dependencyResolutionManagement` is set to `FAIL_ON_PROJECT_REPOS`. A project that declares its own
+`repositories { }` block now fails the build:
+
+> Build was configured to prefer settings repositories over project repositories but repository
+> 'MavenRepo' was added by build file 'pluginModules/hibernate/build.gradle'
+
+The IntelliJ Platform repositories come from `org.jetbrains.intellij.platform.settings`, which
+registers the `intellijPlatform` repositories extension onto `dependencyResolutionManagement`.
+
+This replaced `repositories { }` blocks in two separate convention plugins that had to be kept in
+sync — and whose absence on the root project broke the licence audit the moment the root stopped
+applying the java conventions, because RAT resolves its own tool jar at execution time.
+
+`build-logic/settings.gradle` keeps its own repository declarations: it is a separate build and
+cannot consume a plugin it has not yet compiled.

@@ -17,6 +17,10 @@ pluginManagement {
     includeBuild('build-logic')
 }
 
+plugins {
+    id 'org.apache.grails.intellij.build.repositories'
+}
+
 rootProject.name = 'grails-intellij-plugin'
 
 include 'plugin'

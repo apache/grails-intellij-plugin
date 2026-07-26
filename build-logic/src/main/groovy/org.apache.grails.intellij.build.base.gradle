@@ -18,11 +18,11 @@
  */
 
 // Conventions shared by every project, including ones that compile nothing.
+//
+// Repositories are NOT declared here: they come from the repositories settings plugin, and
+// dependencyResolutionManagement is set to FAIL_ON_PROJECT_REPOS, so declaring any here would
+// fail the build.
 
 plugins {
     id 'org.apache.grails.intellij.build.reproducible'
-}
-
-repositories {
-    mavenCentral()
 }

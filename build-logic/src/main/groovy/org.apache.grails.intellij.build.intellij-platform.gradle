@@ -31,11 +31,6 @@ plugins {
     id 'org.jetbrains.intellij.platform.base'
 }
 
-repositories {
-    intellijPlatform {
-        defaultRepositories()
-    }
-}
 
 dependencies {
     intellijPlatform {
