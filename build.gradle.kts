@@ -26,9 +26,9 @@ plugins {
     id("org.nosphere.apache.rat") version "0.8.1"
     // build-hygiene conventions (build-logic included build)
     id("jacoco-report-aggregation")
-    id("grails-intellij.reproducible")
-    id("grails-intellij.jacoco")
-    id("grails-intellij.vulnerability-scan")
+    id("org.apache.grails.intellij.build.reproducible")
+    id("org.apache.grails.intellij.build.jacoco")
+    id("org.apache.grails.intellij.build.vulnerability-scan")
 }
 
 group = "org.apache.grails.intellij"

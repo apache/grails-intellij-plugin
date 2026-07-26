@@ -1,0 +1,37 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+plugins {
+    id 'groovy-gradle-plugin'
+}
+
+// Gradle plugins that the convention plugins apply. Declaring them here is what lets the
+// convention plugins apply them WITHOUT a version, and it removes the previous fragility
+// where 'org.jetbrains.intellij.platform.module' was applied version-free in every module
+// and resolved only by inheriting the root build script's plugin classpath.
+//
+// Versions live here rather than in the root gradle.properties because build-logic is a
+// separate build and cannot read the root build's properties.
+dependencies {
+    // Dependabot (gradle ecosystem, /build-logic) keeps these versions current.
+    implementation 'org.jetbrains.intellij.platform:intellij-platform-gradle-plugin:2.18.1'
+    implementation 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.0'
+    implementation 'org.nosphere.apache.rat:org.nosphere.apache.rat.gradle.plugin:0.8.1'
+    implementation 'org.sonatype.gradle.plugins:scan-gradle-plugin:3.1.6'
+}

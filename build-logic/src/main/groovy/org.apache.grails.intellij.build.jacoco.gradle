@@ -16,14 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
+// Per-project JaCoCo conventions. The cross-project aggregate is produced by the root build
+// via org.apache.grails.intellij.build.coverage-aggregation, which wraps Gradle's built-in
+// jacoco-report-aggregation plugin (configuration-cache safe, unlike a hand-rolled aggregate).
+
 plugins {
-    `kotlin-dsl`
+    id 'jacoco'
 }
 
-// The convention plugins here are consumed by the root build and every module. The
-// vulnerability-scan plugin applies the Sonatype OSS Index plugin and references its
-// extension type, so that plugin must be on the build-logic compile classpath.
-dependencies {
-    // Dependabot (gradle ecosystem, /build-logic) keeps this version current.
-    implementation("org.sonatype.gradle.plugins:scan-gradle-plugin:3.1.6")
+jacoco {
+    // keep in sync with `jacocoVersion` in gradle.properties
+    toolVersion = providers.gradleProperty('jacocoVersion').getOrElse('0.8.14')
+}
+
+tasks.withType(Test).configureEach {
+    finalizedBy tasks.withType(JacocoReport)
+}
+
+tasks.withType(JacocoReport).configureEach {
+    dependsOn tasks.withType(Test)
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
 }

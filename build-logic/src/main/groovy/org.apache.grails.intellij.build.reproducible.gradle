@@ -17,8 +17,7 @@
  * under the License.
  */
 
-// Reproducible-build conventions. Ported from grails-core's CompilePlugin.configureReproducible.
-// Applied to the root project and every module so that the plugin ZIP
+// Reproducible-build conventions. Applied to every project so that the plugin ZIP
 // (build/distributions/*.zip) and all composed/module jars are byte-for-byte stable.
 //
 // preserveFileTimestamps = false pins every archive entry to a constant timestamp, so
@@ -26,9 +25,9 @@
 // removes the only other common source of non-determinism (filesystem iteration order).
 // Fixed permissions guarantee the same entry metadata regardless of the host umask.
 
-tasks.withType<AbstractArchiveTask>().configureEach {
-    isPreserveFileTimestamps = false
-    isReproducibleFileOrder = true
-    filePermissions { unix("0644") }
-    dirPermissions { unix("0755") }
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    filePermissions { unix('0644') }
+    dirPermissions { unix('0755') }
 }

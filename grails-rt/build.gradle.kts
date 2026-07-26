@@ -15,9 +15,9 @@
  */
 plugins {
     id("java")
-    id("grails-intellij.reproducible")
-    id("grails-intellij.jacoco")
-    id("grails-intellij.vulnerability-scan")
+    id("org.apache.grails.intellij.build.reproducible")
+    id("org.apache.grails.intellij.build.jacoco")
+    id("org.apache.grails.intellij.build.vulnerability-scan")
 }
 
 group = "org.apache.grails.intellij.rt"
