@@ -6,79 +6,73 @@ Actions for building and publishing.
 
 Unlike prior plugin migrations, this repo **stays standalone** — it cannot merge into the
 grails-core monorepo because it builds against the IntelliJ Platform Gradle Plugin
-(`org.jetbrains.intellij.platform` 2.11.0), not the Grails BOM/shared-gradle world. We
-therefore *port* the grails-core compliance/CI conventions here rather than rewiring onto
-shared config. The `mono-repo-integration` skill's principles still apply where relevant
+(`org.jetbrains.intellij.platform`), not the Grails BOM/shared-gradle world. We therefore
+*port* the grails-core compliance/CI conventions here rather than rewiring onto shared
+config. The `mono-repo-integration` skill's principles still apply where relevant
 (license headers, RAT excludes for templates/test data, CI gating publish on tests, no
 blind deletion of imported infra).
 
-## Current state (surveyed 2026-07-06)
+**Status: Phases 1–7 are complete** (see "Completed work" below). What remains is Phase 8
+(the parts that need a real GitHub runner and a PMC vote) and Phase 9 (blocked on the
+software grant). For the current build layout see [AGENTS.md](AGENTS.md#project-structure);
+for the release procedure see [RELEASE.md](RELEASE.md).
 
-- **Build**: Gradle Kotlin DSL, root plugin + 11 subprojects (`copyright`, `coverage`,
-  `gradle-tooling`, `grails-compiler-patch`, `grails-rt`, `hibernate`, `i18n`,
-  `jps-plugin`, `langInjection`, `maven`, `testFramework`). IntelliJ Platform Gradle
-  Plugin 2.11.0, Kotlin 2.3.0, platform 2025.3.1 (`sinceBuild=253`), Java 21 (8/11 for the
-  runtime/JPS legacy modules). `pluginVersion=253.0.0`.
+## State at import (surveyed 2026-07-06)
+
+Kept as the record of what was inherited — this is **not** current state.
+
+- **Build**: Gradle Kotlin DSL, root plugin + 11 flat subprojects. IntelliJ Platform
+  Gradle Plugin 2.11.0, Kotlin 2.3.0, platform 2025.3.1 (`sinceBuild=253`), Java 21 (8/11
+  for the runtime/JPS legacy modules). `pluginVersion=253.0.0`.
 - **Identity**: plugin id `org.intellij.grails`, vendor **JetBrains**, packages
   `org.jetbrains.plugins.grails`.
-- **Licensing**: `LICENSE.txt` = Apache-2.0 full text. **No NOTICE.** UPDATED
-  (2026-07-18): the ~909 source files that carried the abbreviated JetBrains one-line
-  header (`Copyright 2000-20xx JetBrains s.r.o. and contributors. Use of this source
-  code is governed by the Apache 2.0 license.`) now carry the **full standard Apache 2.0
-  license header** (the license Appendix boilerplate) with the JetBrains copyright line
-  preserved — *not* the ASF "Licensed to the Apache Software Foundation" header. ~44
-  files still have no header (testdata fixtures, `.ft`/`.gsp` templates, properties,
-  XML). `gen/` is generated code; `testdata/` contains mock Grails 1.x JARs (test
-  fixtures, not shipped).
+- **Licensing**: `LICENSE.txt` = Apache-2.0 full text, **no NOTICE**, ~909 sources
+  carrying the abbreviated JetBrains one-line header (`Copyright 2000-20xx JetBrains
+  s.r.o. and contributors. Use of this source code is governed by the Apache 2.0
+  license.`).
 - **CI/publishing**: none. No `.github/`, no `.asf.yaml`, no publish or signing config.
 
-## Open decisions (resolve before/while executing)
+## Decisions of record
+
+Numbering is stable — later phases cite these by number.
 
 1. **Header strategy for JetBrains-copyright files.** RESOLVED (2026-07-18): **no
-   software grant / IP clearance is recorded yet**, so the licensing terms in the
-   per-file headers must not be changed — the files stay attributed to JetBrains and
-   must NOT receive the ASF "Licensed to the Apache Software Foundation" header until a
-   grant is provided. What we did instead: expanded every abbreviated JetBrains header
-   to the full standard Apache 2.0 license header (Appendix boilerplate) while keeping
-   the `Copyright 2000-20xx JetBrains s.r.o. and contributors.` line. This satisfies
-   RAT's stock Apache-2.0 detection with no custom matcher. The wholesale ASF-header
-   replacement (former "option A") moves to Phase 9 (post-grant follow-up) and is
-   blocked on the software grant being recorded with the ASF Secretary.
-2. **Plugin id & Marketplace listing.** RESOLVED (2026-07-06): JetBrains has already
-   handed the Marketplace listing over. The plugin id `org.intellij.grails` is permanent —
-   Marketplace ids cannot be changed on an existing listing, and the IDE matches updates
-   by id, so a new id would orphan the entire install base and break `<depends>` in
-   third-party plugins. Keep the id forever; update the listing's name/vendor to Apache.
-   AMENDED (2026-07-07): under the two-plugin strategy below, the id and existing listing
-   stay with the **legacy** plugin line; the new Grails 7+ plugin gets a fresh Apache id.
-   The Java packages (`org.jetbrains.plugins.grails.*`) CAN be renamed (nothing external
-   keys on them), but it means renaming every class reference in plugin.xml/module XMLs,
-   resets FQN-keyed persisted state for users, and forces stub-index version bumps — and
-   ASF policy does not require it (cf. Apache Groovy keeping `org.codehaus.groovy`). If
-   wanted, do it as a dedicated follow-up effort after this migration, never mixed into
-   the compliance commits.
-3. **Develocity / TestLens**: grails-core CI wires `DEVELOCITY_ACCESS_KEY` and TestLens.
-   Decide whether this repo joins the same Develocity instance; if not, drop those steps.
-4. **Snapshot distribution**: attach the plugin ZIP as a workflow artifact on every main
-   build (simplest, recommended), and/or publish to a Marketplace `eap`/`snapshot`
-   channel.
-5. **Versioning**: keep the `<platform-branch>.x.y` scheme (`253.0.0`) or align with a
-   Grails-style scheme. Marketplace convention favors the platform-branch scheme — keep it.
-6. **Maven publishing** RESOLVED (2026-07-18): **none**. The plugin ZIP is never
-   consumed from Maven Central/ASF Nexus, so there is no Maven/Nexus publishing at all.
-   Distribution channels are: the GitHub release assets, `dist.apache.org` dev → release
-   via svn as part of the PMC vote, and the JetBrains Marketplace convenience binary.
-   A trial adoption of the Grails Publish plugin was reverted as unnecessary; two rough
-   edges found during that trial are candidate fixes on the grails-gradle-publish **1.x
-   branch** if it is ever adopted here: (a) it requires `project.version` at plugin apply
-   time, and (b) its pom generation is not configuration-cache compatible. Kept from the
-   trial: the project version now uses the standard `version` property in
-   gradle.properties (was `pluginVersion`); workflows pass `-Pversion=`.
+   software grant / IP clearance is recorded yet**, so per-file licensing terms must not
+   change. Files stay attributed to JetBrains and must NOT receive the ASF "Licensed to
+   the Apache Software Foundation" header until a grant is provided. Instead every
+   abbreviated JetBrains header was expanded to the full standard Apache 2.0 header
+   (Appendix boilerplate) keeping the `Copyright 2000-20xx JetBrains s.r.o. and
+   contributors.` line, which satisfies RAT's stock Apache-2.0 detection with no custom
+   matcher. Wholesale ASF-header replacement is Phase 9, blocked on the grant.
+2. **Plugin id & Marketplace listing.** RESOLVED (2026-07-06): the listing is already
+   transferred. `org.intellij.grails` is permanent — Marketplace ids cannot change on an
+   existing listing and the IDE matches updates by id, so a new id would orphan the
+   install base and break third-party `<depends>`. AMENDED (2026-07-07): under the
+   two-plugin strategy the id and existing listing stay with the **legacy** line; the new
+   Grails 7+ plugin gets a fresh Apache id. Java packages CAN be renamed (nothing
+   external keys on them) but ASF policy does not require it (cf. Apache Groovy keeping
+   `org.codehaus.groovy`); see Phase 3 of `IMPROVEMENT-PLAN.md`.
+3. **Develocity / TestLens.** RESOLVED: **not adopted.** grails-core wires
+   `DEVELOCITY_ACCESS_KEY` and TestLens; those steps are dropped here, so CI needs no
+   Develocity secret.
+4. **Snapshot distribution.** RESOLVED: the plugin ZIP is attached as a **workflow
+   artifact** on every build (`gradle.yml`). No Marketplace `eap`/`snapshot` channel
+   publishing, so CI performs no publishing at all.
+5. **Versioning.** RESOLVED: keep the `<platform-branch>.x.y` scheme (currently
+   `262.0.0`), which matches Marketplace convention.
+6. **Maven publishing.** RESOLVED (2026-07-18): **none.** The plugin ZIP is never
+   consumed from Maven Central/ASF Nexus. Distribution is: GitHub release assets,
+   `dist.apache.org` dev → release via svn as part of the PMC vote, and the JetBrains
+   Marketplace convenience binary. A trial of the Grails Publish plugin was reverted as
+   unnecessary; two rough edges found are candidate fixes on the grails-gradle-publish
+   **1.x branch** if ever adopted here: (a) it requires `project.version` at plugin apply
+   time, (b) its pom generation is not configuration-cache compatible. Kept from the
+   trial: the project version uses the standard `version` property in gradle.properties
+   (was `pluginVersion`); workflows pass `-Pversion=`.
 7. **Signing keys** (added 2026-07-18): the existing Grails release GPG key (from the
-   project `KEYS` file) covers all ASF signing — source zip, convenience binary, Maven
-   `.asc` files. JetBrains Marketplace plugin signing is a separate mechanism: it
-   requires an X.509 certificate chain + RSA private key (PEM), not PGP, so a dedicated
-   key/cert pair must be generated (per JetBrains docs) and stored as the
+   project `KEYS` file) covers all ASF signing. JetBrains Marketplace plugin signing is a
+   separate mechanism — X.509 certificate chain + RSA private key (PEM), not PGP — so a
+   dedicated key/cert pair must be generated per JetBrains docs and stored as the
    `CERTIFICATE_CHAIN`/`PRIVATE_KEY`/`PRIVATE_KEY_PASSWORD` secrets.
 
 ---
@@ -129,189 +123,33 @@ feasible; the constraints and the plan:
   publishes) and platform bumps twice a year on the legacy line. Mitigated by the
   maintenance-only policy and shared workflow templates.
 
-## Phase 1 — ASF repo metadata
+## Completed work (Phases 1–7)
 
-DONE (2026-07-18): committed as "Add ASF repository metadata" — NOTICE, HEADER,
-LICENSE rename, `.asf.yaml` (release environment + branch protection + notifications),
-README.md. Also added later: `INSTALL` + `.sdkmanrc` + `gradle-bootstrap/` (source
-distro ships without the wrapper jar; `cd gradle-bootstrap && gradle bootstrap`
-regenerates it pinned to `.sdkmanrc`, grails-core's pattern).
+All seven landed between 2026-07-18 and the restructure. The how-to prose has been removed;
+what follows is the record of what exists, with the live detail now kept in the files
+themselves.
 
-- **`NOTICE`** (new, required by policy). Model on grails-core's:
+| Phase | Landed as | What exists now |
+|---|---|---|
+| 1 — ASF repo metadata | "Add ASF repository metadata" | `NOTICE`, `HEADER`, `LICENSE` (renamed from `LICENSE.txt`), `.asf.yaml` (release environment, branch protection, notifications), `README.md`. Later: `INSTALL`, `.sdkmanrc`, `gradle-bootstrap/` so the source distro can regenerate the wrapper (`cd gradle-bootstrap && gradle bootstrap`). |
+| 2 — License headers (pre-grant) | "ASF Compliance - license headers" | ~909 abbreviated JetBrains headers expanded to the full Apache 2.0 boilerplate with the JetBrains copyright preserved, per decision 1. Previously-unheadered JetBrains files headered too. Not headered, by design: `gen/**`, `testdata/**`, `fileTemplates/**`, `.form`, inspection-description HTML. |
+| 3 — RAT verification | "ASF Compliance - RAT license audit" | `org.nosphere.apache.rat` 0.8.1, configured in the `rat` convention plugin with every exclude justified inline and audits never cached. `./gradlew rat` clean. |
+| 4 — Identity & conventions | "Update plugin vendor and Gradle groups to Apache" | Vendor = Apache Software Foundation (grails.apache.org); Gradle groups `org.apache.grails.intellij*`. Plugin id and EP namespaces stay `org.intellij.grails` per decision 2. |
+| 5 — Build & verification CI | "Add CI workflows for build, verification, and RAT" | `gradle.yml` (build + test + plugin-ZIP artifact; Plugin Verifier job) and `rat.yml`. Also since added: `coverage.yml`, `codeql.yml`, `vulnerability-scan.yml`. All actions pinned to full SHAs. |
+| 6 — Release & Marketplace publishing | "Add release workflow and Marketplace signing config" | `release.yml` (`publish` → `source` → `upload` → `release`), `release-abort.yml`, checked-in vote/result/announcement templates under `.github/vote_templates/`. Nexus staging removed per decision 6. |
+| 7 — Artifact compliance | — | `LICENSE`/`NOTICE` packaged into the plugin jar's `META-INF` (verified in the built ZIP). Reproducible-build pinning and the `etc/bin/verify*.sh` release-verification scripts, listed as Phase 7 stretch goals, are also done — see [RELEASE.md](RELEASE.md). CycloneDX SBOM remains **not** done. |
 
-  ```
-  Apache Grails IntelliJ Plugin
-  Copyright 2025-2026 The Apache Software Foundation
+Still open from Phase 7's stretch list:
 
-  This product includes software developed at
-  The Apache Software Foundation (http://www.apache.org/).
+- [ ] CycloneDX SBOM with a `LICENSE_MAPPING` for transitives (grails-core parity). Not a
+      blocker for a first compliant release.
 
-  This product includes software originally developed by JetBrains s.r.o.
-  and contributors (https://www.jetbrains.com/).
-  Copyright 2000-2026 JetBrains s.r.o. and contributors.
-  Licensed under the Apache License, Version 2.0.
-  ```
+Still open from Phase 3:
 
-  Do **not** say "donated to the ASF" until the software grant is recorded; add that
-  wording (confirmed against the grant text) in Phase 9.
-- **`HEADER`** (new): copy grails-core's root `HEADER` file verbatim — the canonical ASF
-  header text ("Licensed to the Apache Software Foundation (ASF) under one or more
-  contributor license agreements…"). Pre-grant it applies to **new files only**
-  (decision 1); post-grant it becomes the single source of truth for the wholesale
-  replacement in Phase 9.
-- **`LICENSE`**: rename `LICENSE.txt` → `LICENSE` (grails-core convention). Create a
-  `licenses/` directory only if/when non-Apache third-party assets are identified (none
-  found so far — icons are JetBrains-authored and covered by the grant; testdata JARs are
-  Apache-2.0 Grails/Spring artifacts and are excluded from the source distro anyway —
-  see Phase 3 decision on testdata JARs).
-- **`.asf.yaml`**: adapt grails-core's — `description`, `homepage:
-  https://grails.apache.org/`, notifications to `commits@grails.apache.org` /
-  `notifications@grails.apache.org`, default-branch protection ruleset
-  (restrict deletion/force-push), and a `release` deployment environment with the same
-  required reviewers (jdaugherty, matrei, jamesfredley, sbglasius) to gate the release
-  workflow.
-- **`README.md`** (new): what the plugin is, supported IntelliJ versions, build
-  instructions, ASF links (no release history section, per grails-core docs convention).
-- Optional: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` pointers to the main project.
-
-## Phase 2 — License headers (pre-grant form)
-
-One commit: "ASF Compliance - license headers". **Constraint (decision 1): until a
-software grant is recorded, headers keep JetBrains attribution and standard Apache 2.0
-terms — no ASF licensing language on JetBrains-authored files.**
-
-- DONE (2026-07-18, uncommitted): mechanically expanded every abbreviated JetBrains
-  header (the `//`, `/* ... */`, `<!-- -->`, and `#` one-line forms, any year range,
-  ~909 files) to the full standard Apache 2.0 header (Appendix boilerplate:
-  "Licensed under the Apache License, Version 2.0 …") with the original
-  `Copyright 2000-20xx JetBrains s.r.o. and contributors.` line and year range
-  preserved. Files that already carried the full old-style (2007/2008) JetBrains Apache
-  header were left untouched; a duplicated embedded header in `GspUtil.java` was
-  de-duplicated. The expansion script lives in the session scratchpad — commit a copy to
-  `etc/bin/expand-jetbrains-headers.py` for auditability.
-- DONE (2026-07-18, uncommitted): headered the previously-unheadered JetBrains-authored
-  files that RAT flags — grails-rt runtime sources/scripts, `GrailsStandardDSL.gdsl`,
-  the non-generated `META-INF/*.xml` descriptors, `liveTemplates/gsp.xml`, `grails.tld`,
-  bundle/log4j/gradle `.properties`, and the JPS services file — all with the same
-  JetBrains-attributed Apache 2.0 header. Files that are RAT-excluded (testdata
-  fixtures, templates, forms, description HTML, `MANIFEST.MF`) were left alone.
-  Genuinely new ASF-authored files get the canonical ASF header.
-- **New files** authored after the import (by ICLA-covered contributors) use the
-  canonical ASF header from the root `HEADER` file — no grant needed for new
-  contributions.
-- Do **not** header: `gen/**` (generated), `testdata/**` fixtures whose content *is* the
-  test input (adding headers can break parser/position-sensitive tests — same reason
-  grails-core excludes test resources), file templates under `resources/fileTemplates/**`
-  (they materialize inside end-user projects — grails-core's "templates people are
-  expected to use" rule), `.form` GUI-builder files (machine-edited XML), inspection/
-  intention description HTML (grails-core excludes `**/*.html`).
-- Verify with a grep audit: every non-excluded source file contains either the full
-  Apache 2.0 header (JetBrains-attributed) or the ASF header (new files).
-
-## Phase 3 — RAT verification in the build
-
-One commit: "ASF Compliance - RAT license audit".
-
-Because Phase 2 expanded the headers to the standard Apache 2.0 boilerplate, RAT's
-stock license matcher recognizes them — **no custom JetBrains matcher is needed**.
-
-DONE (2026-07-18, uncommitted): `org.nosphere.apache.rat` 0.8.1 added to the root
-`plugins {}` block with a kts `tasks.rat { excludes... }` config (grails-core's shape,
-translated; every exclude justified in a comment; `outputs.upToDateWhen { false }`).
-`./gradlew rat` passes: 927 files audited, 0 unknown licenses. Notable repo-specific
-exclude: `.intellijPlatform/**` (IntelliJ Platform Gradle Plugin's local cache of
-generated Ivy descriptors). Remaining details below for reference.
-
-- Add the `org.nosphere.apache.rat` plugin (grails-core pins **0.8.1** via
-  `apacheRatVersion` on the buildSrc classpath; this repo has no buildSrc, so declare
-  `id("org.nosphere.apache.rat") version "0.8.1"` in the root `plugins {}` block) and port
-  grails-core's `gradle/rat-root-config.gradle` shape (this repo is Kotlin DSL; either
-  keep a Groovy `gradle/rat-root-config.gradle` applied via `apply(from = ...)` — closest
-  to grails-core — or translate to kts).
-- Excludes tailored to this repo (mirroring grails-core's categories):
-  - generated: `gen/**`
-  - test fixtures: `testdata/**` (includes the mock Grails JARs; binary anyway)
-  - templates shipped into user projects: `resources/fileTemplates/**`,
-    `resources/liveTemplates/**` (verify), `**/*.ft`, template `.gsp`
-  - images: `**/*.png`, `**/*.svg`, `**/*.ico`
-  - html/json descriptions: `**/*.html`, `**/spring-configuration-metadata.json`-style
-    JSON (JSON can't carry headers)
-  - infra: `.asf.yaml`, `.github/**`, `**/.gitignore`, `gradlew*`, `**/wrapper/**`,
-    `.idea/**`, `**/*.iml`, `out/**`, `build/**` + per-subproject build dirs (use the
-    same `rootProject.subprojects.collect{...}` trick), `**/*.form` if not headered
-  - `MIGRATION-PLAN.md` (this file) until deleted
-- Set `outputs.upToDateWhen { false }` (never cache audits), like grails-core.
-- Iterate `./gradlew rat` until clean; every exclude must carry a justification comment
-  (grails-core style) — no blanket excludes to make it pass.
-- Decision to record: whether the `testdata/**/*.jar` binaries may remain in the
-  **source release** at all. ASF source releases must not contain compiled code without
-  justification; likely fine as clearly-labeled test fixtures, but flag it for the PMC
-  and document in the RAT config comment. Alternative: fetch them at test time.
-
-## Phase 4 — Identity & conventions cleanup
-
-DONE (2026-07-18): committed as "Update plugin vendor and Gradle groups to Apache" —
-vendor is Apache Software Foundation (url grails.apache.org), Gradle groups are
-`org.apache.grails.intellij*`. Plugin id and extension-point namespaces stay
-`org.intellij.grails` per decision 2. Package renames remain out of scope.
-
-- `plugin.xml`: `vendor` → Apache Software Foundation (Grails), vendor URL
-  `https://grails.apache.org/`, plugin description/links updated; keep plugin id per
-  decision 2.
-- Gradle `group` coordinates: `org.intellij.grails` → `org.apache.grails.intellij` (or
-  similar) for the module groups — these are internal (nothing publishes to Maven), so
-  this is low-risk; record the rename in the repo README. Package renames
-  (`org.jetbrains.plugins.grails` → `org.apache...`) are **out of scope** for this
-  migration (huge churn, breaks settings/serialized state and plugin.xml extension
-  points); revisit later if the PMC wants it.
-- Apply the grails-core best-practice conventions that translate: 4-space indent, no
-  wildcard imports, Apache header on every **new** file. CodeNarc does not apply (Java/
-  Kotlin codebase); consider ktlint/detekt later, not in this migration.
-
-## Phase 5 — GitHub Actions: build & verification CI
-
-DONE (2026-07-18): committed as "Add CI workflows for build, verification, and RAT" —
-`gradle.yml` (build+test with plugin ZIP artifact, Plugin Verifier job with
-`recommended()` IDEs) and `rat.yml` (grails-core's, adapted to `main`, Develocity/
-TestLens dropped per decision 3). All actions pinned to grails-core's SHAs. The
-`test.idea.home.path` property is now only applied when the path exists, so `check`
-runs on CI. NOT yet validated on a real GitHub runner — first PR will shake it out.
-
-One commit: "ASF Compliance - CI workflows". Follow grails-core's patterns: all actions
-**pinned to full commit SHAs**, `concurrency` group per workflow+ref, publish gated on
-test jobs via `needs:` **and** `if:` result guards.
-
-- **`.github/workflows/gradle.yml`** — on push/PR to `main` (+ `workflow_dispatch`):
-  - `build`: checkout (`actions/checkout` @ pinned v6.0.2), `actions/setup-java`
-    (liberica, 21), `gradle/actions/setup-gradle` @ pinned v6.1.0 with
-    `cache-provider: basic` (the MIT-licensed provider — grails-core deliberately avoids
-    the proprietary default) and Develocity key per decision 3; run
-    `./gradlew check buildPlugin`.
-  - `verify`: `./gradlew verifyPlugin` (IntelliJ Plugin Verifier against the
-    `sinceBuild`/target IDE matrix — configure `pluginVerification.ides` in the build to
-    cover 2025.3 and latest EAP; this is the IntelliJ-world analog of grails-core's
-    functional matrix and the skill's "reproduce every test axis" rule).
-  - `snapshot` (main-branch pushes only): upload the `buildPlugin` ZIP as a workflow
-    artifact; optionally `publishPlugin` to a Marketplace snapshot channel (decision 4).
-    `needs: [build, verify]` **and** `if:` guards on both results — publishing must be
-    blocked when tests fail.
-- **`.github/workflows/rat.yml`** — copy grails-core's nearly verbatim (adapt branch
-  filter to `main`): run `./gradlew rat`, upload the HTML report artifact, inject the
-  report into the job summary.
-- Later/optional, mirroring grails-core: `codeql.yml`, dependabot config.
-
-## Phase 6 — GitHub Actions: ASF release & Marketplace publishing
-
-DONE (2026-07-18, initial draft): committed as "Add release workflow and Marketplace
-signing config" (Maven/Nexus staging later removed per decision 6). `release.yml` jobs:
-`publish` (check/buildPlugin/signPlugin, GPG-sign + sha512, attach ZIP to GitHub
-release), `source` (src zip without wrapper/.github, GPG-sign + sha512), `upload` (svn
-to dist/dev for the vote), `release` (environment-gated: manual dev->release promotion
-via `.github/scripts/releaseDistributions.sh` run locally by the RM, `publishPlugin` to
-Marketplace, reporter/email reminders). Secrets needed:
-GRAILS_GPG_KEY, GPG_KEY_ID, SVC_DIST_GRAILS_USERNAME/PASSWORD, CERTIFICATE_CHAIN,
-PRIVATE_KEY, PRIVATE_KEY_PASSWORD, PUBLISH_TOKEN. Needs a dry-run against a test tag
-before first use (Phase 8).
+- [ ] PMC decision to record: whether the `testdata/**/*.jar` binaries may remain in the
+      **source release**. ASF source releases should not carry compiled code without
+      justification; they are clearly-labeled test fixtures, but flag it for the PMC.
+      Alternative: fetch them at test time (see `IMPROVEMENT-PLAN.md` 2.7).
 
 ### Secrets chart (all used by `release.yml` only; CI needs none)
 
@@ -331,67 +169,41 @@ repository variables (`vars.*`) are required. Secrets for ASF repos are provisio
 an INFRA Jira ticket (or inherited if already defined at the `apache` org level for
 Grails, as grails-core's are).
 
-One commit: "ASF Compliance - release workflow". Modeled on grails-core's `release.yml`
-and the `apache/grails-github-actions` composite actions, adapted because the deliverable
-is a plugin ZIP, not Maven artifacts (no Nexus staging at all):
 
-ASF policy framing: the **official release is the signed source archive**, voted on by
-the PMC and published to `dist.apache.org`; the plugin ZIP on JetBrains Marketplace is a
-convenience binary.
-
-- Trigger: GitHub `release` event (tag `vX.Y.Z`), same as grails-core.
-- Jobs:
-  1. `publish` — build: `apache/grails-github-actions/pre-release@asf` (sets release
-     version), `./gradlew buildPlugin`, JetBrains `signPlugin` (Marketplace code-signing
-     chain: `CERTIFICATE_CHAIN`, `PRIVATE_KEY`, `PRIVATE_KEY_PASSWORD` secrets), attach
-     ZIP to the GitHub release (`softprops/action-gh-release` @ pinned SHA).
-  2. `source` — produce the source distribution (git-archive based zip excluding
-     `.github` etc.), generate `sha512`, GPG-sign (`.asc`) with the release manager's key
-     from the Grails `KEYS` file.
-  3. `upload` — `needs: [publish, source]`; svn-commit source + convenience artifacts to
-     `dist.apache.org/repos/dist/dev/grails/` for the vote.
-  4. `release` — `environment: release` (required reviewers from `.asf.yaml`; this is the
-     post-vote gate): move dev → `dist/release`, then `./gradlew publishPlugin` to
-     JetBrains Marketplace (`PUBLISH_TOKEN` / `ORG_GRADLE_PROJECT_...PublishingToken`
-     secret — the listing is already transferred, so this just needs a token minted
-     under the ASF-controlled Marketplace account and stored as a repo secret).
-  5. `close` — `apache/grails-github-actions/post-release@asf` (bump to next snapshot,
-     housekeeping).
-- Secrets to provision (INFRA/PMC): GPG signing key material, `GRAILS_GHTOKEN`-style
-  token if needed, JetBrains Marketplace token + code-signing certs, Develocity key
-  (optional).
-- Also add `release-abort`/`release-notes` style helpers later if useful; not required
-  for the first release.
-
-## Phase 7 — Artifact compliance
-
-DONE (2026-07-18): LICENSE/NOTICE are packaged into the plugin jar META-INF via
-`processResources` (verified in the built ZIP). Stretch goals below remain open.
-
-- Ensure `LICENSE` and `NOTICE` are packaged **inside the plugin ZIP / jar META-INF**
-  (grails-core gets this from its shared build-logic plugins; here add a small Gradle
-  convention — `processResources`/`buildPlugin` copy spec — in the root build).
-- Optional stretch goals, ported from grails-core if the PMC wants parity: CycloneDX
-  SBOM (`SbomPlugin.groovy`-style `LICENSE_MAPPING` for transitives), reproducible-build
-  config (stable timestamps/ordering in the ZIP), `verify.sh`-style release verification
-  scripts. Not blockers for the first compliant release.
 
 ## Phase 8 — Verify
 
-- [ ] `./gradlew rat` passes locally and in CI; every exclude justified in a comment.
-- [ ] Header audit grep: no non-excluded source file lacks the full Apache 2.0 header
-      (JetBrains-attributed on imported files, ASF on new files).
-- [ ] No imported file carries ASF licensing language (grep for "Licensed to the Apache
-      Software Foundation" must only hit files authored post-import) — guard until the
-      software grant is recorded.
-- [ ] `NOTICE` + `LICENSE` present at root **and** inside the built plugin ZIP.
-- [ ] `.asf.yaml` valid (notifications, branch protection, release environment).
-- [ ] `./gradlew check buildPlugin verifyPlugin` green in CI on a PR.
-- [ ] Snapshot publish job gated on build+verify via `needs:` and `if:` result guards.
-- [ ] All workflow actions pinned to commit SHAs.
+Verified locally (2026-07-26):
+
+- [x] `./gradlew rat` passes; every exclude carries an inline justification.
+- [x] Header audit: every non-excluded source carries the full Apache 2.0 header. The 38
+      files without one are all under `plugin/testdata/`, which Phase 2 deliberately does
+      not header and RAT excludes.
+- [x] No imported file carries ASF licensing language. The 28 hits for "Licensed to the
+      Apache Software Foundation" are all post-import files — `build-logic/**`,
+      `gradle-bootstrap/`, and seven sources authored in this repo — so the pre-grant
+      guard holds.
+- [x] `NOTICE` + `LICENSE` present at root and inside the built plugin ZIP (in the
+      composed jar's `META-INF`).
+- [x] All workflow actions pinned to full commit SHAs.
+- [x] `./gradlew check buildPlugin verifyPlugin` green locally.
+
+Cannot be closed without a real runner, a tag, or the PMC:
+
+- [ ] `./gradlew check buildPlugin verifyPlugin` and `rat` green **in CI on a PR** —
+      nothing has been pushed yet, so no workflow has ever executed on a GitHub runner.
+      This is the single largest untested area of the migration.
+- [ ] `.asf.yaml` accepted by INFRA (notifications, branch protection, release
+      environment). Structurally complete but never applied.
 - [ ] Dry-run the release workflow to a test tag (skip the `release` environment job).
 - [ ] PMC sign-off on: pre-grant header posture (JetBrains-attributed Apache 2.0),
       plugin id/Marketplace transfer, testdata JARs in the source release.
+
+Dropped as no longer applicable:
+
+- ~~Snapshot publish job gated on build+verify via `needs:`/`if:`~~ — decision 4 settled on
+  a workflow artifact rather than channel publishing, so CI publishes nothing and there is
+  no job to gate.
 
 ## Phase 9 — Post-grant follow-up (BLOCKED until software grant recorded)
 
@@ -408,16 +220,3 @@ non-incubating PMC receiving a codebase).
   files; the JetBrains-attributed form should no longer appear.
 - Revisit RAT config: no changes expected (both header forms are Apache-2.0 to RAT),
   but re-run the audit after the replacement.
-
-## Suggested commit sequence
-
-1. `ASF Compliance - license headers` (expand JetBrains headers to full Apache 2.0 —
-   done in working tree + commit the `etc/bin` expansion script)
-2. `ASF Compliance - repository metadata` (NOTICE, LICENSE rename, .asf.yaml, README,
-   HEADER)
-3. `ASF Compliance - RAT license audit` (rat plugin + config, passing)
-4. `ASF Compliance - plugin identity` (vendor, groups)
-5. `ASF Compliance - CI workflows` (gradle.yml, rat.yml)
-6. `ASF Compliance - release workflow` (release.yml, packaging LICENSE/NOTICE)
-7. *(post-grant, Phase 9)* `ASF Compliance - ASF license headers` (replacement + NOTICE
-   update)

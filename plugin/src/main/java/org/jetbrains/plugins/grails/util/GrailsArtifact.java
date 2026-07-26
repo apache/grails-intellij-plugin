@@ -20,6 +20,7 @@ import com.intellij.icons.AllIcons;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.module.ModuleUtilCore;
+import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ModuleRootManager;
 import com.intellij.openapi.roots.ProjectFileIndex;
@@ -284,7 +285,9 @@ public enum GrailsArtifact {
       return CachedValueProvider.Result.create(
         new GrailsArtifactCache(map, project),
         synchronizer.getFileAndRootsModificationTracker(),
-        GrailsApplicationManager.getInstance(project)
+        GrailsApplicationManager.getInstance(project),
+        // calculateInstances() degrades in dumb mode; expire that result when indexing ends.
+        DumbService.getInstance(project).getModificationTracker()
       );
     }, false);
   }
@@ -338,7 +341,15 @@ public enum GrailsArtifact {
     // Grails plugin descriptors are resolved against the module's whole dependency+libraries scope,
     // so this must run once for the module - not once per dependency, which would add every declared
     // artefact as many times as there are modules in the dependency graph (duplicate navigate targets).
-    collectFromPluginXmls(module, res);
+    //
+    // Skipped during indexing: it queries FilenameIndex and JavaPsiFacade, which throw
+    // IndexNotReadyException in dumb mode. The directory scan above needs no index, so artefacts
+    // declared in source still resolve; only plugin-descriptor ones are missing until indexing
+    // finishes. getCache() depends on the DumbService modification tracker, so the partial result
+    // is discarded and recomputed as soon as we are smart again.
+    if (!DumbService.isDumb(module.getProject())) {
+      collectFromPluginXmls(module, res);
+    }
 
     return res;
   }

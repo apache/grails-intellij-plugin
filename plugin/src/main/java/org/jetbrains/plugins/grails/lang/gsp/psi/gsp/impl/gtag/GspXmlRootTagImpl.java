@@ -20,6 +20,7 @@ import com.intellij.jsp.JspManager;
 import com.intellij.jsp.impl.TldDescriptor;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleUtilCore;
+import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.FileViewProvider;
@@ -109,7 +110,11 @@ public class GspXmlRootTagImpl extends GspXmlTagBaseImpl implements GspXmlRootTa
 
   private NamespaceData getNamespaceData() {
     return CachedValuesManager.getCachedValue(this, () -> Result.create(
-      new NamespaceData(this), PsiModificationTracker.MODIFICATION_COUNT
+      new NamespaceData(this),
+      PsiModificationTracker.MODIFICATION_COUNT,
+      // NamespaceData is built from the index-derived taglib set, which is intentionally partial
+      // during indexing; drop it when indexing ends so prefixes resolve fully afterwards.
+      DumbService.getInstance(getProject()).getModificationTracker()
     ));
   }
 

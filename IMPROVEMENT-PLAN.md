@@ -18,9 +18,17 @@ the phases below target the **new** plugin; the legacy plugin receives only Phas
 > (artifact renames, gradle plugin ids), Phase 0 must verify against a real 7.0.x app
 > — the facts below are authoritative for 8.x and directionally right for 7.x.
 
-## What we have today (surveyed 2026-07-07)
+## What we have today (updated 2026-07-26)
 
-- ~635 main sources (525 Java, 110 Kotlin) + 11 submodules; 184 test classes.
+- 709 main sources, of which **19 are Kotlin** — 3 in `plugin/` and 16 vendored under
+  `libs/testFramework/`. Everything else was converted to Java. 188 test files; the suite
+  is 987 tests across 186 classes.
+- Composed Gradle build (Groovy DSL) with 12 subprojects in tier directories —
+  `plugin/`, `pluginModules/*`, `libs/*`, `compilers/*` — plus `build-logic` as an
+  included build holding every convention plugin. See
+  [AGENTS.md](AGENTS.md#project-structure).
+- Platform 2026.2 (`sinceBuild=262`), IntelliJ Platform Gradle Plugin 2.18.1, version
+  `262.0.0`.
 - Strong core: full GSP language (lexer/parser/PSI, formatting, folding, completion,
   HTML/Groovy/CSS/JS injection), 20+ Groovy member contributors (GORM criteria, named
   queries, constraints), artefact handlers, URL-mapping references, Spring bean
@@ -28,9 +36,16 @@ the phases below target the **new** plugin; the legacy plugin receives only Phas
 - Dual-era structure model: `Grails2Application`/`OldGrails*` (BuildConfig.groovy,
   Gant) alongside `Grails3*` (Gradle-based).
 - Era artifacts: `pluginSupport/` for Searchable, Shiro, WebFlow, Resources (dead);
-  `testdata/` mock Grails **1.x** JARs.
+  `plugin/testdata/` mock Grails **1.x** JARs.
 - Ultimate-only (`com.intellij.modules.ultimate` + javaee/persistence/jsp/spring/
-  database deps). Targets platform 2025.3, IntelliJ Platform Gradle Plugin 2.11.0.
+  database deps).
+
+> **Kotlin cannot be dropped from the build yet.** The 3 files in `plugin/` are genuine
+> rewrite-blockers: `TraitInjectorService.kt` uses coroutines and `suspend fun`;
+> `GrailsForgeModuleBuilder.kt` and `proxySettings.kt` use the Kotlin UI DSL, which has no
+> Java equivalent. The 16 under `libs/testFramework/` are vendored copies of platform
+> test-framework sources, so rewriting them would make future re-syncs painful. Both sets
+> are deliberate; only those two projects still apply the Kotlin convention plugin.
 
 ---
 

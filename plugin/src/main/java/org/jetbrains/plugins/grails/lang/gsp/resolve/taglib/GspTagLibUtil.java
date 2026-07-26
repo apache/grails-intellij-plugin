@@ -18,6 +18,7 @@ package org.jetbrains.plugins.grails.lang.gsp.resolve.taglib;
 
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleUtilCore;
+import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.text.StringUtil;
@@ -103,7 +104,10 @@ public final class GspTagLibUtil {
       module,
       () -> CachedValueProvider.Result.create(
         computeCustomTaglibClasses(module),
-        PsiModificationTracker.MODIFICATION_COUNT
+        PsiModificationTracker.MODIFICATION_COUNT,
+        // The taglib set is index-derived and degrades in dumb mode; expire it once indexing ends
+        // so a partial namespace map cannot outlive indexing.
+        DumbService.getInstance(module.getProject()).getModificationTracker()
       )
     );
   }
@@ -112,6 +116,16 @@ public final class GspTagLibUtil {
     final Map<String, TagLibNamespaceDescriptor> res = new HashMap<>();
 
     res.put(DEFAULT_TAGLIB_PREFIX, new TagLibNamespaceDescriptor(DEFAULT_TAGLIB_PREFIX, module)); // Maps key set must  contain default prefix!!!
+
+    // Everything past this point needs indexes. Discovering the taglib classes is one thing, but
+    // even reading a found class's `namespace` field goes through getPrefixByTagLibClass ->
+    // findCodeFieldByName, which resolves supertypes and therefore queries the stub index. In dumb
+    // mode that throws IndexNotReadyException, and this method sits under XmlTag.getNamespace(),
+    // which the daemon calls on any GSP - so it must return something rather than fail.
+    //
+    // Degrading to the default "g" prefix keeps core GSP editing working while indexing; the
+    // custom prefixes appear when getTagLibClasses() recomputes on the DumbService tracker.
+    if (DumbService.isDumb(module.getProject())) return res;
 
     final Collection<GrClassDefinition> taglibs = new LinkedHashSet<>();
     taglibs.addAll(GrailsArtifact.TAGLIB.getInstances(module).values());
@@ -158,12 +172,19 @@ public final class GspTagLibUtil {
     return CachedValuesManager.getManager(project).getCachedValue(module, () -> CachedValueProvider.Result.create(
       doSearchTaglibsInClassPath(module),
       PsiModificationTracker.MODIFICATION_COUNT,
-      MvcModuleStructureSynchronizer.getInstance(project).getFileAndRootsModificationTracker()
+      MvcModuleStructureSynchronizer.getInstance(project).getFileAndRootsModificationTracker(),
+      DumbService.getInstance(project).getModificationTracker()
     ));
   }
 
   private static @NotNull Collection<GrClassDefinition> doSearchTaglibsInClassPath(final @NotNull Module module) {
     final Project project = module.getProject();
+
+    // Scanning class names needs the stub index, which throws IndexNotReadyException in dumb mode.
+    // Returning nothing leaves the source taglibs and the default "g" prefix in place, so GSP
+    // editing degrades instead of failing; searchTaglibsInClassPath() expires this on smart mode.
+    if (DumbService.isDumb(project)) return Collections.emptyList();
+
     final GlobalSearchScope scope = module.getModuleRuntimeScope(false);
 
     final List<String> taglibNames = new ArrayList<>();
