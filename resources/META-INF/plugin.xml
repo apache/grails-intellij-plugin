@@ -323,7 +323,7 @@
          builders with nothing more than a line in idea.log. These names are pinned by the
          org.apache.grails.intellij.build.intellij-lib convention plugin rather than derived from
          rootProject.name, which is what let this attribute go stale previously. -->
-    <compileServer.plugin classpath="org.apache.grails.intellij.lib.jps-plugin.jar;org.apache.grails.intellij.lib.grails-compiler-patch.jar"/>
+    <compileServer.plugin classpath="org.apache.grails.intellij.compiler.jps-plugin.jar;org.apache.grails.intellij.compiler.grails-compiler-patch.jar"/>
 
     <multiHostInjector implementation="org.jetbrains.plugins.grails.lang.gsp.GspCssInjector"/>
     <multiHostInjector implementation="org.jetbrains.plugins.grails.references.constraints.GormRegexInjector"/>
