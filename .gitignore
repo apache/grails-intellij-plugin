@@ -9,7 +9,5 @@ gradle-bootstrap/gradle
 /.claude
 *.hprof
 .DS_Store
-# reproducible-build test output (etc/bin/test-reproducible-build.sh)
-/first.txt
-/second.txt
+# reproducible-build and release-verification output (etc/bin/*.sh)
 etc/bin/results

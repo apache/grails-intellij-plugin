@@ -20,8 +20,17 @@
 # compares the SHA-256 of each produced artifact. Any artifact whose hash differs between
 # the two builds is printed and the script exits non-zero.
 #
+# Output is written to etc/bin/results (git-ignored):
+#   first.txt / second.txt  - the full "<sha256>  <path>" listing from each build
+#   firstArtifact/          - build 1's copy of every artifact
+#   secondArtifact/         - build 2's copy of every artifact
+# When a run fails, unzip the two copies of a differing artifact and diff them to find
+# what moved (a timestamp, an entry order, a permission bit, an embedded build date).
+#
 # WARNING: this runs `git clean -xdf`, which deletes ALL untracked files (build output,
-# .idea, IDE caches, etc.). Run it only in a throwaway checkout or after stashing work.
+# .idea, IDE caches, and the several GB .intellijPlatform download cache), so each build
+# re-downloads the IntelliJ Platform. Run it only in a throwaway checkout or after
+# stashing work. etc/bin/results is preserved across the cleans.
 #
 # Usage: run from anywhere; the script locates the project root relative to itself.
 #   etc/bin/test-reproducible-build.sh
@@ -40,45 +49,84 @@ else
   sha() { shasum -a 256 "$@"; }
 fi
 
-# Hash the release artifacts (plugin ZIP) and every module jar, sorted by path so the
-# output is order-stable across runs.
-hash_artifacts() {
+RESULTS="etc/bin/results"
+
+# List the release artifacts (plugin ZIP) and every module jar, one relative path per
+# line, sorted so the output is order-stable across runs.
+list_artifacts() {
   {
     find build/distributions -type f -name '*.zip' 2> /dev/null || true
     find . -type f -path '*/build/libs/*.jar' 2> /dev/null || true
-  } | sort | while IFS= read -r f; do
-    [ -f "$f" ] && sha "$f"
-  done
+  } | sed 's|^\./||' | sort
+}
+
+# Write "<sha256>  <path>" for every artifact, and stash a copy of each one under
+# $RESULTS/$1 so a failing run can be diffed after the next `git clean` wipes the tree.
+snapshot_artifacts() {
+  local dest="${RESULTS}/$1" listing="${RESULTS}/$2" f
+  rm -rf "${dest}"
+  mkdir -p "${dest}"
+  : > "${listing}"
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    sha "$f" >> "${listing}"
+    mkdir -p "${dest}/$(dirname -- "$f")"
+    cp -- "$f" "${dest}/$f"
+  done < <(list_artifacts)
 }
 
 build_once() {
-  git clean -xdf
+  # -e keeps the results directory: it holds the previous build's artifacts and listings,
+  # which are the only evidence left once the tree is wiped.
+  git clean -xdf -e "${RESULTS}"
   ./gradlew buildPlugin --rerun-tasks --no-build-cache --no-daemon
 }
 
+mkdir -p "${RESULTS}"
+
 echo "==> First build (SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH})"
 build_once
-FIRST="$(hash_artifacts)"
+snapshot_artifacts firstArtifact first.txt
 
 echo "==> Second build"
 build_once
-SECOND="$(hash_artifacts)"
-
-printf '%s\n' "$FIRST" > first.txt
-printf '%s\n' "$SECOND" > second.txt
+snapshot_artifacts secondArtifact second.txt
 
 echo ""
-echo "Differing artifacts:"
-# comm on the second (hash) field: lines present in only one build indicate a hash mismatch.
-DIFF="$(comm -3 <(printf '%s\n' "$FIRST" | sort) <(printf '%s\n' "$SECOND" | sort) \
-  | awk '{print $2}' | sed 's|^[[:space:]]*||' | grep -v '^$' | sort -u || true)"
+echo "Comparing $(wc -l < "${RESULTS}/first.txt" | tr -d ' ') artifacts:"
+
+# Compare by path rather than by whole line, so an artifact that exists in only one build
+# is reported as such instead of silently looking like two unrelated hash mismatches.
+# Both sha256sum and `shasum -a 256` emit a fixed "<64 hex><2 spaces><path>" layout, so
+# the hash is columns 1-64 and the path starts at column 67 even if it contains spaces.
+hash_of() { # <listing file> <path>
+  awk -v p="$2" 'substr($0, 67) == p { print substr($0, 1, 64) }' "$1"
+}
+
+DIFF=""
+while IFS= read -r path; do
+  [ -n "$path" ] || continue
+  first_hash="$(hash_of "${RESULTS}/first.txt" "$path")"
+  second_hash="$(hash_of "${RESULTS}/second.txt" "$path")"
+  if [ "${first_hash}" != "${second_hash}" ]; then
+    DIFF="${DIFF}${path} (build1=${first_hash:-<missing>} build2=${second_hash:-<missing>})"$'\n'
+  fi
+done < <(cut -c 67- "${RESULTS}/first.txt" "${RESULTS}/second.txt" | sort -u)
 
 if [ -z "$DIFF" ]; then
   echo "  (none) ✅ build is reproducible"
   exit 0
 else
-  printf '  %s\n' "$DIFF"
+  printf '  %s\n' "${DIFF%$'\n'}"
   echo ""
-  echo "❌ build is NOT reproducible — see first.txt / second.txt for the full hash lists"
+  echo "❌ build is NOT reproducible"
+  echo "   full hash lists: ${RESULTS}/first.txt, ${RESULTS}/second.txt"
+  echo "   artifact copies: ${RESULTS}/firstArtifact/, ${RESULTS}/secondArtifact/"
+  echo "   to find the cause, unzip both copies of a differing artifact and diff them:"
+  echo "     unzip -o ${RESULTS}/firstArtifact/<path> -d ${RESULTS}/x1"
+  echo "     unzip -o ${RESULTS}/secondArtifact/<path> -d ${RESULTS}/x2"
+  echo "     diff -r ${RESULTS}/x1 ${RESULTS}/x2"
+  echo "   if the contents match, compare entry metadata instead:"
+  echo "     unzip -lv ${RESULTS}/firstArtifact/<path>"
   exit 1
 fi

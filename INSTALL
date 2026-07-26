@@ -5,29 +5,62 @@ This document covers building the Apache Grails IntelliJ Plugin from a source
 distribution. Most users should instead install the plugin from the JetBrains
 Marketplace inside IntelliJ IDEA.
 
-Requirements & Tooling Setup for Building
------------------------------------------
-Building requires a Java Development Kit (JDK) and Gradle (https://www.gradle.org).
-A configuration file, `.sdkmanrc`, for SDKMAN! (https://sdkman.io) exists in the
-source root with the recommended versions.
+Requirements
+------------
+To run the plugin:
 
-If SDKMAN! is installed, select the tooling by running the following command at
-the source root:
+        IntelliJ IDEA Ultimate 2026.2 or newer. The plugin depends on
+        Ultimate-only functionality and will not load in IDEA Community.
+
+To build the plugin:
+
+        JDK      Liberica 25 (25.0.3-librca), pinned in `.sdkmanrc`
+        Gradle   9.3.1, pinned in `.sdkmanrc`
+        Disk     ~10 GB free for the IntelliJ Platform and Gradle caches
+        Memory   8 GB or more; the build runs a 4 GB Gradle daemon
+        Network  access to Maven Central and the JetBrains repositories
+
+Building with a JDK other than the pinned one will usually work, but the
+resulting artifacts will not be bit-for-bit reproducible against the official
+release. See RELEASE.md for details.
+
+1. Install the JDK and Gradle
+-----------------------------
+The required versions are pinned in `.sdkmanrc`, a configuration file for
+SDKMAN! (https://sdkman.io). If SDKMAN! is installed, install and select both
+tools by running the following at the source root:
 
         sdk env install
 
-Otherwise, Gradle must be bootstrapped so that the correct version is used. The
-source distribution ships without the Gradle Wrapper jar (per ASF source-release
-policy), but it can be regenerated with any locally installed Gradle:
+Otherwise install the same versions by any means you prefer -- for example
+Liberica JDK 25 (https://bell-sw.com/pages/downloads/) and Gradle 9.3.1
+(https://gradle.org/releases/) -- and put them on PATH:
+
+        export JAVA_HOME=/path/to/liberica-jdk-25
+        export PATH="$JAVA_HOME/bin:/path/to/gradle-9.3.1/bin:$PATH"
+
+Confirm the versions before continuing:
+
+        java -version
+        gradle --version
+
+2. Bootstrap the Gradle Wrapper
+-------------------------------
+Per ASF source-release policy this distribution ships without the Gradle
+Wrapper jar, so it must be regenerated once using the Gradle installed above:
 
         cd gradle-bootstrap
         gradle bootstrap
+        cd ..
 
-This pins the wrapper to the version in `.sdkmanrc` and installs `gradlew` at the
-source root. For the remaining commands: use `gradle` if tooling was installed
-with SDKMAN! or `./gradlew` if the wrapper was bootstrapped.
+`gradle-bootstrap` is a small standalone Gradle build whose only job is to run
+the `wrapper` task at the version named in `.sdkmanrc` and copy the results
+(`gradlew`, `gradlew.bat`, and `gradle/wrapper/`) to the source root.
 
-Building
+Use `./gradlew` for every command below. It is preferred over invoking `gradle`
+directly because it guarantees the pinned Gradle version is used.
+
+3. Build
 --------
 Build the plugin distribution ZIP:
 
@@ -36,6 +69,16 @@ Build the plugin distribution ZIP:
 The ZIP is written to `build/distributions/` and can be installed in IntelliJ
 IDEA via Settings > Plugins > Install Plugin from Disk.
 
+Note: the first build downloads the IntelliJ Platform (IntelliJ IDEA Ultimate)
+and the bundled plugins it compiles against, which takes time and several
+gigabytes of disk space. Later builds reuse that cache.
+
+To build a specific version instead of the default in `gradle.properties`:
+
+        ./gradlew buildPlugin -Pversion=262.0.1
+
+4. Verify (optional)
+--------------------
 Other useful tasks:
 
         ./gradlew check          # compile and run tests
@@ -43,6 +86,5 @@ Other useful tasks:
         ./gradlew rat            # Apache RAT license audit
         ./gradlew runIde         # launch a sandbox IDE with the plugin
 
-Note: the build downloads the IntelliJ Platform (IntelliJ IDEA Ultimate) and
-bundled plugins it compiles against; the first build requires network access and
-several gigabytes of disk space.
+To verify a staged or released distribution -- checksums, GPG signatures, and a
+reproducible rebuild -- see RELEASE.md and the scripts under `etc/bin`.
