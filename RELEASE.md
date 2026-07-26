@@ -300,9 +300,6 @@ Actions tab, giving it the release tag and ticking the confirmation box. It will
 3. Cancel any in-flight `Release` workflow runs.
 4. Delete the GitHub Release and the git tag.
 
-Unlike `grails-core` there is no Nexus staging repository to drop; this repository
-publishes no Maven artifacts.
-
 Afterwards, if a `[VOTE]` thread was already started, reply to it with `[CANCEL][VOTE]`
 and the reason. The workflow prints this reminder at the end.
 
@@ -445,7 +442,3 @@ The tooling that supports this:
 | `etc/bin/verify-reproducible.sh` | Rebuilds from the staged source distribution and compares to the staged binary. |
 | `etc/bin/Dockerfile` | Linux environment matching CI, for ruling out host-OS differences. |
 | `.sdkmanrc` | The pinned JDK and Gradle versions; the single source of truth for both CI and the Dockerfile. |
-
-This mirrors the approach taken in
-[`grails-core`](https://github.com/apache/grails-core/blob/HEAD/RELEASE.md), scaled down
-to this repository's two artifacts.

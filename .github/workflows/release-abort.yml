@@ -21,9 +21,8 @@
 # Marketplace they are public, and the correct response is a new version rather than an
 # abort. The job hard-fails if it finds the version already promoted.
 #
-# Unlike grails-core's equivalent there is no Nexus staging repository to drop -- this
-# repository publishes no Maven artifacts, only the dist.apache.org distributions and the
-# Marketplace plugin.
+# There is no Nexus staging repository to drop: this repository publishes no Maven
+# artifacts, only the dist.apache.org distributions and the Marketplace plugin.
 name: "Release - Abort Release"
 on:
   workflow_dispatch:
