@@ -13,17 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.jetbrains.plugins.groovy.grails.action;
 
-package org.jetbrains.plugins.groovy.grails.action
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.impl.source.PostprocessReformattingAspect;
+import org.jetbrains.plugins.groovy.grails.GrailsTestCase;
 
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.psi.impl.source.PostprocessReformattingAspect
-import org.jetbrains.plugins.groovy.grails.GrailsTestCase
+public class DomainFieldIntentionsTest extends GrailsTestCase {
 
-class DomainFieldIntentionsTest : GrailsTestCase() {
 
-  fun testInnerClass() {
-    val file = addDomain("""
+  public void testInnerClass() {
+    PsiFile file = addDomain("""
+
 class City {
 
   String name;
@@ -32,35 +34,38 @@ class City {
     String nam<caret>e;
   }
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", false)
+    runIntention(file, "Make property nullable", false);
   }
 
-  fun testTransientsField() {
-    val file = addDomain("""
+  public void testTransientsField() {
+    PsiFile file = addDomain("""
+
 class City {
 
   String nam<caret>e;
 
   static transients = ["name"]
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", false)
+    runIntention(file, "Make property nullable", false);
   }
 
-  fun testConstraintsNotExists1() {
-    val file = addDomain("""
+  public void testConstraintsNotExists1() {
+    PsiFile file = addDomain("""
+
 class City {
 
     String nam<caret>e;
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", true)
+    runIntention(file, "Make property nullable", true);
 
     checkResult("""
+
 class City {
 
     String name;
@@ -69,21 +74,23 @@ class City {
         name(nullable: true)
     }
 }
-""")
+""");
   }
 
-  fun testConstraintsNotExists2() {
-    val file = addDomain("""
+  public void testConstraintsNotExists2() {
+    PsiFile file = addDomain("""
+
 class City {
 
     String nam<caret>e;
 
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", true)
+    runIntention(file, "Make property nullable", true);
 
     checkResult("""
+
 class City {
 
     String name;
@@ -92,22 +99,24 @@ class City {
         name(nullable: true)
     }
 }
-""")
+""");
   }
 
-  fun testConstraintsWithoutInitializer() {
-    val file = addDomain("""
+  public void testConstraintsWithoutInitializer() {
+    PsiFile file = addDomain("""
+
 class City {
 
   String nam<caret>e;
 
   static constraints
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", true)
+    runIntention(file, "Make property nullable", true);
 
     checkResult("""
+
 class City {
 
   String name;
@@ -116,22 +125,24 @@ class City {
       name(nullable: true)
   }
 }
-""")
+""");
   }
 
-  fun testConstraintsNull() {
-    val file = addDomain("""
+  public void testConstraintsNull() {
+    PsiFile file = addDomain("""
+
 class City {
 
   String nam<caret>e;
 
   static constraints = null
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", true)
+    runIntention(file, "Make property nullable", true);
 
     checkResult("""
+
 class City {
 
   String name;
@@ -140,35 +151,38 @@ class City {
       name(nullable: true)
   }
 }
-""")
+""");
   }
 
-  fun testConstraintsWithInvalidInitializer() {
-    val file = addDomain("""
+  public void testConstraintsWithInvalidInitializer() {
+    PsiFile file = addDomain("""
+
 class City {
 
   String nam<caret>e;
 
   static constraints = "!!!!!!"
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", false)
+    runIntention(file, "Make property nullable", false);
   }
 
-  fun testConstraintsEmpty() {
-    val file = addDomain("""
+  public void testConstraintsEmpty() {
+    PsiFile file = addDomain("""
+
 class City {
 
   String nam<caret>e;
 
   static constraints = { }
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", true)
+    runIntention(file, "Make property nullable", true);
 
     checkResult("""
+
 class City {
 
   String name;
@@ -177,19 +191,20 @@ class City {
       name(nullable: true)
   }
 }
-""")
+""");
   }
 
-  private fun checkResult(text: String) {
-    ApplicationManager.getApplication().runWriteAction {
-      PostprocessReformattingAspect.getInstance(project).doPostponedFormatting()
-    }
+  private void checkResult(String text) {
+    ApplicationManager.getApplication().runWriteAction(() -> {
+      PostprocessReformattingAspect.getInstance(getProject()).doPostponedFormatting();
+    });
 
-    myFixture.checkResult(text)
+    myFixture.checkResult(text);
   }
 
-  fun testConstraintsHasFieldDescription() {
-    val file = addDomain("""
+  public void testConstraintsHasFieldDescription() {
+    PsiFile file = addDomain("""
+
 class City {
 
   String nam<caret>e;
@@ -198,11 +213,12 @@ class City {
     name()
   }
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", true)
+    runIntention(file, "Make property nullable", true);
 
     checkResult("""
+
 class City {
 
   String name;
@@ -211,11 +227,12 @@ class City {
     name(nullable: true)
   }
 }
-""")
+""");
   }
 
-  fun testNullableAlreadyExists() {
-    val file = addDomain("""
+  public void testNullableAlreadyExists() {
+    PsiFile file = addDomain("""
+
 class City {
 
   String nam<caret>e;
@@ -224,13 +241,14 @@ class City {
     name(nullable: true)
   }
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", false)
+    runIntention(file, "Make property nullable", false);
   }
 
-  fun testNonNullable() {
-    val file = addDomain("""
+  public void testNonNullable() {
+    PsiFile file = addDomain("""
+
 class City {
 
   String nam<caret>e;
@@ -239,11 +257,12 @@ class City {
     name(nullable: false)
   }
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", true)
+    runIntention(file, "Make property nullable", true);
 
     checkResult("""
+
 class City {
 
   String name;
@@ -252,11 +271,12 @@ class City {
     name(nullable: true)
   }
 }
-""")
+""");
   }
 
-  fun testInvalidValue() {
-    val file = addDomain("""
+  public void testInvalidValue() {
+    PsiFile file = addDomain("""
+
 class City {
 
   String nam<caret>e;
@@ -265,25 +285,27 @@ class City {
     name(nullable: 1 + 2)
   }
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", false)
+    runIntention(file, "Make property nullable", false);
   }
 
-  fun testMakeNullableOnPrimitiveField() {
-    val file = addDomain("""
+  public void testMakeNullableOnPrimitiveField() {
+    PsiFile file = addDomain("""
+
 class City {
 
   int siz<caret>e;
 
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", false)
+    runIntention(file, "Make property nullable", false);
   }
 
-  fun testAppStatement1() {
-    val file = addDomain("""
+  public void testAppStatement1() {
+    PsiFile file = addDomain("""
+
 class City {
 
   String nam<caret>e;
@@ -292,11 +314,12 @@ class City {
     name nullable: false
   }
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", true)
+    runIntention(file, "Make property nullable", true);
 
     checkResult("""
+
 class City {
 
   String name;
@@ -305,11 +328,12 @@ class City {
     name nullable: true
   }
 }
-""")
+""");
   }
 
-  fun testAppStatement2() {
-    val file = addDomain("""
+  public void testAppStatement2() {
+    PsiFile file = addDomain("""
+
 class City {
 
   String nam<caret>e;
@@ -318,11 +342,12 @@ class City {
     name asdasdasd: 4
   }
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", true)
+    runIntention(file, "Make property nullable", true);
 
     checkResult("""
+
 class City {
 
   String name;
@@ -331,11 +356,12 @@ class City {
     name nullable: true, asdasdasd: 4
   }
 }
-""")
+""");
   }
 
-  fun testCreation1() {
-    val file = addDomain("""
+  public void testCreation1() {
+    PsiFile file = addDomain("""
+
 class City {
 
   String nam<caret>e;
@@ -344,11 +370,12 @@ class City {
     name(nullable:, size: 4)
   }
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", true)
+    runIntention(file, "Make property nullable", true);
 
     checkResult("""
+
 class City {
 
   String name;
@@ -357,11 +384,12 @@ class City {
     name(nullable: true, size: 4)
   }
 }
-""")
+""");
   }
 
-  fun testCreation2() {
-    val file = addDomain("""
+  public void testCreation2() {
+    PsiFile file = addDomain("""
+
 class City {
 
   String nam<caret>e;
@@ -370,11 +398,12 @@ class City {
     name(nullable: false, size: 4)
   }
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", true)
+    runIntention(file, "Make property nullable", true);
 
     checkResult("""
+
 class City {
 
   String name;
@@ -383,11 +412,12 @@ class City {
     name(nullable: true, size: 4)
   }
 }
-""")
+""");
   }
 
-  fun testCreation3() {
-    val file = addDomain("""
+  public void testCreation3() {
+    PsiFile file = addDomain("""
+
 class City {
 
   String nam<caret>e;
@@ -396,11 +426,12 @@ class City {
     name(size: 4, nullable: )
   }
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", true)
+    runIntention(file, "Make property nullable", true);
 
     checkResult("""
+
 class City {
 
   String name;
@@ -409,11 +440,12 @@ class City {
     name(size: 4, nullable: true)
   }
 }
-""")
+""");
   }
 
-  fun testCreation4() {
-    val file = addDomain("""
+  public void testCreation4() {
+    PsiFile file = addDomain("""
+
 class City {
 
   String nam<caret>e;
@@ -423,11 +455,12 @@ class City {
       description(nullable: false)
   }
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", true)
+    runIntention(file, "Make property nullable", true);
 
     checkResult("""
+
 class City {
 
   String name;
@@ -438,11 +471,12 @@ class City {
       name(nullable: true)
   }
 }
-""")
+""");
   }
 
-  fun testMakeUnique() {
-    val file = addDomain("""
+  public void testMakeUnique() {
+    PsiFile file = addDomain("""
+
 class City {
 
   String nam<caret>e;
@@ -451,11 +485,12 @@ class City {
     name()
   }
 }
-""")
+""");
 
-    runIntention(file, "Make property unique", true)
+    runIntention(file, "Make property unique", true);
 
     checkResult("""
+
 class City {
 
   String name;
@@ -464,11 +499,12 @@ class City {
     name(unique: true)
   }
 }
-""")
+""");
   }
 
-  fun testMakeUniqueInCommand() {
-    val file = addController("""
+  public void testMakeUniqueInCommand() {
+    PsiFile file = addController("""
+
 class CccController {
   def index = { ZzzCommand com ->
   }
@@ -482,13 +518,14 @@ class ZzzCommand {
     name()
   }
 }
-""")
+""");
 
-    runIntention(file, "Make property unique", false)
+    runIntention(file, "Make property unique", false);
   }
 
-  fun testMakeNullableInCommand() {
-    val file = addController("""
+  public void testMakeNullableInCommand() {
+    PsiFile file = addController("""
+
 class CccController {
   def index = { ZzzCommand com ->
   }
@@ -502,11 +539,12 @@ class ZzzCommand {
     name()
   }
 }
-""")
+""");
 
-    runIntention(file, "Make property nullable", true)
+    runIntention(file, "Make property nullable", true);
 
     checkResult("""
+
 class CccController {
   def index = { ZzzCommand com ->
   }
@@ -520,19 +558,20 @@ class ZzzCommand {
     name(nullable: true)
   }
 }
-""")
+""");
   }
 
-  fun testUniqueIsNotApplicable() {
-    val file = addDomain("""
+  public void testUniqueIsNotApplicable() {
+    PsiFile file = addDomain("""
+
 class City {
 
   Set stree<caret>t;
 
 }
-""")
+""");
 
-    runIntention(file, "Make property unique", false)
+    runIntention(file, "Make property unique", false);
   }
 
 }

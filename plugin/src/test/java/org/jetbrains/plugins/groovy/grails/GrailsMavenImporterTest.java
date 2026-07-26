@@ -13,20 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.jetbrains.plugins.groovy.grails;
 
-package org.jetbrains.plugins.groovy.grails
+import com.intellij.facet.FacetManager;
+import com.intellij.javaee.web.facet.WebFacet;
+import com.intellij.javaee.web.WebRoot;
+import com.intellij.maven.testFramework.MavenMultiVersionImportingTestCase;
+import com.intellij.openapi.module.Module;
+import com.intellij.openapi.vfs.VfsUtil;
+import com.intellij.openapi.vfs.VirtualFile;
+import org.jetbrains.plugins.grails.config.GrailsFramework;
+import org.junit.Test;
 
-import com.intellij.facet.FacetManager
-import com.intellij.javaee.web.facet.WebFacet
-import com.intellij.maven.testFramework.MavenMultiVersionImportingTestCase
-import com.intellij.openapi.vfs.VfsUtil
-import com.intellij.openapi.vfs.VirtualFile
-import org.jetbrains.plugins.grails.config.GrailsFramework
-import org.junit.Test
-import java.util.Arrays
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-class GrailsMavenImporterTest : MavenMultiVersionImportingTestCase() {
-  private fun createGrailsStdFolders() {
+public class GrailsMavenImporterTest extends MavenMultiVersionImportingTestCase {
+
+  private void createGrailsStdFolders() {
     createProjectSubDirs("grails-app/conf/hibernate",
                          "grails-app/controllers",
                          "grails-app/domain",
@@ -40,13 +45,13 @@ class GrailsMavenImporterTest : MavenMultiVersionImportingTestCase() {
                          "src/java",
                          "test/unit",
                          "test/integration",
-                         "web-app/WEB-INF")
+                         "web-app/WEB-INF");
   }
 
   @Test
-  fun testImportGrailsProject() {
-    createStdProjectFolders()
-    createGrailsStdFolders()
+  public void testImportGrailsProject() {
+    createStdProjectFolders("");
+    createGrailsStdFolders();
 
     importProject("  <groupId>test</groupId>" +
                   "  <artifactId>project</artifactId>" +
@@ -73,9 +78,9 @@ class GrailsMavenImporterTest : MavenMultiVersionImportingTestCase() {
                   "        <version>1.0</version>" +
                   "      </plugin>" +
                   "    </plugins>" +
-                  "  </build>")
+                  "  </build>", false);
 
-    assertModules("project")
+    assertModules("project");
 
     assertSources("project",
                   "grails-app/controllers",
@@ -90,34 +95,34 @@ class GrailsMavenImporterTest : MavenMultiVersionImportingTestCase() {
                   "src/java",
                   "src/main/java",
                   "src/gwt",
-                  "src/scala")
-    assertDefaultResources("project", "grails-app/resources")
+                  "src/scala");
+    assertDefaultResources("project", "grails-app/resources");
 
     assertTestSources("project",
                       "src/test/java",
                       "test/integration",
                       "test/functional",
-                      "test/unit")
-    assertDefaultTestResources("project")
+                      "test/unit");
+    assertDefaultTestResources("project");
 
-    val module = getModule("project")
+    Module module = getModule("project");
 
-    val webFacet = FacetManager.getInstance(module).findFacet(WebFacet.ID, "GrailsWeb")
-    assertNotNull(webFacet)
+    WebFacet webFacet = FacetManager.getInstance(module).findFacet(WebFacet.ID, "GrailsWeb");
+    assertNotNull(webFacet);
 
-    val appRoot = GrailsFramework.getInstance().findAppRoot(module)
-    assertNotNull(appRoot)
+    VirtualFile appRoot = GrailsFramework.getInstance().findAppRoot(module);
+    assertNotNull(appRoot);
 
-    val shouldBeRoot: MutableList<VirtualFile?> = ArrayList(Arrays.asList(
+    List<VirtualFile> shouldBeRoot = new ArrayList<>(Arrays.asList(
       VfsUtil.findRelativeFile(appRoot, "web-app"),
       VfsUtil.findRelativeFile(appRoot, "grails-app", "views")
-    ))
+    ));
 
-    for (webRoot in webFacet!!.getWebRoots()) {
-      shouldBeRoot.remove(webRoot.file)
+    for (WebRoot webRoot : webFacet.getWebRoots()) {
+      shouldBeRoot.remove(webRoot.getFile());
     }
 
-    assertTrue("Following web folder was not added to web roots: " + shouldBeRoot.toString() + "; " + webFacet.getWebRoots(),
-               shouldBeRoot.isEmpty())
+    assertTrue("Following web folder was not added to web roots: " + shouldBeRoot + "; " + webFacet.getWebRoots(),
+               shouldBeRoot.isEmpty());
   }
 }
