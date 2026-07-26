@@ -1,2 +1,0 @@
-Premain-Class: org.jetbrains.groovy.grails.rt.Agent
-Can-Redefine-Classes: true

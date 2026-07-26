@@ -27,3 +27,15 @@ legacyBytecode {
 dependencies {
     compileOnly 'org.grails:grails-bootstrap:1.2.0'
 }
+
+// This jar is a Java agent. The attributes have to be declared on the task: Gradle's Jar task
+// writes its own META-INF/MANIFEST.MF and silently shadows a resource at the same path, which is
+// why the packaged jar carried only "Manifest-Version: 1.0" and would have failed a -javaagent:
+// launch with "Failed to find Premain-Class manifest attribute". Verified against the
+// pre-restructure branch: the resource-based manifest never made it into the jar.
+tasks.named('jar') {
+    manifest.attributes(
+            'Premain-Class': 'org.jetbrains.groovy.grails.rt.Agent',
+            'Can-Redefine-Classes': 'true',
+    )
+}

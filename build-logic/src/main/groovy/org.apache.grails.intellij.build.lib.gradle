@@ -24,5 +24,17 @@ plugins {
     id 'org.apache.grails.intellij.build.java'
 }
 
+def shortName = projectDir.name
+
 group = 'org.apache.grails.intellij.lib'
-base.archivesName = projectDir.name
+
+// No IntelliJ Platform plugin here, so the `jar` task output is what ships -- there is no
+// composedJar to pin. Name it the same way the IPGP tiers name theirs, and drop the version:
+// IPGP already forces an empty archiveVersion on module composed jars, and every artifact in
+// this build carries the one project version, so a version in the file name only makes the
+// name churn from release to release.
+base.archivesName = "org.apache.grails.intellij.lib.$shortName"
+
+tasks.named('jar') { task ->
+    task.archiveVersion = ''
+}
