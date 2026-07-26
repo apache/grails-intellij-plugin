@@ -1,0 +1,134 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Withdraws a staged release. This is only valid BEFORE the vote passes: it removes the
+# artifacts staged in dist/dev, cancels the in-flight Release workflow, and deletes the
+# GitHub Release and tag.
+#
+# Once artifacts have been promoted to dist/release and published to the JetBrains
+# Marketplace they are public, and the correct response is a new version rather than an
+# abort. The job hard-fails if it finds the version already promoted.
+#
+# Unlike grails-core's equivalent there is no Nexus staging repository to drop -- this
+# repository publishes no Maven artifacts, only the dist.apache.org distributions and the
+# Marketplace plugin.
+name: "Release - Abort Release"
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag to abort (e.g. v262.0.0)'
+        required: true
+        type: string
+      confirm:
+        description: 'I understand this deletes the staged artifacts, the GitHub Release, and the tag'
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: write # to delete the release and tag
+  actions: write # to cancel the in-flight release run
+env:
+  SVN_FOLDER: INTELLIJ
+  SVN_PROJECT: grails
+  TAG: ${{ github.event.inputs.release_tag }}
+jobs:
+  abort:
+    name: "Abort Release"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "🛑 Require explicit confirmation"
+        if: ${{ github.event.inputs.confirm != 'true' }}
+        run: |
+          echo "::error::Re-run with the confirmation box checked to abort ${TAG}."
+          exit 1
+      - name: "📝 Establish release version"
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+      - name: "🛠️ Install tools"
+        run: sudo apt-get install -y subversion subversion-tools
+      - name: "🔎 Refuse to abort an already-released version"
+        env:
+          SVN_USERNAME: ${{ secrets.SVC_DIST_GRAILS_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVC_DIST_GRAILS_PASSWORD }}
+        # A version present under dist/release has passed its vote and is public. Deleting
+        # it would violate ASF release policy, so stop before touching anything.
+        run: |
+          set -euo pipefail
+          RELEASED="https://dist.apache.org/repos/dist/release/${SVN_PROJECT}/${SVN_FOLDER}/${VERSION}"
+          if svn ls --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
+                    --depth=empty "${RELEASED}" > /dev/null 2>&1; then
+            echo "::error::${VERSION} is already published at ${RELEASED} and cannot be aborted. Release a new version instead."
+            exit 1
+          fi
+          echo "✅ ${VERSION} is not published; safe to abort"
+      - name: "🗑️ Remove staged artifacts from dist.apache.org"
+        env:
+          SVN_USERNAME: ${{ secrets.SVC_DIST_GRAILS_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVC_DIST_GRAILS_PASSWORD }}
+        run: |
+          set -euo pipefail
+          DEV="https://dist.apache.org/repos/dist/dev/${SVN_PROJECT}/${SVN_FOLDER}/${VERSION}"
+          if svn ls --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
+                    --depth=empty "${DEV}" > /dev/null 2>&1; then
+            svnmucc --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
+              -m "Remove ${SVN_PROJECT} ${SVN_FOLDER} dev version ${VERSION}" \
+              rm "${DEV}"
+            echo "✅ Removed ${DEV}"
+          else
+            echo "No staged artifacts at ${DEV} — nothing to remove"
+          fi
+      - name: "🛑 Cancel in-flight Release workflow runs"
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        # The Release workflow is triggered by `release: published`, so filter on that
+        # event to avoid cancelling unrelated runs.
+        run: |
+          set -euo pipefail
+          for status in queued in_progress; do
+            gh api -H 'Accept: application/vnd.github+json' \
+              "/repos/${REPO}/actions/runs?event=release&status=${status}&per_page=100" \
+              --jq '.workflow_runs[].id'
+          done > run-ids.txt
+          while read -r run_id; do
+            [ -n "${run_id}" ] || continue
+            echo "Cancelling run ${run_id}"
+            gh api -X POST "/repos/${REPO}/actions/runs/${run_id}/cancel" || true
+          done < run-ids.txt
+          rm -f run-ids.txt
+      - name: "🗑️ Remove the GitHub Release and tag"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if release_json="$(gh api -H 'Accept: application/vnd.github+json' \
+                                    "/repos/${REPO}/releases/tags/${TAG}" 2>/dev/null)"; then
+            release_id="$(jq -r '.id' <<< "${release_json}")"
+            echo "Deleting GitHub Release ${release_id} for tag ${TAG}"
+            gh api -X DELETE "/repos/${REPO}/releases/${release_id}"
+          else
+            echo "No GitHub Release found for tag ${TAG} — skipping release deletion"
+          fi
+
+          echo "Deleting git tag ${TAG}"
+          gh api -X DELETE "/repos/${REPO}/git/refs/tags/${TAG}" || echo "Tag ${TAG} already absent"
+      - name: "📧 MANUAL - Cancel the vote thread"
+        run: |
+          echo "::group::Manual Follow-up"
+          echo "If a [VOTE] thread was already started for ${TAG}, reply to it on"
+          echo "dev@grails.apache.org with [CANCEL][VOTE] and the reason."
+          echo "::endgroup::"

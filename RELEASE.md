@@ -290,21 +290,31 @@ A release can be withdrawn cleanly **only before the vote passes**. Once artifac
 promoted to `dist/release` and published to the Marketplace, they are public and the
 correct response is a new version, not a rollback.
 
-To abort a staged release:
+Run the **Release - Abort Release** workflow
+([`.github/workflows/release-abort.yml`](.github/workflows/release-abort.yml)) from the
+Actions tab, giving it the release tag and ticking the confirmation box. It will:
 
-1. **Remove the staged distributions** from the ASF dev area:
-   ```bash
-   svn rm -m "Abort Apache Grails IntelliJ Plugin <version>" \
-     https://dist.apache.org/repos/dist/dev/grails/INTELLIJ/<version>
-   ```
-2. **Cancel the `Release` workflow run** if it is still in progress.
-3. **Delete the GitHub Release** (this does not delete the tag).
-4. **Delete the tag:**
-   ```bash
-   git push --delete origin v<version>
-   ```
-5. If a `[VOTE]` thread was already started, reply to it with `[CANCEL][VOTE]` and the
-   reason.
+1. Refuse to continue if the version already exists under
+   `dist/release/grails/INTELLIJ` — that means the vote passed and the release is public.
+2. Remove the staged distributions from `dist/dev/grails/INTELLIJ/<version>`.
+3. Cancel any in-flight `Release` workflow runs.
+4. Delete the GitHub Release and the git tag.
+
+Unlike `grails-core` there is no Nexus staging repository to drop; this repository
+publishes no Maven artifacts.
+
+Afterwards, if a `[VOTE]` thread was already started, reply to it with `[CANCEL][VOTE]`
+and the reason. The workflow prints this reminder at the end.
+
+The equivalent manual steps, if the workflow cannot be used:
+
+```bash
+svn rm -m "Abort Apache Grails IntelliJ Plugin <version>" \
+  https://dist.apache.org/repos/dist/dev/grails/INTELLIJ/<version>
+git push --delete origin v<version>
+```
+
+plus deleting the GitHub Release from the Releases page.
 
 Nothing is published to the JetBrains Marketplace until the post-vote `release` job runs,
 so aborting before that point leaves no public trace.
