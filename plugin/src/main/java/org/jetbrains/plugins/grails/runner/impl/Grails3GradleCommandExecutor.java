@@ -28,7 +28,7 @@ import org.jetbrains.plugins.grails.structure.Grails3Application;
 import org.jetbrains.plugins.grails.structure.GrailsApplication;
 import org.jetbrains.plugins.groovy.mvc.MvcCommand;
 
-import static org.jetbrains.plugins.grails.runner.SetupKt.addPlainOutput;
+import static org.jetbrains.plugins.grails.runner.GrailsRunnerSetup.addPlainOutput;
 import static org.jetbrains.plugins.grails.runner.util.GrailsExecutionUtils.addCommonJvmOptions;
 
 public final class Grails3GradleCommandExecutor extends GrailsCommandLineExecutor {

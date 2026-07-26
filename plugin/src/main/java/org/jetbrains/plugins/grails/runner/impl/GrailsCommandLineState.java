@@ -29,7 +29,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.grails.runner.GrailsCommandLineExecutor;
 import org.jetbrains.plugins.grails.runner.GrailsRunConfiguration;
 import org.jetbrains.plugins.grails.runner.GrailsRunConfigurationExtension;
-import org.jetbrains.plugins.grails.runner.SetupKt;
+import org.jetbrains.plugins.grails.runner.GrailsRunnerSetup;
 import org.jetbrains.plugins.grails.structure.Grails3Application;
 import org.jetbrains.plugins.grails.structure.GrailsApplication;
 import org.jetbrains.plugins.grails.util.version.Version;
@@ -97,7 +97,7 @@ public class GrailsCommandLineState extends BaseGrailsCommandLineState {
       }
     }
 
-    SetupKt.setupJavaParameters(getConfiguration(), this, parameters);
+    GrailsRunnerSetup.setupJavaParameters(getConfiguration(), this, parameters);
     return parameters;
   }
 

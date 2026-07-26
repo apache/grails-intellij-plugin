@@ -40,7 +40,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.jetbrains.plugins.grails.runner.SetupKt.addPlainOutput;
+import static org.jetbrains.plugins.grails.runner.GrailsRunnerSetup.addPlainOutput;
 import static org.jetbrains.plugins.grails.runner.util.GrailsExecutionUtils.addCommonJvmOptions;
 
 public final class Grails3InstallationCommandExecutor extends GrailsCommandLineExecutor implements GrailsInstallationExecutor {
