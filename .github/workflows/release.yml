@@ -67,7 +67,19 @@ jobs:
           PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
         run: ./gradlew signPlugin -Pversion=${VERSION}
       - name: "📦 Rename plugin ZIP to distribution name"
-        run: cp build/distributions/Grails-${VERSION}-signed.zip ${DIST_NAME}-${VERSION}-bin.zip
+        # The ZIP base name is the IntelliJ plugin name (rootProject.name, currently
+        # "Grails IntelliJ Plugin"), not the ASF distribution name, and it contains spaces.
+        # Glob for it rather than hardcoding, so renaming the plugin cannot silently break
+        # the release; fail loudly if the match is not exactly one file.
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          signed=(build/distributions/*-"${VERSION}"-signed.zip)
+          if [[ ${#signed[@]} -ne 1 ]]; then
+            echo "::error::expected exactly 1 signed plugin ZIP for ${VERSION} in build/distributions, found ${#signed[@]}: ${signed[*]-}"
+            exit 1
+          fi
+          cp "${signed[0]}" "${DIST_NAME}-${VERSION}-bin.zip"
       - name: "🔐 Set up GPG" # use env var to not expose the key
         env:
           GPG_KEY: ${{ secrets.GRAILS_GPG_KEY }}
