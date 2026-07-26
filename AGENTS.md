@@ -71,7 +71,7 @@ limitations under the License.
 6. **Don't add license headers to `testdata/`** — the content *is* the test input;
    headers break parser/position-sensitive tests.
 7. **No wildcard imports** — use explicit imports, matching the existing sources.
-8. **JDK is pinned via `.sdkmanrc`** (Java 25, Gradle 9.3.1) — no Gradle toolchain on
+8. **JDK is pinned via `.sdkmanrc`** (Java 25, Gradle 9.6.1) — no Gradle toolchain on
    purpose, for reproducible builds. Run `sdk env` if the build complains about the JDK.
 9. **Remove debug probes before committing** (see Debugging below).
 10. **Retry transient commit failures.** Git commits can fail with
@@ -84,9 +84,9 @@ limitations under the License.
 | IntelliJ Platform | 2026.2 Ultimate (`sinceBuild` 262) |
 | JDK (build) | 25 (pinned in `.sdkmanrc`) |
 | JDK (`grails-rt`, `grails-compiler-patch`, `jps-plugin`) | targets Java 8/11 |
-| Gradle | 9.3.1 (wrapper) |
+| Gradle | 9.6.1 (wrapper) |
 | IntelliJ Platform Gradle Plugin | 2.x |
-| Kotlin | 2.3.x (stdlib not bundled) |
+| Kotlin | 2.4.x (stdlib not bundled) |
 | Tests | JUnit 4 + AssertJ + IntelliJ test framework (light/heavy fixtures) |
 
 ## Project Structure

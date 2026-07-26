@@ -20,7 +20,7 @@ To **build** the plugin:
 | | Version | Notes |
 | --- | --- | --- |
 | JDK | Liberica 25 (`25.0.3-librca`) | Pinned in [`.sdkmanrc`](.sdkmanrc). The exact JDK matters — see [reproducible builds](RELEASE.md#verifying-a-reproducible-build). |
-| Gradle | 9.3.1 | Pinned in [`.sdkmanrc`](.sdkmanrc). Only needed to bootstrap the wrapper; otherwise use `./gradlew`. |
+| Gradle | 9.6.1 | Pinned in [`.sdkmanrc`](.sdkmanrc). Only needed to bootstrap the wrapper; otherwise use `./gradlew`. |
 | Git | any recent | To clone the repository. |
 | Disk | ~10 GB free | The IntelliJ Platform and bundled plugins are downloaded into `.intellijPlatform` and the Gradle cache. |
 | Memory | 8 GB+ | The build runs a 4 GB Gradle daemon (set in `gradle.properties`). |
@@ -57,12 +57,12 @@ sdk env            # selects them for the current shell
 
 If you would rather not use SDKMAN!, install the same versions by any means you prefer —
 for example download [Liberica JDK 25](https://bell-sw.com/pages/downloads/) and
-[Gradle 9.3.1](https://gradle.org/releases/) manually — then make sure `java -version`
+[Gradle 9.6.1](https://gradle.org/releases/) manually — then make sure `java -version`
 and `gradle --version` report them:
 
 ```bash
 export JAVA_HOME=/path/to/liberica-jdk-25
-export PATH="$JAVA_HOME/bin:/path/to/gradle-9.3.1/bin:$PATH"
+export PATH="$JAVA_HOME/bin:/path/to/gradle-9.6.1/bin:$PATH"
 ```
 
 Building with a different JDK will usually work, but the artifacts will not be

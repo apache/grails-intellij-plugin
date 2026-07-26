@@ -15,7 +15,7 @@ To run the plugin:
 To build the plugin:
 
         JDK      Liberica 25 (25.0.3-librca), pinned in `.sdkmanrc`
-        Gradle   9.3.1, pinned in `.sdkmanrc`
+        Gradle   9.6.1, pinned in `.sdkmanrc`
         Disk     ~10 GB free for the IntelliJ Platform and Gradle caches
         Memory   8 GB or more; the build runs a 4 GB Gradle daemon
         Network  access to Maven Central and the JetBrains repositories
@@ -33,11 +33,11 @@ tools by running the following at the source root:
         sdk env install
 
 Otherwise install the same versions by any means you prefer -- for example
-Liberica JDK 25 (https://bell-sw.com/pages/downloads/) and Gradle 9.3.1
+Liberica JDK 25 (https://bell-sw.com/pages/downloads/) and Gradle 9.6.1
 (https://gradle.org/releases/) -- and put them on PATH:
 
         export JAVA_HOME=/path/to/liberica-jdk-25
-        export PATH="$JAVA_HOME/bin:/path/to/gradle-9.3.1/bin:$PATH"
+        export PATH="$JAVA_HOME/bin:/path/to/gradle-9.6.1/bin:$PATH"
 
 Confirm the versions before continuing:
 
