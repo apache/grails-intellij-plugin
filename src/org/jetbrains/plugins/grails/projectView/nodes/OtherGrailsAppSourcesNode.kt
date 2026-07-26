@@ -25,7 +25,7 @@ import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiManager
 import com.intellij.util.PlatformIcons
 import com.intellij.util.lazyUnsafe
-import org.jetbrains.plugins.grails.artefact.api.displayableArtefactHandlers
+import org.jetbrains.plugins.grails.artefact.api.ArtefactHandlers
 import org.jetbrains.plugins.grails.projectView.NodeWeights
 import org.jetbrains.plugins.grails.projectView.impl.shouldShowItem
 import org.jetbrains.plugins.grails.projectView.impl.specialGrailsAppFolders
@@ -49,7 +49,7 @@ class OtherGrailsAppSourcesNode(
     val manager = PsiManager.getInstance(project)
 
     // directories from nodes that are showed separately
-    val artefactDirs = displayableArtefactHandlers.filter {
+    val artefactDirs = ArtefactHandlers.displayableArtefactHandlers().filter {
       it.isVisible(application)
     }.mapNotNullTo(HashSet()) {
       it.getDirectory(application)

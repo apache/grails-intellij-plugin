@@ -20,7 +20,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.psi.PsiFileSystemItem
 import com.intellij.psi.PsiManager
 import org.jetbrains.plugins.grails.GroovyMvcIcons
-import org.jetbrains.plugins.grails.artefact.impl.getArtefactHandler
+import org.jetbrains.plugins.grails.artefact.impl.GrailsArtefacts
 import org.jetbrains.plugins.grails.projectView.NodeWeights
 import org.jetbrains.plugins.grails.structure.GrailsApplication
 import org.jetbrains.plugins.groovy.lang.psi.GroovyFile
@@ -29,7 +29,7 @@ import org.jetbrains.plugins.grails.artefact.api.GrailsDisplayableArtefactHandle
 internal fun shouldShowItem(item: PsiFileSystemItem): Boolean {
   if (item !is GroovyFile) return true
   val clazz = item.classes.singleOrNull() ?: return true
-  val handler = getArtefactHandler(clazz)
+  val handler = GrailsArtefacts.getArtefactHandler(clazz)
   return handler !is ArtefactHandler
 }
 

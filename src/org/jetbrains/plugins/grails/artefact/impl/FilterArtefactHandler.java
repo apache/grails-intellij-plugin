@@ -14,31 +14,37 @@
  * limitations under the License.
  */
 
-package org.jetbrains.plugins.grails.projectView;
+package org.jetbrains.plugins.grails.artefact.impl;
 
-import com.intellij.ide.IconProvider;
-import com.intellij.openapi.util.Iconable;
-import com.intellij.psi.PsiClass;
-import com.intellij.psi.PsiElement;
-import com.intellij.ui.IconManager;
+import com.intellij.icons.AllIcons;
+import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.plugins.grails.artefact.api.GrailsArtefactHandler;
 import org.jetbrains.plugins.grails.artefact.api.IconOwner;
-import org.jetbrains.plugins.grails.artefact.impl.GrailsArtefacts;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
+import org.jetbrains.plugins.grails.structure.GrailsApplication;
 
 import javax.swing.Icon;
 
-final class GrailsIconProvider extends IconProvider {
+public final class FilterArtefactHandler implements GrailsArtefactHandler, IconOwner {
+
+  public static final FilterArtefactHandler INSTANCE = new FilterArtefactHandler();
+
+  private FilterArtefactHandler() {
+  }
+
   @Override
-  public @Nullable Icon getIcon(@NotNull PsiElement element, @Iconable.IconFlags int flags) {
-    if (element instanceof GrClassDefinition) {
-      GrailsArtefactHandler handler = GrailsArtefacts.getArtefactHandler((PsiClass)element);
-      if (handler instanceof IconOwner) {
-        return IconManager.getInstance().createLayeredIcon(element, ((IconOwner)handler).getIcon(), flags);
-      }
-    }
-    return null;
+  public @NotNull String getArtefactHandlerID() {
+    return "Filters";
+  }
+
+  @Override
+  public @Nullable VirtualFile getDirectory(@NotNull GrailsApplication application) {
+    return application.getAppRoot().findChild("conf");
+  }
+
+  @Override
+  public @NotNull Icon getIcon() {
+    return AllIcons.General.Filter;
   }
 }

@@ -14,19 +14,13 @@
  * limitations under the License.
  */
 
-package org.jetbrains.plugins.grails.artefact.api
+package org.jetbrains.plugins.grails.artefact.api;
 
-import com.intellij.openapi.vfs.VirtualFile
-import org.jetbrains.plugins.grails.structure.GrailsApplication
+import org.jetbrains.annotations.NotNull;
 
-interface GrailsArtefactHandler {
+import javax.swing.Icon;
 
-  val artefactHandlerID: String
+public interface IconOwner {
 
-  val artefactClassSuffix: String get() = artefactHandlerID
-
-  fun getDirectory(application: GrailsApplication): VirtualFile? = null
-
-  val annotationFqns: Collection<String> get() = emptyList()
-
+  @NotNull Icon getIcon();
 }

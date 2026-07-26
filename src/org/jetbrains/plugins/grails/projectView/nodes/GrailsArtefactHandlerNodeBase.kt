@@ -21,7 +21,7 @@ import com.intellij.ide.projectView.ViewSettings
 import com.intellij.openapi.project.Project
 import com.intellij.psi.search.GlobalSearchScope
 import org.jetbrains.plugins.grails.artefact.api.GrailsDisplayableArtefactHandler
-import org.jetbrains.plugins.grails.artefact.impl.getArtefacts
+import org.jetbrains.plugins.grails.artefact.impl.GrailsArtefacts
 import org.jetbrains.plugins.grails.structure.GrailsApplication
 
 abstract class GrailsArtefactHandlerNodeBase<T : Any>(
@@ -33,5 +33,5 @@ abstract class GrailsArtefactHandlerNodeBase<T : Any>(
   val grailsApplication: GrailsApplication get() = findNotNullValueOfType()
   protected val scope: GlobalSearchScope get() = grailsApplication.getScope(includeDependencies = false, testsOnly = false)
   protected abstract val artefactHandler: GrailsDisplayableArtefactHandler
-  protected val artefacts: Classes get() = artefactHandler.getArtefacts(grailsApplication, scope)
+  protected val artefacts: Classes get() = GrailsArtefacts.getArtefacts(artefactHandler, grailsApplication, scope)
 }

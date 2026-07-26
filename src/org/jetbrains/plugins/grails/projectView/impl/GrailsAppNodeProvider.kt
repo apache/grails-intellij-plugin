@@ -19,7 +19,7 @@ package org.jetbrains.plugins.grails.projectView.impl
 import com.intellij.ide.projectView.ViewSettings
 import com.intellij.ide.util.treeView.AbstractTreeNode
 import com.intellij.psi.PsiManager
-import org.jetbrains.plugins.grails.artefact.api.displayableArtefactHandlers
+import org.jetbrains.plugins.grails.artefact.api.ArtefactHandlers
 import org.jetbrains.plugins.grails.projectView.api.GrailsViewNodeProvider
 import org.jetbrains.plugins.grails.projectView.nodes.GrailsArtefactHandlerNode
 import org.jetbrains.plugins.grails.projectView.nodes.GrailsPsiDirectoryNode
@@ -32,7 +32,7 @@ internal class GrailsAppNodeProvider : GrailsViewNodeProvider {
 
     val result = mutableListOf<AbstractTreeNode<*>>()
 
-    displayableArtefactHandlers.filter { it.isVisible(application) }.mapTo(result) {
+    ArtefactHandlers.displayableArtefactHandlers().filter { it.isVisible(application) }.mapTo(result) {
       GrailsArtefactHandlerNode(project, it, settings)
     }
 
