@@ -13,9 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.jetbrains.plugins.grails.structure;
 
-package org.jetbrains.plugins.grails.structure.impl
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.plugins.grails.gradle.GrailsModuleData;
 
-import com.intellij.lang.properties.psi.PropertiesFile
+public interface Grails3Application extends GrailsApplication {
 
-internal fun PropertiesFile?.getPropertyValue(key: String) = this?.findPropertyByKey(key)?.value
+  @NotNull GrailsModuleData getGradleData();
+}

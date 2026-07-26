@@ -13,15 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.jetbrains.plugins.grails.structure;
 
-package org.jetbrains.plugins.grails.structure
+import com.intellij.lang.properties.psi.PropertiesFile;
+import com.intellij.openapi.module.Module;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import com.intellij.lang.properties.psi.PropertiesFile
-import com.intellij.openapi.module.Module
+public interface OldGrailsApplication extends GrailsApplication {
 
-interface OldGrailsApplication : GrailsApplication {
+  @NotNull Module getModule();
 
-  val module: Module
-
-  val applicationProperties: PropertiesFile?
+  @Nullable PropertiesFile getApplicationProperties();
 }

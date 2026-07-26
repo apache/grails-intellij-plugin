@@ -29,7 +29,7 @@ import org.jetbrains.plugins.grails.structure.GrailsApplication;
 
 import java.util.Collection;
 
-import static org.jetbrains.plugins.grails.structure.UtilKt.COMPARATOR;
+import static org.jetbrains.plugins.grails.structure.GrailsApplications.COMPARATOR;
 
 public class GrailsApplicationCombobox extends ComboBox<GrailsApplication> {
 
