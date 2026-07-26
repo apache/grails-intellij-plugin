@@ -15,15 +15,10 @@
  */
 plugins {
     id 'org.apache.grails.intellij.build.intellij-module'
-    id 'org.apache.grails.intellij.build.legacy-layout'
 }
 
 dependencies {
     intellijPlatform {
-        // UpdateGspFileCopyright derives from this plugin's UpdatePsiFileCopyright and needs
-        // nothing from javaee/JSP; see that class for why the JSP original's checks were inert.
-        bundledPlugin 'com.intellij.copyright'
+        bundledModule 'intellij.platform.langInjection'
     }
-
-    compileOnly project(':')
 }

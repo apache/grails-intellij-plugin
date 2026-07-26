@@ -19,14 +19,15 @@ pluginManagement {
 
 rootProject.name = 'grails-intellij-plugin'
 
-include 'copyright'
-include 'coverage'
+// Project names carry their subpath so every project path is unique and readable, and so
+// IPGP's path-derived defaults never see a nested path. Directories are remapped below.
+['copyright', 'coverage', 'hibernate', 'i18n', 'langInjection', 'maven'].each { name ->
+    include "pluginModules-$name"
+    project(":pluginModules-$name").projectDir = file("pluginModules/$name")
+}
+
 include 'gradle-tooling'
 include 'grails-compiler-patch'
 include 'grails-rt'
-include 'hibernate'
-include 'i18n'
 include 'jps-plugin'
-include 'langInjection'
-include 'maven'
 include 'testFramework'

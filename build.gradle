@@ -45,12 +45,12 @@ dependencies {
 
         // plugin modules. project(path:) is required: a bare project(':x') resolves through the
         // owner chain to Project.project(String) and returns a Project, not a Dependency.
-        pluginModule project(path: ':copyright')
-        pluginModule project(path: ':coverage')
-        pluginModule project(path: ':hibernate')
-        pluginModule project(path: ':i18n')
-        pluginModule project(path: ':langInjection')
-        pluginModule project(path: ':maven')
+        pluginModule project(path: ':pluginModules-copyright')
+        pluginModule project(path: ':pluginModules-coverage')
+        pluginModule project(path: ':pluginModules-hibernate')
+        pluginModule project(path: ':pluginModules-i18n')
+        pluginModule project(path: ':pluginModules-langInjection')
+        pluginModule project(path: ':pluginModules-maven')
 
         // additional plugins required for testing
         testBundledPlugin 'com.intellij.hibernate'
@@ -68,8 +68,8 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.assertj:assertj-core:4.0.0-M1'
     testImplementation project(':testFramework')
-    testCompileOnly project(':i18n')
-    testCompileOnly project(':copyright')
+    testCompileOnly project(':pluginModules-i18n')
+    testCompileOnly project(':pluginModules-copyright')
 
     implementation project(':gradle-tooling')
     implementation project(':grails-rt')
@@ -79,15 +79,15 @@ dependencies {
     runtimeOnly project(':jps-plugin')
 
     // Aggregate JaCoCo coverage from every module into the root testCodeCoverageReport.
-    jacocoAggregation project(':copyright')
-    jacocoAggregation project(':coverage')
+    jacocoAggregation project(':pluginModules-copyright')
+    jacocoAggregation project(':pluginModules-coverage')
     jacocoAggregation project(':gradle-tooling')
     jacocoAggregation project(':grails-compiler-patch')
     jacocoAggregation project(':grails-rt')
-    jacocoAggregation project(':hibernate')
-    jacocoAggregation project(':i18n')
+    jacocoAggregation project(':pluginModules-hibernate')
+    jacocoAggregation project(':pluginModules-i18n')
     jacocoAggregation project(':jps-plugin')
-    jacocoAggregation project(':langInjection')
-    jacocoAggregation project(':maven')
+    jacocoAggregation project(':pluginModules-langInjection')
+    jacocoAggregation project(':pluginModules-maven')
     jacocoAggregation project(':testFramework')
 }
