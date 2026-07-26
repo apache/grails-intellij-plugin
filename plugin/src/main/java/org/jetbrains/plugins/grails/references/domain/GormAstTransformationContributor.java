@@ -29,7 +29,6 @@ import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.util.containers.ContainerUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.grails.gorm.GormVersion;
-import org.jetbrains.plugins.grails.gorm.GormVersionKt;
 import org.jetbrains.plugins.grails.util.GrailsArtifactTransformerUtils;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrField;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
@@ -74,7 +73,7 @@ public final class GormAstTransformationContributor implements AstTransformation
     final PsiType myMapType = TypesUtil.createTypeByFQClassName(CommonClassNames.JAVA_UTIL_MAP, aClass);
     context.addMethod(new GrLightMethodBuilder(aClass).addParameter("namedArgs", myMapType));
 
-    GormVersion version = GormVersionKt.getGormVersion(aClass);
+    GormVersion version = GormVersion.forElement(aClass);
     if (version != GormVersion.BELOW_4) return;
 
     List<PsiMethod> methods = new ArrayList<>();

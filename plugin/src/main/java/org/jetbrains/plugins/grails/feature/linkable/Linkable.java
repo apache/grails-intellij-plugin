@@ -13,17 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-plugins {
-    id 'org.apache.grails.intellij.build.intellij-module'
-}
+package org.jetbrains.plugins.grails.feature.linkable;
 
-dependencies {
-    intellijPlatform {
-        bundledPlugin 'org.jetbrains.idea.maven'
-        // java debugger classes moved into the java plugin modules in 2026.2
-        bundledPlugin 'com.intellij.java'
-    }
+import com.intellij.openapi.util.Key;
 
-    compileOnly project(':libs-grails-rt')
-    compileOnly project(':plugin')
+/**
+ * Shared between the transformation that synthesises {@code link(Map)} and the provider that
+ * supplies its named arguments: the marker lets the provider recognise the synthetic method.
+ */
+final class Linkable {
+
+  private Linkable() {
+  }
+
+  static final String LINK_FQN = "grails.rest.Link";
+
+  static final Key<Object> LINK_METHOD_KEY = Key.create("grails.linkable.method.key");
+
+  static final Object LINK_METHOD_MARKER = new Object();
 }
