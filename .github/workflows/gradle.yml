@@ -47,13 +47,13 @@ jobs:
         run: ./gradlew check buildPlugin
       - name: "📝 Determine plugin ZIP name"
         id: plugin-zip
-        run: echo "name=$(basename build/distributions/*.zip .zip)" >> "$GITHUB_OUTPUT"
+        run: echo "name=$(basename plugin/build/distributions/*.zip .zip)" >> "$GITHUB_OUTPUT"
       - name: "📦 Upload plugin ZIP"
         id: upload-plugin
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ steps.plugin-zip.outputs.name }}
-          path: build/distributions/*.zip
+          path: plugin/build/distributions/*.zip
           archive: false # serve the plugin zip as-is instead of wrapping it in another zip (requires upload-artifact v7+)
       - name: "📢 Publish plugin to job summary"
         env:
@@ -64,7 +64,7 @@ jobs:
             echo ""
             echo "| File | Size | Download |"
             echo "|------|------|----------|"
-            for zip in build/distributions/*.zip; do
+            for zip in plugin/build/distributions/*.zip; do
               echo "| \`$(basename "$zip")\` | $(du -h "$zip" | cut -f1) | [${{ steps.plugin-zip.outputs.name }} artifact]($ARTIFACT_URL) |"
             done
           } >> "$GITHUB_STEP_SUMMARY"
@@ -93,4 +93,4 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: plugin-verifier-report
-          path: build/reports/pluginVerifier
+          path: plugin/build/reports/pluginVerifier

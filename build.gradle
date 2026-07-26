@@ -13,81 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import org.jetbrains.intellij.platform.gradle.Constants
-import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
-// Deliberately no allprojects/subprojects block: every project applies its own convention
-// plugins. Everything here is either content (dependency lists) or root-only wiring.
+// The root project is a pure aggregator: it compiles nothing and produces no artifact. It owns
+// only the two things that must run from the repository root -- the licence audit, whose exclude
+// patterns are anchored at the audited directory, and the cross-project coverage aggregation,
+// which keeps its report at the path CI uploads.
+//
+// Deliberately no allprojects/subprojects block: every project applies its own convention plugins.
 plugins {
-    id 'org.apache.grails.intellij.build.intellij-plugin'
-    id 'org.apache.grails.intellij.build.legacy-layout'
     id 'org.apache.grails.intellij.build.rat'
     id 'org.apache.grails.intellij.build.coverage-aggregation'
 }
 
 dependencies {
-    intellijPlatform {
-        bundledPlugin 'com.intellij.javaee'
-        bundledPlugin 'com.intellij.javaee.el' // no longer transitive in 2026.2
-        bundledPlugin 'com.intellij.persistence'
-        bundledPlugin 'com.intellij.javaee.jpa'
-        bundledPlugin 'com.intellij.jsp'
-        bundledPlugin 'com.intellij.javaee.web'
-        bundledPlugin 'org.intellij.groovy'
-        bundledPlugin 'com.intellij.database'
-        bundledPlugin 'com.intellij.spring'
-        bundledPlugin 'com.intellij.gradle' // split out of org.jetbrains.plugins.gradle in 2026.2
-        bundledPlugin 'org.jetbrains.plugins.gradle'
-        bundledPlugin 'com.intellij.modules.ultimate'
-        bundledPlugin 'com.intellij.microservices.jvm'
-        bundledPlugin 'JavaScript'
-        bundledPlugin 'com.intellij.css'
-
-        // plugin modules. project(path:) is required: a bare project(':x') resolves through the
-        // owner chain to Project.project(String) and returns a Project, not a Dependency.
-        pluginModule project(path: ':pluginModules-copyright')
-        pluginModule project(path: ':pluginModules-coverage')
-        pluginModule project(path: ':pluginModules-hibernate')
-        pluginModule project(path: ':pluginModules-i18n')
-        pluginModule project(path: ':pluginModules-langInjection')
-        pluginModule project(path: ':pluginModules-maven')
-
-        // additional plugins required for testing
-        testBundledPlugin 'com.intellij.hibernate'
-        testBundledPlugin 'HtmlTools'
-        testBundledPlugin 'org.jetbrains.idea.maven'
-        testBundledPlugin 'com.intellij.copyright' // GspCopyrightUpdaterTest
-
-        // .INSTANCE because these are Kotlin objects; see testFramework/build.gradle
-        testFramework TestFrameworkType.Plugin.ExternalSystem.INSTANCE
-        testFramework TestFrameworkType.Plugin.Java.INSTANCE
-        testFramework TestFrameworkType.Plugin.Maven.INSTANCE
-        testFramework TestFrameworkType.Platform.INSTANCE
-    }
-
-    testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.assertj:assertj-core:4.0.0-M1'
-    testImplementation project(':libs-testFramework')
-    testCompileOnly project(':pluginModules-i18n')
-    testCompileOnly project(':pluginModules-copyright')
-
-    implementation project(':libs-gradle-tooling')
-    implementation project(':libs-grails-rt')
-
-    // JPS/build
-    runtimeOnly project(':compilers-grails-compiler-patch')
-    runtimeOnly project(':compilers-jps-plugin')
-
-    // Aggregate JaCoCo coverage from every module into the root testCodeCoverageReport.
+    // Every project that compiles code contributes to the aggregate coverage report.
+    jacocoAggregation project(':plugin')
     jacocoAggregation project(':pluginModules-copyright')
     jacocoAggregation project(':pluginModules-coverage')
-    jacocoAggregation project(':libs-gradle-tooling')
-    jacocoAggregation project(':compilers-grails-compiler-patch')
-    jacocoAggregation project(':libs-grails-rt')
     jacocoAggregation project(':pluginModules-hibernate')
     jacocoAggregation project(':pluginModules-i18n')
-    jacocoAggregation project(':compilers-jps-plugin')
     jacocoAggregation project(':pluginModules-langInjection')
     jacocoAggregation project(':pluginModules-maven')
+    jacocoAggregation project(':libs-gradle-tooling')
+    jacocoAggregation project(':libs-grails-rt')
     jacocoAggregation project(':libs-testFramework')
+    jacocoAggregation project(':compilers-jps-plugin')
+    jacocoAggregation project(':compilers-grails-compiler-patch')
 }

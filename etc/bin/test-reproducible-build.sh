@@ -55,7 +55,7 @@ RESULTS="etc/bin/results"
 # line, sorted so the output is order-stable across runs.
 list_artifacts() {
   {
-    find build/distributions -type f -name '*.zip' 2> /dev/null || true
+    find plugin/build/distributions -type f -name '*.zip' 2> /dev/null || true
     find . -type f -path '*/build/libs/*.jar' 2> /dev/null || true
   } | sed 's|^\./||' | sort
 }

@@ -26,5 +26,5 @@ dependencies {
     }
 
     compileOnly project(':libs-grails-rt')
-    compileOnly project(':')
+    compileOnly project(':plugin')
 }

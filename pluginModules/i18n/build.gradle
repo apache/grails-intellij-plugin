@@ -23,5 +23,5 @@ dependencies {
         bundledPlugin 'com.intellij.java-i18n'
     }
 
-    compileOnly project(':')
+    compileOnly project(':plugin')
 }

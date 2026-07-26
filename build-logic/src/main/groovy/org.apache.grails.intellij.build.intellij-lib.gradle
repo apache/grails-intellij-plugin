@@ -27,16 +27,26 @@
 // the root would silently rename them. plugin.xml's compileServer.plugin classpath names two
 // of these jars literally, so the name has to be stable and space-free.
 
+// It deliberately does NOT apply org.jetbrains.intellij.platform.module. IPGP treats any project
+// that applies .module and is reachable from the plugin via api/implementation/runtimeOnly as an
+// inferred *content module*, and packages it into lib/modules/. These projects are plain jars that
+// must sit in lib/: the compileServer.plugin classpath resolves them there by file name, and a jar
+// in lib/modules/ with no <content><module> entry is never loaded at all.
+//
+// That inference is also configuration-order dependent -- it only bites once the plugin project is
+// configured after these -- so it stayed invisible while the plugin lived at the root. Applying only
+// .base (via intellij-platform) gives the platform compile classpath without claiming to be a module.
+
 plugins {
     id 'org.apache.grails.intellij.build.intellij-platform'
-    id 'org.jetbrains.intellij.platform.module'
 }
 
 def shortName = projectDir.name
 
 group = 'org.apache.grails.intellij.lib'
-base.archivesName = shortName
+// The jar task output is what ships; version dropped so the name is stable across releases.
+base.archivesName = "org.apache.grails.intellij.lib.$shortName"
 
-tasks.named('composedJar') { task ->
-    task.archiveBaseName = "org.apache.grails.intellij.lib.$shortName"
+tasks.named('jar') { task ->
+    task.archiveVersion = ''
 }

@@ -72,16 +72,16 @@ jobs:
           PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
         run: ./gradlew signPlugin -Pversion=${VERSION}
       - name: "📦 Rename plugin ZIP to distribution name"
-        # The ZIP base name is the IntelliJ plugin name (rootProject.name, currently
-        # "Grails IntelliJ Plugin"), not the ASF distribution name, and it contains spaces.
-        # Glob for it rather than hardcoding, so renaming the plugin cannot silently break
-        # the release; fail loudly if the match is not exactly one file.
+        # The ZIP base name comes from intellijPlatform.projectName, pinned to
+        # 'apache-grails-intellij-plugin' by the intellij-plugin convention plugin, so this
+        # rename is now effectively a copy. Glob rather than hardcode anyway, so a future
+        # rename cannot silently break the release; fail loudly unless exactly one file matches.
         run: |
           set -euo pipefail
           shopt -s nullglob
-          signed=(build/distributions/*-"${VERSION}"-signed.zip)
+          signed=(plugin/build/distributions/*-"${VERSION}"-signed.zip)
           if [[ ${#signed[@]} -ne 1 ]]; then
-            echo "::error::expected exactly 1 signed plugin ZIP for ${VERSION} in build/distributions, found ${#signed[@]}: ${signed[*]-}"
+            echo "::error::expected exactly 1 signed plugin ZIP for ${VERSION} in plugin/build/distributions, found ${#signed[@]}: ${signed[*]-}"
             exit 1
           fi
           cp "${signed[0]}" "${DIST_NAME}-${VERSION}-bin.zip"

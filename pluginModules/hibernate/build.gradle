@@ -22,5 +22,5 @@ dependencies {
         bundledPlugin 'com.intellij.hibernate'
     }
 
-    compileOnly project(':')
+    compileOnly project(':plugin')
 }

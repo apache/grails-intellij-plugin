@@ -26,6 +26,10 @@
 // verifies nothing.
 
 plugins {
+    // base supplies repositories: the RAT plugin resolves its own tool jar
+    // (org.apache.rat:apache-rat) at execution time, and the root project no longer gets
+    // repositories transitively now that it does not apply the java conventions.
+    id 'org.apache.grails.intellij.build.base'
     id 'lifecycle-base'
     id 'org.nosphere.apache.rat'
 }
@@ -60,11 +64,9 @@ tasks.named('rat') { task ->
             // reproducible-build and release-verification output (git-ignored)
             'etc/bin/results/**',
             // generated code (JFlex lexers; headers are injected by the generator config)
-            'gen/**',
             '**/src/main/gen/**',
             // test fixtures: content *is* the test input (mock Grails projects/JARs);
             // adding headers would break parser/position-sensitive tests
-            'testdata/**',
             '**/testdata/**',
             // file templates that materialize inside end-user projects
             '**/resources/fileTemplates/**',

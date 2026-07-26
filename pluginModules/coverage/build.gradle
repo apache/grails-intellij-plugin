@@ -23,5 +23,5 @@ dependencies {
         bundledPlugin 'Coverage'
     }
 
-    compileOnly project(':')
+    compileOnly project(':plugin')
 }

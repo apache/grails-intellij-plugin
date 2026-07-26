@@ -45,5 +45,5 @@ dependencies {
     compileOnly 'junit:junit:4.13.2'
     compileOnly 'org.assertj:assertj-core:4.0.0-M1'
 
-    compileOnly project(':')
+    compileOnly project(':plugin')
 }

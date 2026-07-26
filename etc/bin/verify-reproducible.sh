@@ -91,9 +91,9 @@ echo "✅ wrapper bootstrapped"
 echo "==> Rebuilding the plugin from source (this downloads the IntelliJ Platform; expect several GB)"
 (cd "${SRC_DIR}" && ./gradlew buildPlugin -Pversion="${VERSION}" --no-daemon)
 
-REBUILT_ZIP="$(find "${SRC_DIR}/build/distributions" -maxdepth 1 -type f -name '*.zip' | head -n 1)"
+REBUILT_ZIP="$(find "${SRC_DIR}/plugin/build/distributions" -maxdepth 1 -type f -name '*.zip' | head -n 1)"
 if [ -z "${REBUILT_ZIP}" ]; then
-  echo "❌ rebuild produced no ZIP in ${SRC_DIR}/build/distributions" >&2
+  echo "❌ rebuild produced no ZIP in ${SRC_DIR}/plugin/build/distributions" >&2
   exit 1
 fi
 echo "✅ rebuilt $(basename "${REBUILT_ZIP}")"
