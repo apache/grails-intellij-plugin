@@ -20,8 +20,8 @@ goal mapping is skipped, because those versions must run tests as
 
 ## Packaging
 
-Content module `intellij.groovy.grails.maven`, shipped as
-`lib/modules/intellij.groovy.grails.maven.jar`.
+Content module `org.apache.grails.intellij.module.maven`, shipped as
+`lib/modules/org.apache.grails.intellij.module.maven.jar`.
 
 Requires `org.jetbrains.idea.maven` and `com.intellij.java` at runtime — the Java debugger classes
 moved into the java plugin modules in 2026.2.

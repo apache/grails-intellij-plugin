@@ -8,8 +8,8 @@ IntelliJ **content module** integrating Grails test runs with the IDE's code-cov
 
 ## Packaging
 
-Content module `intellij.groovy.grails.coverage`, shipped as
-`lib/modules/intellij.groovy.grails.coverage.jar`.
+Content module `org.apache.grails.intellij.module.coverage`, shipped as
+`lib/modules/org.apache.grails.intellij.module.coverage.jar`.
 
 Its descriptor declares `<plugin id="Coverage"/>`. This matters: depending on the
 `com.intellij.modules.coverage` alias instead caused a `NoClassDefFoundError` at IDE startup, because

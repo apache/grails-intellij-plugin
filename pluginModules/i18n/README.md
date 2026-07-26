@@ -10,8 +10,8 @@ extract-to-bundle intentions and inspections for hard-coded strings in GSP and G
 
 ## Packaging
 
-Content module `intellij.groovy.grails.i18n`, shipped as
-`lib/modules/intellij.groovy.grails.i18n.jar`. Its descriptor also declares
+Content module `org.apache.grails.intellij.module.i18n`, shipped as
+`lib/modules/org.apache.grails.intellij.module.i18n.jar`. Its descriptor also declares
 `<resource-bundle>messages.GrailsBundle</resource-bundle>`.
 
 Requires `com.intellij.java-i18n` and `org.intellij.groovy` at runtime.

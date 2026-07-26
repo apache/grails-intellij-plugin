@@ -57,12 +57,12 @@
   </dependencies>
 
   <content namespace="jetbrains">
-    <module name="intellij.groovy.grails.copyright"/>
-    <module name="intellij.groovy.grails.i18n"/>
-    <module name="intellij.groovy.grails.maven"/>
-    <module name="intellij.groovy.grails.hibernate"/>
-    <module name="intellij.groovy.grails.langInjection"/>
-    <module name="intellij.groovy.grails.coverage"/>
+    <module name="org.apache.grails.intellij.module.copyright"/>
+    <module name="org.apache.grails.intellij.module.i18n"/>
+    <module name="org.apache.grails.intellij.module.maven"/>
+    <module name="org.apache.grails.intellij.module.hibernate"/>
+    <module name="org.apache.grails.intellij.module.langInjection"/>
+    <module name="org.apache.grails.intellij.module.coverage"/>
   </content>
 
   <depends optional="true" config-file="grails-js-integration.xml">JavaScript</depends>

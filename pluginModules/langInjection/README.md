@@ -12,8 +12,8 @@ at it from its descriptor with `<injectionConfig config="META-INF/languageInject
 
 ## Packaging
 
-Content module `intellij.groovy.grails.langInjection`, shipped as
-`lib/modules/intellij.groovy.grails.langInjection.jar`.
+Content module `org.apache.grails.intellij.module.langInjection`, shipped as
+`lib/modules/org.apache.grails.intellij.module.langInjection.jar`.
 
 This is the only module whose descriptor depends on a bundled **module** rather than a plugin
 (`<module name="intellij.platform.langInjection"/>`), and the only one with no Java/Kotlin sources at

@@ -13,8 +13,8 @@ nothing from javaee/JSP — see that class for why the JSP original's checks wer
 
 ## Packaging
 
-Content module `intellij.groovy.grails.copyright`, shipped as
-`lib/modules/intellij.groovy.grails.copyright.jar`. The module name, the descriptor file name and the
+Content module `org.apache.grails.intellij.module.copyright`, shipped as
+`lib/modules/org.apache.grails.intellij.module.copyright.jar`. The module name, the descriptor file name and the
 jar base name are one three-way contract — see the `intellij-module` convention plugin.
 
 Requires the `com.intellij.copyright` plugin at runtime.

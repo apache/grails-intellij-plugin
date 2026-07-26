@@ -10,7 +10,7 @@ persistence facets, mapping awareness and the Hibernate console.
 
 ## Packaging
 
-Content module `intellij.groovy.grails.hibernate`, shipped as
-`lib/modules/intellij.groovy.grails.hibernate.jar`.
+Content module `org.apache.grails.intellij.module.hibernate`, shipped as
+`lib/modules/org.apache.grails.intellij.module.hibernate.jar`.
 
 Requires the `com.intellij.hibernate` plugin at runtime.

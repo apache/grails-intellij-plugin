@@ -43,8 +43,8 @@ def shortName = projectDir.name
 group = 'org.apache.grails.intellij.module'
 base.archivesName = shortName
 
-// Prefix is changed to 'org.apache.grails.intellij.module.' in the content-module rename step;
-// deriving it here is what keeps the three coupled strings from drifting apart again.
+// Deriving the name here is what keeps the three coupled strings from drifting apart: this must
+// equal the <module name> in plugin.xml and the descriptor file name in this project's resources.
 tasks.named('composedJar') { task ->
-    task.archiveBaseName = "intellij.groovy.grails.$shortName"
+    task.archiveBaseName = "org.apache.grails.intellij.module.$shortName"
 }
