@@ -21,6 +21,9 @@ plugins {
     id 'groovy-gradle-plugin'
 }
 
+// The Gradle DSL build code tier.
+group = 'org.apache.grails.intellij.build'
+
 // Gradle plugins that the convention plugins apply. Declaring them here is what lets the
 // convention plugins apply them WITHOUT a version, and it removes the previous fragility
 // where 'org.jetbrains.intellij.platform.module' was applied version-free in every module

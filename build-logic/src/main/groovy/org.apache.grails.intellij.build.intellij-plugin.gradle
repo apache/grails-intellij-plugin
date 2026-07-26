@@ -30,7 +30,7 @@ plugins {
     id 'org.jetbrains.intellij.platform'
 }
 
-group = 'org.apache.grails.intellij'
+group = 'org.apache.grails.intellij.plugin'
 
 intellijPlatform {
     // Pinned explicitly. This drives the distribution ZIP name, the plugin directory inside it,
