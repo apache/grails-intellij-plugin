@@ -86,8 +86,9 @@ The version lives in `gradle.properties` and is overridden per release with
   CI builds match. See [INSTALL](INSTALL) for local build setup.
 - No planning documents that are excluded from the license audit
   (`MIGRATION-PLAN.md`, `IMPROVEMENT-PLAN.md`) should still be present for a final
-  release; they are listed as RAT excludes in [`build.gradle.kts`](build.gradle.kts) and
-  are meant to be removed before the first release.
+  release; they are listed as RAT excludes in
+  [`org.apache.grails.intellij.build.rat.gradle`](build-logic/src/main/groovy/org.apache.grails.intellij.build.rat.gradle)
+  and are meant to be removed before the first release.
 
 ## 2. Cut the release
 
@@ -307,8 +308,9 @@ so aborting before that point leaves no public trace.
 
 ## Verifying a Reproducible Build
 
-Reproducibility is enforced by the `grails-intellij.reproducible` convention plugin in
-[`build-logic`](build-logic/src/main/kotlin/grails-intellij.reproducible.gradle.kts),
+Reproducibility is enforced by the `org.apache.grails.intellij.build.reproducible` convention
+plugin in
+[`build-logic`](build-logic/src/main/groovy/org.apache.grails.intellij.build.reproducible.gradle),
 applied to the root project and every module. It pins archive entry timestamps
 (`preserveFileTimestamps = false`), file order (`reproducibleFileOrder = true`), and entry
 permissions, which removes the three usual sources of archive non-determinism.
@@ -426,7 +428,7 @@ The tooling that supports this:
 
 | Path | Role |
 | --- | --- |
-| `build-logic/src/main/kotlin/grails-intellij.reproducible.gradle.kts` | Pins archive timestamps, file order, and permissions across every module. |
+| `build-logic/src/main/groovy/org.apache.grails.intellij.build.reproducible.gradle` | Pins archive timestamps, file order, and permissions across every module. |
 | `etc/bin/test-reproducible-build.sh` | Builds twice on one machine and compares artifact hashes. |
 | `etc/bin/verify-reproducible.sh` | Rebuilds from the staged source distribution and compares to the staged binary. |
 | `etc/bin/Dockerfile` | Linux environment matching CI, for ruling out host-OS differences. |

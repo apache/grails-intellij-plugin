@@ -143,13 +143,23 @@ echo "✅ source distribution contents verified"
 verify_archive "${BIN_ZIP}"
 echo "==> Checking binary distribution contents"
 # ASF policy: the convenience binary must carry LICENSE and NOTICE. The build puts them in
-# META-INF of the composed plugin jar (see processResources in build.gradle.kts), so check
-# inside that jar rather than at the top level of the ZIP.
-PLUGIN_JAR="$(unzip -Z1 "${BIN_ZIP}" | grep -E '^[^/]+/lib/[^/]+\.jar$' | head -n 1)"
-if [ -z "${PLUGIN_JAR}" ]; then
-  echo "❌ binary distribution: no plugin jar found under <plugin>/lib/ in ${BIN_ZIP}" >&2
+# META-INF of the composed plugin jar (see processResources in the intellij-plugin convention
+# plugin), so check inside that jar rather than at the top level of the ZIP.
+#
+# Identify that jar by name rather than by position: <plugin-dir>/lib/<plugin-dir>-<version>.jar.
+# lib/ also holds the compiler and lib-tier jars, and picking the first entry would silently
+# start inspecting one of those if the naming ever sorted differently.
+PLUGIN_DIR="$(unzip -Z1 "${BIN_ZIP}" | sed -n 's|^\([^/]*\)/.*|\1|p' | sort -u | head -n 1)"
+PLUGIN_JAR_MATCHES="$(unzip -Z1 "${BIN_ZIP}" |
+  grep -E "^${PLUGIN_DIR}/lib/${PLUGIN_DIR}-[^/]+\.jar$" || true)"
+PLUGIN_JAR_COUNT="$(printf '%s' "${PLUGIN_JAR_MATCHES}" | grep -c . || true)"
+if [ "${PLUGIN_JAR_COUNT}" -ne 1 ]; then
+  echo "❌ binary distribution: expected exactly 1 composed plugin jar at" \
+       "${PLUGIN_DIR}/lib/${PLUGIN_DIR}-<version>.jar in ${BIN_ZIP}," \
+       "found ${PLUGIN_JAR_COUNT}: ${PLUGIN_JAR_MATCHES}" >&2
   exit 1
 fi
+PLUGIN_JAR="${PLUGIN_JAR_MATCHES}"
 JAR_TMP="$(mktemp -d)"
 trap 'rm -rf "${GPG_HOME}" "${JAR_TMP}"' EXIT
 unzip -q -o -j "${BIN_ZIP}" "${PLUGIN_JAR}" -d "${JAR_TMP}"

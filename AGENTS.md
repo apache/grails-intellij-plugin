@@ -46,12 +46,12 @@ limitations under the License.
    fails during `./gradlew test`, Gradle silently runs the **stale previous bytecode**.
    Always grep the output for `error:` before believing pass/fail results or probe output.
 2. **Collect failure lists from a full run only.** A `--tests`-filtered run **wipes**
-   `build/test-results/test/`, destroying the results of the previous full run.
+   `plugin/build/test-results/test/`, destroying the results of the previous full run.
 3. **Every code change must include tests.** Review the existing tests for the affected
    area before making changes, and keep every test that covers a modified class in sync
    with the new behavior. Run all affected tests and ensure they pass before committing.
 4. **Apache license header required** on all new source files (enforced by `./gradlew rat`).
-   Every RAT exclude in `build.gradle.kts` must carry an inline justification.
+   Every RAT exclude in the `rat` convention plugin must carry an inline justification.
    - **New files use the ASF header** (verbatim from the `HEADER` file: *"Licensed to the
      Apache Software Foundation (ASF) under one or more contributor license agreements…"*),
      rendered as a `/* … */` block for Java/Kotlin or `<!-- … -->` for XML. **Do NOT** copy
@@ -91,26 +91,35 @@ limitations under the License.
 
 ## Project Structure
 
-The root project is the plugin itself; sources live in non-standard directories
-(`src/`, `gen/` for generated JFlex lexers, `test/`, `resources/`,
-`compatibilityResources/`, `testdata/`).
+A composed build: `build-logic` is an included build holding every convention plugin, and the
+subprojects sit in tier directories. Project names carry the subpath, so
+`pluginModules/hibernate` is the Gradle project `:pluginModules-hibernate`. The root project
+is a pure aggregator — it owns only RAT and coverage aggregation, no sources.
 
-| Module | Description |
-|--------|-------------|
-| **root** | Main plugin: GSP language, Grails project support, run configs |
-| `copyright`, `coverage`, `hibernate`, `i18n`, `langInjection`, `maven` | Optional plugin modules (`pluginModule` deps) |
-| `gradle-tooling` | Gradle tooling API model builders |
-| `grails-rt` | Runtime injected into user apps (Java 8) |
-| `grails-compiler-patch`, `jps-plugin` | JPS build integration |
-| `testFramework` | Shared test infrastructure (`GrailsTestCase`, `GroovyProjectDescriptors`, `TestLibrary`) |
+| Path | Gradle project | Description |
+|------|----------------|-------------|
+| `plugin/` | `:plugin` | Main plugin: GSP language, Grails project support, run configs |
+| `pluginModules/{copyright,coverage,hibernate,i18n,langInjection,maven}/` | `:pluginModules-*` | Optional IntelliJ content modules (`pluginModule` deps) |
+| `libs/gradle-tooling/` | `:libs-gradle-tooling` | Gradle tooling API model builders |
+| `libs/grails-rt/` | `:libs-grails-rt` | Runtime injected into user apps (Java 8) |
+| `libs/testFramework/` | `:libs-testFramework` | Shared test infrastructure (`GrailsTestCase`, `GroovyProjectDescriptors`, `TestLibrary`) |
+| `compilers/{grails-compiler-patch,jps-plugin}/` | `:compilers-*` | JPS build integration |
+| `build-logic/` | included build | Convention plugins, ids `org.apache.grails.intellij.build.*` |
 
-Special packaging: `resources/standardDsls/` is excluded from normal resources and copied
-into `<plugin>/lib/standardDsls/` by a `PrepareSandboxTask` customization.
+`plugin/` uses the standard source layout: `src/main/java` (Java, plus the few remaining
+Kotlin files), `src/main/gen` for generated JFlex lexers, `src/main/resources`, and
+`src/test/java`. `plugin/testdata/` sits next to the tests because Gradle sets
+`Test.workingDir` to the project directory, which is how `GrailsTestUtil.getTestRootPath`
+resolves it.
+
+Special packaging: `plugin/standardDsls/` sits outside the resource roots and is copied to
+`<plugin>/lib/standardDsls/` as loose files by a `PrepareSandboxTask` customization in the
+`intellij-plugin` convention plugin.
 
 ## Running & Debugging Tests
 
-- Full suite: `./gradlew test` — ~3.5 min, ~970 tests.
-- Failure details live in `build/test-results/test/TEST-<fqcn>.xml`; the `<system-out>`
+- Full suite: `./gradlew test` — ~4 min, 987 tests across 186 classes.
+- Failure details live in `plugin/build/test-results/test/TEST-<fqcn>.xml`; the `<system-out>`
   CDATA holds logged output. The giant module-list line and
   `InstanceNotOverridable`/SLF4J warnings are noise — ignore them.
 - **Probe technique** that works well here: add `System.out.println("### TAG ...")`
@@ -129,7 +138,8 @@ into `<plugin>/lib/standardDsls/` by a `PrepareSandboxTask` customization.
 - Bundled-plugin dependencies are sensitive to platform version splits — e.g.
   `com.intellij.javaee.el` is no longer transitive and `com.intellij.gradle` was split
   out of `org.jetbrains.plugins.gradle` in 2026.2. When bumping `platformVersion`,
-  expect to adjust the `bundledPlugin(...)` list in `build.gradle.kts`.
+  expect to adjust the `bundledPlugin(...)` list in `plugin/build.gradle` (and in the
+  `pluginModules/*/build.gradle` that declares the affected plugin).
 - Plugin Verifier gates on real incompatibilities only (`COMPATIBILITY_PROBLEMS`,
   `MISSING_DEPENDENCIES`, `INVALID_PLUGIN`); the inherited internal/deprecated API
   usages are a tracked cleanup item, not a release blocker.
@@ -152,7 +162,7 @@ into `<plugin>/lib/standardDsls/` by a `PrepareSandboxTask` customization.
 | Problem | Solution |
 |---------|----------|
 | Test results look wrong / probes silent | Grep build output for `error:` — you may be running stale bytecode |
-| Lost the failure list | Re-run the **full** `./gradlew test`; filtered runs wipe `build/test-results/test/` |
+| Lost the failure list | Re-run the **full** `./gradlew test`; filtered runs wipe `plugin/build/test-results/test/` |
 | `getMockJdk11()` NPE in `tuneFixture` | Heavy fixture — use `moduleBuilder.addJdk(System.getProperty("java.home"))` |
 | "Cannot find IntelliJ IDEA project files" in light tests | Descriptor uses `RepositoryTestLibrary`; switch to `GroovyProjectDescriptors.MOCK_JDK_11` |
 | Test needs Swing/AWT classes | Override `getTestJdk()` in the test to return a real JDK |

@@ -66,7 +66,7 @@ Build the plugin distribution ZIP:
 
         ./gradlew buildPlugin
 
-The ZIP is written to `build/distributions/` and can be installed in IntelliJ
+The ZIP is written to `plugin/build/distributions/` and can be installed in IntelliJ
 IDEA via Settings > Plugins > Install Plugin from Disk.
 
 Note: the first build downloads the IntelliJ Platform (IntelliJ IDEA Ultimate)

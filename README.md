@@ -94,7 +94,7 @@ to run the `wrapper` task at the version named in `.sdkmanrc` and copy the resul
 ./gradlew buildPlugin
 ```
 
-The plugin ZIP is written to `build/distributions/` and can be installed in IntelliJ IDEA
+The plugin ZIP is written to `plugin/build/distributions/` and can be installed in IntelliJ IDEA
 via **Settings > Plugins > ⚙ > Install Plugin from Disk**.
 
 > The first build downloads the IntelliJ Platform (IntelliJ IDEA Ultimate) and the bundled
