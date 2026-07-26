@@ -13,9 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.jetbrains.plugins.grails.lang.gsp.parsing.groovy.chameleons;
 
-package org.jetbrains.plugins.grails.util.version
+import com.intellij.lang.ASTNode;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.plugins.grails.lang.gsp.psi.groovy.impl.GrGspDeclarationHolderImpl;
 
-val v11: Version = VersionImpl("1.1")
-val v13: Version = VersionImpl("1.3")
-val v3: Version = VersionImpl("3.0")
+public class GroovyDeclarationsElementType extends GspGroovyLazyElementType {
+
+  public GroovyDeclarationsElementType(@NotNull String debugName) {
+    super(debugName);
+  }
+
+  @Override
+  public ASTNode createNode(@Nullable CharSequence text) {
+    return new GrGspDeclarationHolderImpl(this, text);
+  }
+}

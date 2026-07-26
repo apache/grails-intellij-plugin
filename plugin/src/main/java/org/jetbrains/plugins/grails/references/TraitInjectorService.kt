@@ -319,7 +319,7 @@ class TraitInjectorService(
     fun getInjectedTraits(context: PsiElement, artefactType: String): Collection<String> {
       val result: MutableSet<String> = LinkedHashSet()
       result.addAll(doGetInjectedTraits(context, artefactType))
-      result.addAll(doGetEnhancesTraits(context, artefactType))
+      result.addAll(EnhancesTraitsCollector.doGetEnhancesTraits(context, artefactType))
       return result
     }
 

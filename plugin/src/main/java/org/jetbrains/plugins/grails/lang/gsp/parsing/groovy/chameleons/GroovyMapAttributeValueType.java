@@ -13,15 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.jetbrains.plugins.grails.lang.gsp.parsing.groovy.chameleons;
 
-package org.jetbrains.plugins.grails.references.controller
+import com.intellij.lang.ASTNode;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.plugins.grails.lang.gsp.psi.groovy.impl.GrMapAttrValueImpl;
 
-import org.jetbrains.plugins.grails.lang.gsp.resolve.taglib.TagLibNamespaceDescriptor.GspTagMethod
-import org.jetbrains.plugins.groovy.lang.psi.api.GroovyMethodResult
-import org.jetbrains.plugins.groovy.lang.resolve.api.GroovyOverloadResolver
+public class GroovyMapAttributeValueType extends GspGroovyLazyElementType {
 
-final class GspTagMethodOverloadResolver : GroovyOverloadResolver {
-  override fun compare(left: GroovyMethodResult, right: GroovyMethodResult): Int {
-    return (left.element is GspTagMethod).compareTo(right.element is GspTagMethod)
+  public GroovyMapAttributeValueType(@NotNull String debugName) {
+    super(debugName);
+  }
+
+  @Override
+  public ASTNode createNode(@Nullable CharSequence text) {
+    return new GrMapAttrValueImpl(this, text);
   }
 }

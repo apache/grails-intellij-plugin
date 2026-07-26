@@ -38,6 +38,7 @@ public interface Version extends Comparable<Version> {
 
   Version GRAILS_1_1 = new VersionImpl("1.1");
   Version GRAILS_1_2 = new VersionImpl("1.2");
+  Version GRAILS_1_3 = new VersionImpl("1.3");
   Version GRAILS_1_3_4 = new VersionImpl("1.3.4");
   Version GRAILS_2_0 = new VersionImpl("2.0");
   Version GRAILS_2_3_0 = new VersionImpl("2.3.0");

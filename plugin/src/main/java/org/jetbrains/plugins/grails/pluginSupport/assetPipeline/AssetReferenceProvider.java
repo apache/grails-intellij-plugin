@@ -13,24 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.jetbrains.plugins.grails.pluginSupport.assetPipeline;
 
-package org.jetbrains.plugins.grails.tests.runner
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiReference;
+import com.intellij.psi.PsiReferenceProvider;
+import com.intellij.util.ProcessingContext;
+import org.jetbrains.annotations.NotNull;
 
-import com.intellij.openapi.vfs.VirtualFile
-import org.jetbrains.plugins.grails.structure.GrailsApplication
-import org.jetbrains.plugins.grails.util.version.v13
+public final class AssetReferenceProvider extends PsiReferenceProvider {
 
-private val testFolderNames = listOf("integration", "unit", "functional")
-
-internal fun getParamKeyByTestRoot(application: GrailsApplication, testRoot: VirtualFile): String? {
-  val name = testRoot.name
-  if (name in testFolderNames) {
-    return if (application.grailsVersion >= v13) {
-      "$name:"
-    }
-    else {
-      "-$name"
-    }
+  @Override
+  public PsiReference @NotNull [] getReferencesByElement(@NotNull PsiElement element, @NotNull ProcessingContext context) {
+    return new AssetsFileReferenceSet(element).getAllReferences();
   }
-  return null
 }

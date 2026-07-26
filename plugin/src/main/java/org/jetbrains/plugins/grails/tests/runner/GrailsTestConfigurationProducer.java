@@ -49,8 +49,8 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefini
 
 import java.util.Objects;
 
-import static org.jetbrains.plugins.grails.tests.runner.ByClassKt.setupConfigurationByClass;
-import static org.jetbrains.plugins.grails.tests.runner.ByDirectoryKt.setupConfigurationByDir;
+import static org.jetbrains.plugins.grails.tests.runner.GrailsTestConfigurationSetup.setupConfigurationByClass;
+import static org.jetbrains.plugins.grails.tests.runner.GrailsTestConfigurationSetup.setupConfigurationByDir;
 
 final class GrailsTestConfigurationProducer extends LazyRunConfigurationProducer<GrailsRunConfiguration> {
   @Override

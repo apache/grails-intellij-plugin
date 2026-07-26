@@ -13,13 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.jetbrains.plugins.grails.lang.gsp.parsing.groovy.chameleons;
 
-package org.jetbrains.plugins.grails.lang.gsp.parsing.groovy.chameleons
+import com.intellij.lang.ASTNode;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.plugins.grails.lang.gsp.psi.groovy.impl.GrGspExprInjectionImpl;
 
-import com.intellij.lang.ASTNode
-import org.jetbrains.plugins.grails.lang.gsp.psi.groovy.impl.GrGspExprInjectionImpl
+public class GroovyExpressionElementType extends GspGroovyLazyElementType {
 
-class GroovyExpressionElementType(debugName: String) : GspGroovyLazyElementType(debugName) {
+  public GroovyExpressionElementType(@NotNull String debugName) {
+    super(debugName);
+  }
 
-  override fun createNode(text: CharSequence?): ASTNode = GrGspExprInjectionImpl(this, text)
+  @Override
+  public ASTNode createNode(@Nullable CharSequence text) {
+    return new GrGspExprInjectionImpl(this, text);
+  }
 }

@@ -46,7 +46,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.plugins.grails.config.GrailsFramework;
 import org.jetbrains.plugins.grails.config.GrailsStructure;
-import org.jetbrains.plugins.grails.plugins.ImplKt;
+import org.jetbrains.plugins.grails.plugins.GrailsPlugins;
 import org.jetbrains.plugins.grails.structure.GrailsApplication;
 import org.jetbrains.plugins.grails.structure.GrailsApplicationManager;
 import org.jetbrains.plugins.grails.util.GrailsArtifact;
@@ -187,7 +187,7 @@ public final class GrailsSpringBeanDiscoverer extends CustomModuleComponentsDisc
   private static @NotNull List<String> getPluginsNamesFromDescriptors(Module module) {
     final GrailsApplication application = GrailsApplicationManager.getInstance(module.getProject()).findApplication(module.getModuleFile());
     if (application == null) return Collections.emptyList();
-    return ContainerUtil.map(ImplKt.computePlugins(application), p -> p.getPluginName());
+    return ContainerUtil.map(GrailsPlugins.computePlugins(application), p -> p.getPluginName());
   }
 
   private static void addBeanIfClassExists(List<CommonSpringBean> result,

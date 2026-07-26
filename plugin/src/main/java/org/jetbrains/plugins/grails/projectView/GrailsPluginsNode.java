@@ -25,7 +25,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.grails.GroovyMvcIcons;
 import org.jetbrains.plugins.grails.plugins.GrailsPluginDescriptor;
-import org.jetbrains.plugins.grails.plugins.ImplKt;
+import org.jetbrains.plugins.grails.plugins.GrailsPlugins;
 import org.jetbrains.plugins.grails.projectView.nodes.GrailsPluginNode;
 import org.jetbrains.plugins.grails.structure.GrailsApplication;
 
@@ -47,7 +47,7 @@ public class GrailsPluginsNode extends ProjectViewNode<String> {
     GrailsApplication application = getGrailsApplication();
     Project project = application.getProject();
     Collection<AbstractTreeNode<?>> result = new ArrayList<>();
-    for (GrailsPluginDescriptor descriptor : ImplKt.computePlugins(application)) {
+    for (GrailsPluginDescriptor descriptor : GrailsPlugins.computePlugins(application)) {
       result.add(new GrailsPluginNode(project, descriptor, getSettings()));
     }
     return result;

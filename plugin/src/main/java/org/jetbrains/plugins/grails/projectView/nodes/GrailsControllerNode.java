@@ -23,7 +23,7 @@ import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiMember;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.plugins.grails.artefact.impl.controllers.FunctionsKt;
+import org.jetbrains.plugins.grails.artefact.impl.controllers.ControllerActions;
 import org.jetbrains.plugins.grails.structure.GrailsApplication;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
 
@@ -54,7 +54,7 @@ public class GrailsControllerNode extends ClassTreeNode {
     if (!(getValue() instanceof GrTypeDefinition clazz)) return null;
 
     Collection<AbstractTreeNode<?>> result = new ArrayList<>();
-    for (Map.Entry<String, PsiMember> action : FunctionsKt.getActions(clazz, getGrailsApplication()).entrySet()) {
+    for (Map.Entry<String, PsiMember> action : ControllerActions.getActions(clazz, getGrailsApplication()).entrySet()) {
       result.add(new GrailsActionNode(action.getKey(), action.getValue(), getSettings()));
     }
     return result;
