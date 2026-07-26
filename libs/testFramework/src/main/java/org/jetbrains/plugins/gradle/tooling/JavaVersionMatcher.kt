@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.jetbrains.plugins.gradle.tooling
+package org.jetbrains.plugins.gradle.tooling.util
 
 import com.intellij.util.lang.JavaVersion
 
