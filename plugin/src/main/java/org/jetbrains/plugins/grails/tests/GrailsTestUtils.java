@@ -30,9 +30,13 @@ import com.intellij.psi.PsiAnnotationMemberValue;
 import com.intellij.psi.PsiAnnotationOwner;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiSubstitutor;
+import com.intellij.psi.PsiTypeParameter;
 import com.intellij.psi.PsiModifierList;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.PsiType;
+import com.intellij.psi.util.InheritanceUtil;
+import com.intellij.psi.util.TypeConversionUtil;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.GlobalSearchScopesCore;
 import com.intellij.psi.search.PsiShortNamesCache;
@@ -180,22 +184,24 @@ public final class GrailsTestUtils {
       return aClass;
     }
 
+    // Grails 3+ specs declare the artefact as the type argument of a unit-test trait. This is the
+    // authoritative link and needs no naming convention, so it is preferred over the fallback.
+    PsiClass fromTrait = getTestedClassFromUnitTestTrait(testClass);
+    if (fromTrait != null) return fromTrait;
+
     Module module = ModuleUtilCore.findModuleForPsiElement(testClass);
     if (module == null) return null;
 
-    VirtualFile appDir = GrailsFramework.getInstance().findAppDirectory(module);
-    if (appDir == null) return null;
-
-    GlobalSearchScope appDirScope = GlobalSearchScopesCore.directoryScope(module.getProject(), appDir, true);
+    String testClassName = testClass.getName();
+    if (testClassName == null) return null;
 
     PsiShortNamesCache shortNamesCache = PsiShortNamesCache.getInstance(module.getProject());
-
-    String testClassName = testClass.getName();
+    GlobalSearchScope scope = relatedModulesScope(module);
 
     for (String suffix : TEST_SUFFIXES) {
       if (testClassName.endsWith(suffix)) {
         String artifactName = StringUtil.trimEnd(testClassName, suffix);
-        for (PsiClass artifact : shortNamesCache.getClassesByName(artifactName, appDirScope)) {
+        for (PsiClass artifact : shortNamesCache.getClassesByName(artifactName, scope)) {
           if (GrailsArtifact.getType(artifact) != null) {
             return artifact;
           }
@@ -203,6 +209,53 @@ public final class GrailsTestUtils {
       }
     }
 
+    return null;
+  }
+
+  /**
+   * Every module that shares artefacts with {@code module}, rather than just its own grails-app.
+   *
+   * <p>A spec lives in a test source set, so under Gradle's module-per-source-set layout its module's
+   * content roots are under {@code src/test} and have no {@code grails-app} child at all - an
+   * app-directory-scoped search would find nothing. In a multi-project build the artefact can also
+   * live in an upstream project entirely (a controller in the app, its domain in a shared library).
+   * {@link GrailsArtifact#getType} still confirms each candidate really is an artefact, so widening
+   * the scope cannot produce false matches.
+   */
+  private static @NotNull GlobalSearchScope relatedModulesScope(@NotNull Module module) {
+    List<GlobalSearchScope> scopes = new ArrayList<>();
+    for (Module related : GrailsArtifact.getRelatedModules(module)) {
+      scopes.add(related.getModuleScope());
+    }
+    return scopes.isEmpty() ? GlobalSearchScope.EMPTY_SCOPE : GlobalSearchScope.union(scopes);
+  }
+
+  /**
+   * Grails 3+ unit-test traits. The tested artefact is the trait's single type argument, e.g.
+   * {@code class ReleaseControllerSpec extends Specification implements ControllerUnitTest<ReleaseController>}.
+   */
+  private static final List<String> UNIT_TEST_TRAITS = List.of(
+    "grails.testing.web.controllers.ControllerUnitTest",
+    "grails.testing.gorm.DomainUnitTest",
+    "grails.testing.services.ServiceUnitTest",
+    "grails.testing.web.taglib.TagLibUnitTest",
+    "grails.testing.web.interceptor.InterceptorUnitTest",
+    "grails.testing.web.UrlMappingsUnitTest"
+  );
+
+  private static @Nullable PsiClass getTestedClassFromUnitTestTrait(@NotNull PsiClass testClass) {
+    JavaPsiFacade facade = JavaPsiFacade.getInstance(testClass.getProject());
+    for (String traitFqn : UNIT_TEST_TRAITS) {
+      if (!InheritanceUtil.isInheritor(testClass, traitFqn)) continue;
+      PsiClass trait = facade.findClass(traitFqn, testClass.getResolveScope());
+      if (trait == null) continue;
+      PsiTypeParameter[] typeParameters = trait.getTypeParameters();
+      if (typeParameters.length == 0) continue;
+      // Resolves through the whole hierarchy, so a shared base spec that implements the trait works.
+      PsiSubstitutor substitutor = TypeConversionUtil.getSuperClassSubstitutor(trait, testClass, PsiSubstitutor.EMPTY);
+      PsiClass tested = com.intellij.psi.util.PsiUtil.resolveClassInClassTypeOnly(substitutor.substitute(typeParameters[0]));
+      if (tested != null && GrailsArtifact.getType(tested) != null) return tested;
+    }
     return null;
   }
 
