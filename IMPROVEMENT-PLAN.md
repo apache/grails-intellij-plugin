@@ -47,6 +47,26 @@ anything. Concrete checklist:
 - [ ] Confirm the `gen/` GSP lexer sources regenerate from their JFlex inputs; document
       the regeneration command in `DEVELOPMENT.md`.
 
+**0.1b Dormant code inherited from the JetBrains import** — decide revive vs delete for
+each. All of these arrived already-orphaned in `3d4bc40` (the initial import); none was
+broken by later work. They are documented in `grails-rt/README.md` so they are not
+rediscovered as bugs. Deleting them would shrink `grails-rt` to the two Groovy resources
+that Grails 3+ actually uses.
+- [ ] `GrailsExecutionUtils.addAgentJar` has **no callers**, so the `-javaagent:` path
+      never executes. The jar is a valid agent again (`Premain-Class` is declared on the
+      `jar` task — it cannot be a `META-INF/MANIFEST.MF` resource, because Gradle's `Jar`
+      task silently shadows one), but the capability is unused. Decide whether forked-run
+      instrumentation is still wanted.
+- [ ] `Agent`, `AddAgentJarToClassPathTransformer`, `ForkListenerTransformer` are reachable
+      only through `addAgentJar`, so they are dead with it.
+- [ ] `GrailsIdeaTestListener` implements `grails.build.GrailsBuildListener`, a Grails 2
+      build-system API that does not exist in Grails 3+. Its only reference is
+      `GrailsTaskManagerExtension`, gated on a Gradle task named `grails-test-app` that
+      only the old Grails Gradle plugin defines — so it is unreachable on Grails 3+ too.
+      Grails 7/8 test-event reporting needs a different mechanism; scope that in 2.6.
+- [ ] Untracked `assetPipeline/` build output remains from a module deleted from
+      `settings.gradle`. Safe to remove.
+
 **0.2 Real-app walkthrough** — generate three apps and open each with the plugin:
 1. Grails **7.0.x** release (via `https://start.grails.org` — forge production
    endpoint) with the `web` application type,

@@ -29,18 +29,25 @@ Grails 3+ only ever loads the Groovy resources and the marker, none of which tou
 
 ## Dormant code
 
-Both of these arrived already-orphaned in the initial JetBrains import (`3d4bc40`); neither was
-broken by later work.
+Roughly half this jar is unreachable. All of it arrived already-orphaned in the initial JetBrains
+import (`3d4bc40`) — `git log -S"addAgentJar"` returns that one commit, so none of it was wired up
+and later broken. **Do not treat these as bugs**; revive-or-delete is tracked as item 0.1b in
+[IMPROVEMENT-PLAN.md](../IMPROVEMENT-PLAN.md).
 
-- **`GrailsExecutionUtils.addAgentJar` has no callers**, so the `-javaagent:` path never executes.
-  The jar *is* a valid agent (`Premain-Class` is declared on the `jar` task), but the capability is
-  unused. The attributes must be set on the task, not via a `META-INF/MANIFEST.MF` resource —
-  Gradle's `Jar` task writes its own manifest and silently shadows such a resource, which is why the
-  packaged jar previously carried only `Manifest-Version: 1.0`.
-- **`GrailsIdeaTestListener`** implements `grails.build.GrailsBuildListener`, the Grails 2 build
-  system API. Its only reference is `GrailsTaskManagerExtension`, gated on a Gradle task named
-  `grails-test-app` that only the old Grails Gradle plugin defines — so it is unreachable on
-  Grails 3+ as well.
+| Dormant | Why it is unreachable |
+| --- | --- |
+| `GrailsExecutionUtils.addAgentJar` | no callers, so the `-javaagent:` path never executes |
+| `Agent` | reached only via `addAgentJar` |
+| `AddAgentJarToClassPathTransformer` | installed only by `Agent.premain` |
+| `ForkListenerTransformer` | installed only by `Agent.premain`, and only when `idea.grails.kind.file` is set |
+| `GrailsIdeaTestListener` | implements `grails.build.GrailsBuildListener`, a Grails 2 API absent from 3+. Its only reference is `GrailsTaskManagerExtension`, gated on a Gradle task named `grails-test-app` that only the old Grails Gradle plugin defines — so unreachable on Grails 3+ too |
+
+The jar *is* nonetheless a valid Java agent: `Premain-Class` and `Can-Redefine-Classes` are declared
+on the `jar` task. They cannot live in a `META-INF/MANIFEST.MF` resource — Gradle's `Jar` task writes
+its own manifest and silently shadows one, which is why the packaged jar previously carried only
+`Manifest-Version: 1.0` and would have failed a `-javaagent:` launch with *"Failed to find
+Premain-Class manifest attribute."* Restoring it changed no behaviour, since nothing injects the
+agent; it just means the jar no longer lies about what it is.
 
 ## Build
 
