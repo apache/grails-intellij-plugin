@@ -35,8 +35,15 @@ plugins {
     id 'jacoco-report-aggregation'
 }
 
-reporting.reports.register('testCodeCoverageReport', JacocoCoverageReport) { report ->
-    report.testSuiteName = 'test'
+// Registered only when it does not already exist. jacoco-report-aggregation auto-registers
+// <suite>CodeCoverageReport for projects that apply jvm-test-suite, which the root does today
+// because it still owns the plugin source. Once the plugin moves to its own project the root
+// compiles nothing, the auto-registration stops happening, and this branch takes over -- keeping
+// the report at the path the coverage workflow uploads either way.
+if (!reporting.reports.names.contains('testCodeCoverageReport')) {
+    reporting.reports.register('testCodeCoverageReport', JacocoCoverageReport) { report ->
+        report.testSuiteName = 'test'
+    }
 }
 
 tasks.named('testCodeCoverageReport') { task ->

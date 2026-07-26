@@ -13,20 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-pluginManagement {
-    includeBuild("build-logic")
+plugins {
+    id 'org.apache.grails.intellij.build.intellij-lib'
+    id 'org.apache.grails.intellij.build.java-legacy'
+    id 'org.apache.grails.intellij.build.legacy-layout'
 }
 
-rootProject.name = "Grails IntelliJ Plugin"
+// runs inside the end user's JPS build process
+legacyBytecode {
+    release = 11
+}
 
-include("copyright")
-include("coverage")
-include("gradle-tooling")
-include("grails-compiler-patch")
-include("grails-rt")
-include("hibernate")
-include("i18n")
-include("jps-plugin")
-include("langInjection")
-include("maven")
-include("testFramework")
+dependencies {
+    intellijPlatform {
+        bundledPlugin 'org.intellij.groovy'
+    }
+
+    compileOnly project(':grails-compiler-patch')
+}

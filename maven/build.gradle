@@ -15,13 +15,17 @@
  */
 plugins {
     id 'org.apache.grails.intellij.build.intellij-module'
+    id 'org.apache.grails.intellij.build.kotlin'
     id 'org.apache.grails.intellij.build.legacy-layout'
 }
 
 dependencies {
     intellijPlatform {
-        bundledPlugin 'com.intellij.hibernate'
+        bundledPlugin 'org.jetbrains.idea.maven'
+        // java debugger classes moved into the java plugin modules in 2026.2
+        bundledPlugin 'com.intellij.java'
     }
 
+    compileOnly project(':grails-rt')
     compileOnly project(':')
 }

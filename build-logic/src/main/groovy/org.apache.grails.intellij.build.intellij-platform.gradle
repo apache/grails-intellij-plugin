@@ -19,31 +19,26 @@
 
 // Shared IntelliJ Platform wiring: the artifact repositories and the platform dependency.
 // The IPGP version comes from build-logic's classpath, so this is applied without a version.
-//
-// EVERY closure below binds its target to an explicit parameter, and that is load-bearing.
-// IPGP registers THREE extensions all named `intellijPlatform` -- one on the Project, one on
-// RepositoryHandler, one on DependencyHandler. Groovy closures resolve owner-first, so a bare
-// `intellijPlatform { }` nested inside `repositories { }` or `dependencies { }` resolves to the
-// PROJECT extension and fails with "Could not find method defaultRepositories() ... on extension
-// 'intellijPlatform'". Kotlin's DSL scopes by receiver type, so it has no such clash.
 
 plugins {
     id 'org.apache.grails.intellij.build.java'
-    // Registers the intellijPlatform extensions used below. The consuming tier plugin adds
-    // the full plugin (.platform) or module (.module) variant on top; both re-apply this base
-    // idempotently. Without it, this script's body runs before any IPGP plugin is applied and
-    // the repository/dependency extensions do not exist yet.
+    // Registers the intellijPlatform extensions used below, and it must be applied HERE rather
+    // than left to the consuming tier plugin. IPGP registers three separate extensions all named
+    // `intellijPlatform` (Project, RepositoryHandler, DependencyHandler); if none of them exists
+    // yet when this body runs, Groovy's owner fallback resolves the nested blocks against the
+    // Project and reports a misleading "Could not find method defaultRepositories() on extension
+    // 'intellijPlatform'". The tier plugins add the .platform or .module variant on top of this.
     id 'org.jetbrains.intellij.platform.base'
 }
 
-repositories { repositoryHandler ->
-    repositoryHandler.intellijPlatform { repos ->
-        repos.defaultRepositories()
+repositories {
+    intellijPlatform {
+        defaultRepositories()
     }
 }
 
-dependencies { dependencyHandler ->
-    dependencyHandler.intellijPlatform { platform ->
-        platform.intellijIdea providers.gradleProperty('platformVersion')
+dependencies {
+    intellijPlatform {
+        intellijIdea providers.gradleProperty('platformVersion')
     }
 }

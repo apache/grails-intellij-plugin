@@ -14,14 +14,16 @@
  * limitations under the License.
  */
 plugins {
-    id 'org.apache.grails.intellij.build.intellij-module'
+    id 'org.apache.grails.intellij.build.lib'
+    id 'org.apache.grails.intellij.build.java-legacy'
     id 'org.apache.grails.intellij.build.legacy-layout'
 }
 
-dependencies {
-    intellijPlatform {
-        bundledPlugin 'com.intellij.hibernate'
-    }
+// runs inside user Grails builds; located at runtime via GrailsRtMarker, not by name
+legacyBytecode {
+    release = 8
+}
 
-    compileOnly project(':')
+dependencies {
+    compileOnly 'org.grails:grails-bootstrap:1.2.0'
 }

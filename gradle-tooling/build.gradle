@@ -14,14 +14,18 @@
  * limitations under the License.
  */
 plugins {
-    id 'org.apache.grails.intellij.build.intellij-module'
+    id 'org.apache.grails.intellij.build.intellij-lib'
+    id 'org.apache.grails.intellij.build.java-legacy'
     id 'org.apache.grails.intellij.build.legacy-layout'
+}
+
+// runs inside user Grails/JPS builds
+legacyBytecode {
+    release = 8
 }
 
 dependencies {
     intellijPlatform {
-        bundledPlugin 'com.intellij.hibernate'
+        bundledPlugin 'com.intellij.gradle'
     }
-
-    compileOnly project(':')
 }

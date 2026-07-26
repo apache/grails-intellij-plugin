@@ -13,15 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-plugins {
-    id 'org.apache.grails.intellij.build.intellij-module'
-    id 'org.apache.grails.intellij.build.legacy-layout'
+pluginManagement {
+    includeBuild('build-logic')
 }
 
-dependencies {
-    intellijPlatform {
-        bundledPlugin 'com.intellij.hibernate'
-    }
+rootProject.name = 'grails-intellij-plugin'
 
-    compileOnly project(':')
-}
+include 'copyright'
+include 'coverage'
+include 'gradle-tooling'
+include 'grails-compiler-patch'
+include 'grails-rt'
+include 'hibernate'
+include 'i18n'
+include 'jps-plugin'
+include 'langInjection'
+include 'maven'
+include 'testFramework'

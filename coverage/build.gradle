@@ -15,12 +15,13 @@
  */
 plugins {
     id 'org.apache.grails.intellij.build.intellij-module'
+    id 'org.apache.grails.intellij.build.kotlin'
     id 'org.apache.grails.intellij.build.legacy-layout'
 }
 
 dependencies {
     intellijPlatform {
-        bundledPlugin 'com.intellij.hibernate'
+        bundledPlugin 'Coverage'
     }
 
     compileOnly project(':')

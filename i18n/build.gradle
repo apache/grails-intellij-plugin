@@ -20,7 +20,8 @@ plugins {
 
 dependencies {
     intellijPlatform {
-        bundledPlugin 'com.intellij.hibernate'
+        bundledPlugin 'org.intellij.groovy'
+        bundledPlugin 'com.intellij.java-i18n'
     }
 
     compileOnly project(':')
