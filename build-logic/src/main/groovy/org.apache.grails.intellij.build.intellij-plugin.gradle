@@ -1,0 +1,98 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+import org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask
+import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
+
+// The IntelliJ plugin project itself. Everything here is plugin-wide configuration that has no
+// second consumer; it lives in a convention plugin so plugin/build.gradle carries only content
+// (the bundled-plugin list and project dependencies).
+
+plugins {
+    id 'org.apache.grails.intellij.build.intellij-platform'
+    id 'org.apache.grails.intellij.build.kotlin'
+    id 'org.jetbrains.intellij.platform'
+}
+
+group = 'org.apache.grails.intellij'
+
+intellijPlatform {
+    // Pinned explicitly. This drives the distribution ZIP name, the plugin directory inside it,
+    // and the sandbox directory; its convention is project.name, which would make all three
+    // 'plugin'. It is NOT the Marketplace display name -- that comes from <name> in plugin.xml.
+    projectName = 'apache-grails-intellij-plugin'
+
+    pluginConfiguration {
+        ideaVersion {
+            sinceBuild = providers.gradleProperty('pluginSinceBuild')
+        }
+        changeNotes = ''
+    }
+
+    pluginVerification {
+        // the legacy plugin id org.intellij.grails is grandfathered on Marketplace and
+        // permanent (see MIGRATION-PLAN.md decision 2); mute the new-plugin naming check
+        freeArgs = ['-mute', 'TemplateWordInPluginId']
+        // gate on real incompatibilities only; the inherited internal/deprecated API
+        // usages are a tracked cleanup item, not a release blocker
+        failureLevel = [
+                VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
+                VerifyPluginTask.FailureLevel.MISSING_DEPENDENCIES,
+                VerifyPluginTask.FailureLevel.INVALID_PLUGIN,
+        ]
+        ides {
+            recommended()
+        }
+    }
+
+    // JetBrains Marketplace code signing / publishing; secrets provided by the release workflow.
+    // Providers are assigned rather than read, so absent secrets neither fail configuration nor
+    // land in the configuration cache.
+    signing {
+        certificateChain = providers.environmentVariable('CERTIFICATE_CHAIN')
+        privateKey = providers.environmentVariable('PRIVATE_KEY')
+        password = providers.environmentVariable('PRIVATE_KEY_PASSWORD')
+    }
+
+    publishing {
+        token = providers.environmentVariable('PUBLISH_TOKEN')
+    }
+}
+
+// The composed jar is what ships in lib/; its base name is conventioned from project.name and
+// ignores archivesName, so it is pinned for the same reason projectName is.
+tasks.named('composedJar') { task ->
+    task.archiveBaseName = 'apache-grails-intellij-plugin'
+}
+
+// ASF policy: ship LICENSE and NOTICE inside the plugin jar. They live at the repository root,
+// which is the settings directory rather than this project's directory.
+tasks.named('processResources') { task ->
+    task.from(layout.settingsDirectory.file('LICENSE')) { into 'META-INF' }
+    task.from(layout.settingsDirectory.file('NOTICE')) { into 'META-INF' }
+}
+
+// standardDsls/ is packaged as loose files under <plugin>/lib/standardDsls/ rather than as jar
+// resources, so it is excluded from the resource set and copied into the sandbox instead.
+// pluginName is a Property mapped lazily so it tracks projectName above.
+tasks.withType(PrepareSandboxTask).configureEach { task ->
+    task.from(layout.projectDirectory.dir('standardDsls')) {
+        into task.pluginName.map { "$it/lib/standardDsls/" }
+    }
+}

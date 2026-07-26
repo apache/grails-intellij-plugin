@@ -20,7 +20,6 @@ plugins {
     id("org.apache.grails.intellij.build.reproducible")
     id("org.apache.grails.intellij.build.jacoco")
     id("org.apache.grails.intellij.build.vulnerability-scan")
-    id("org.jetbrains.kotlin.jvm") version "2.3.0"
     id("org.jetbrains.intellij.platform.module")
 }
 
@@ -41,13 +40,6 @@ dependencies {
     }
 
     compileOnly(project(":"))
-}
-
-kotlin {
-    // no toolchain on purpose: the JDK is pinned via .sdkmanrc for reproducible builds
-    compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget(properties("platformJavaVersion"))
-    }
 }
 
 java.sourceSets["main"].java {

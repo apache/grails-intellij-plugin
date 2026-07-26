@@ -1,0 +1,50 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+// An IntelliJ *content module* (plugin.xml <content><module name="..."/></content>).
+//
+// NAMING IS A RUNTIME CONTRACT. The platform resolves a content module from
+// lib/modules/<module-name>.jar and reads its descriptor from <module-name>.xml at that jar's
+// root, so three things must agree exactly: the <module name> in plugin.xml, the descriptor
+// file name, and the composed jar's base name. Getting it wrong builds a valid ZIP that fails
+// to load the module at IDE runtime -- invisible to compilation, tests and verifyPlugin.
+//
+// The name is derived from the project DIRECTORY, not project.name: projects are named with
+// their subpath built in (pluginModules-hibernate), so project.name carries a prefix that must
+// not leak into the module name.
+//
+// archivesName only renames the throwaway -base/-instrumented intermediates; IPGP's
+// ComposedJarTask applies its own archiveBaseName convention afterwards, so the pin below is
+// what actually determines the shipped file name.
+
+plugins {
+    id 'org.apache.grails.intellij.build.intellij-platform'
+    id 'org.jetbrains.intellij.platform.module'
+}
+
+def shortName = projectDir.name
+
+group = 'org.apache.grails.intellij.module'
+base.archivesName = shortName
+
+// Prefix is changed to 'org.apache.grails.intellij.module.' in the content-module rename step;
+// deriving it here is what keeps the three coupled strings from drifting apart again.
+tasks.named('composedJar') { task ->
+    task.archiveBaseName = "intellij.groovy.grails.$shortName"
+}

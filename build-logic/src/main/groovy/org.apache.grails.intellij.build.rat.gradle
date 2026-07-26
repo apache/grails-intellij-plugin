@@ -1,0 +1,96 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+// Apache RAT license audit. Applied to the root project only: the exclude patterns below are
+// anchored at the audited directory, which is the project that owns the task.
+//
+// lifecycle-base is applied because RatPlugin hooks rat into `check` via
+// plugins.withType(LifecycleBasePlugin). Without it the root has no `check` task and
+// `./gradlew check buildPlugin` in CI would stop auditing licences -- a green build that
+// verifies nothing.
+
+plugins {
+    id 'lifecycle-base'
+    id 'org.nosphere.apache.rat'
+}
+
+// Every exclude must carry a justification; no blanket excludes to make the audit pass.
+tasks.named('rat') { task ->
+    task.excludes.addAll([
+            // planning documents, removed before the first release
+            'MIGRATION-PLAN.md',
+            'IMPROVEMENT-PLAN.md',
+            // documentation
+            '**/README.md',
+            // git configuration isn't code
+            '**/.gitignore',
+            '**/.gitattributes',
+            // gradle wrapper files, excluded from the source distro
+            'gradlew*',
+            'gradle/wrapper/**',
+            '**/.gradle/**',
+            // github/ASF infra configuration, not shipped in the source distro
+            '.github/**',
+            '.asf.yaml',
+            // IDE-generated files
+            '.idea/**',
+            '**/*.iml',
+            'out/**',
+            // IntelliJ Platform Gradle Plugin local cache (generated Ivy descriptors, git-ignored)
+            '.intellijPlatform/**',
+            // build-logic included build: generated output and local caches (sources are headered)
+            'build-logic/build/**',
+            'build-logic/.gradle/**',
+            // reproducible-build and release-verification output (git-ignored)
+            'etc/bin/results/**',
+            // generated code (JFlex lexers; headers are injected by the generator config)
+            'gen/**',
+            '**/src/main/gen/**',
+            // test fixtures: content *is* the test input (mock Grails projects/JARs);
+            // adding headers would break parser/position-sensitive tests
+            'testdata/**',
+            '**/testdata/**',
+            // file templates that materialize inside end-user projects
+            '**/resources/fileTemplates/**',
+            // intention/inspection description snippets and before/after templates
+            // rendered verbatim in the IDE settings UI
+            '**/intentionDescriptions/**',
+            '**/inspectionDescriptions/**',
+            // html files are IDE description snippets / template previews only
+            '**/*.html',
+            // GUI-designer .form files are machine-edited XML
+            '**/*.form',
+            // images
+            '**/*.png', '**/*.svg', '**/*.ico', '**/*.jpg', '**/*.gif',
+            // JAR manifest format has no comment syntax
+            '**/META-INF/MANIFEST.MF',
+            // build outputs are generated and never shipped in the source distro. Anchored to
+            // explicit depths rather than "**/build/**" so a source package named "build" would
+            // still be audited. Three levels are needed: the root, the tier directories, and the
+            // nested projects under pluginModules/ and libs/.
+            'build/**',
+            '*/build/**',
+            '*/*/build/**',
+    ])
+    // Never let a license audit be skipped. upToDateWhen alone is not enough: RatTask is
+    // @CacheableTask and org.gradle.caching=true, so a build-cache hit would skip the audit
+    // entirely even though it can never be considered up to date.
+    task.outputs.upToDateWhen { false }
+    task.outputs.cacheIf { false }
+}
