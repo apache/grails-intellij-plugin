@@ -1,0 +1,52 @@
+Hi Everyone,
+
+I am happy to start the VOTE thread to release ${PROJECT_NAME} ${VERSION}!
+
+Release notes for the release are here:
+https://github.com/${REPO_SLUG}/releases/tag/${TAG}
+
+The tag for this release is:
+https://github.com/${REPO_SLUG}/releases/tag/${TAG}
+Tag commit id: ${SHA}
+
+The artifacts to be voted on are located as follows (r${DIST_SVN_REVISION}):
+Source release: https://dist.apache.org/repos/dist/dev/${SVN_PROJECT}/${SVN_FOLDER}/${VERSION}/sources
+Binary distribution: https://dist.apache.org/repos/dist/dev/${SVN_PROJECT}/${SVN_FOLDER}/${VERSION}/distribution
+
+The official release is the source distribution. The plugin ZIP in the binary
+distribution is a convenience binary, signed for the JetBrains Marketplace and built
+from the same tagged source.
+
+Release artifacts are signed with a key from the following file:
+https://dist.apache.org/repos/dist/release/grails/KEYS
+
+Please vote on releasing this package as: ${PROJECT_NAME} ${VERSION}.
+
+Reminder on ASF release approval requirements for PMC members:
+https://www.apache.org/legal/release-policy.html#release-approval
+
+Hints on validating checksums/signatures (but replace md5sum with sha512sum):
+https://www.apache.org/info/verification.html
+
+Details of our release process are documented at:
+https://github.com/${REPO_SLUG}/blob/HEAD/RELEASE.md
+
+The staged artifacts can be checked out and verified in one step with the scripts
+checked into the repository:
+
+    etc/bin/verify.sh ${TAG} /tmp/grails-ij-verify
+
+That downloads the artifacts and the KEYS file, verifies the checksums and signatures,
+audits the licenses with Apache RAT, and rebuilds the plugin from the staged source
+distribution to confirm it matches the staged binary.
+
+The vote is open for a minimum of 72 hours and passes if a majority of at least
+three +1 PMC votes are cast.
+
+[ ] +1 Release ${PROJECT_NAME} ${VERSION}
+[ ]  0 I don't have a strong opinion about this, but I assume it's ok
+[ ] -1 Do not release ${PROJECT_NAME} ${VERSION} because...
+
+Here is my vote:
+
++1 (binding)

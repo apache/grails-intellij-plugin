@@ -229,36 +229,24 @@ following the [Apache voting process](https://www.apache.org/foundation/voting.h
 Only Grails PMC votes are binding; the vote runs a minimum of 72 hours and needs at least
 three +1 votes from PMC members.
 
-Template:
+**You do not need to write the email.** The `upload` job's final step,
+*📧 Print Grails PMC Vote Email*, renders it for you and prints it to the job log with the
+recipient, subject, and body ready to copy. It fills in the version, tag, tag commit id,
+staged artifact URLs, and the `dist.apache.org` SVN revision the artifacts were committed
+at, so voters can confirm they are looking at exactly what was staged.
 
-```
-Subject: [VOTE] Release Apache Grails IntelliJ Plugin <version>
+The email bodies live in [`.github/vote_templates`](.github/vote_templates) and are
+expanded with `envsubst`:
 
-Hi all,
+| Template | Used by | Sent as |
+| --- | --- | --- |
+| `staged.txt` | `upload` job | `[VOTE]` to `dev@grails.apache.org` |
+| `vote_succeeded.txt` | `release` job | `[RESULT][VOTE]` to `dev@grails.apache.org` |
+| `announce.txt` | `release` job | `[ANNOUNCE]` to `announce@apache.org`, `dev@`, `users@` |
 
-I'd like to call a vote to release Apache Grails IntelliJ Plugin <version>.
-
-The source and binary distributions are staged at:
-  https://dist.apache.org/repos/dist/dev/grails/INTELLIJ/<version>/
-
-The release tag is:
-  https://github.com/apache/grails-intellij-plugin/releases/tag/v<version>
-
-The KEYS file used to sign the artifacts:
-  https://dist.apache.org/repos/dist/release/grails/KEYS
-
-Verification instructions are in RELEASE.md; the artifacts can be checked with:
-  etc/bin/verify.sh v<version> /tmp/grails-ij-verify
-
-The vote is open for at least 72 hours.
-
-[ ] +1 Release this package
-[ ]  0 No opinion
-[ ] -1 Do not release this package (please provide the reason)
-
-Thanks,
-<your name>
-```
+Edit the templates rather than the workflow when the wording needs to change. Placeholders
+in angle brackets (`<X>`, `<NAME>`, `<PREVIOUS_VERSION>`) are deliberately left for the
+release manager to fill in; everything in `${...}` is substituted automatically.
 
 ## 8. Publish the release (`release` job)
 
@@ -278,9 +266,10 @@ requires the reviewers listed in `.asf.yaml`):
    JetBrains Marketplace.
 4. **MANUAL:** record the release at <https://reporter.apache.org/addrelease.html?grails>
    as `INTELLIJ-<version>`, dated the day the distributions were promoted.
-5. **MANUAL:** send `[RESULT][VOTE]` to `dev@grails.apache.org`, then `[ANNOUNCE]` to
-   `announce@apache.org`, `dev@grails.apache.org`, and `users@grails.apache.org`.
-   Announcements must come from your `@apache.org` address
+5. **MANUAL:** send the `[RESULT][VOTE]` and `[ANNOUNCE]` emails. The job's last two steps
+   print both, rendered from
+   [`.github/vote_templates`](.github/vote_templates) — copy them from the log and fill in
+   the angle-bracket placeholders. Announcements must come from your `@apache.org` address
    (see <https://infra.apache.org/committer-email.html>).
 6. Flag the GitHub Release as **latest**.
 

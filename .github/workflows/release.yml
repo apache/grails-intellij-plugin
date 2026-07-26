@@ -25,6 +25,11 @@ env:
   DIST_NAME: apache-grails-intellij-plugin
   JAVA_DISTRIBUTION: liberica # .sdkmanrc pins librca = Liberica
   PROJECT_NAME: Apache Grails IntelliJ Plugin
+  PROJECT_DESC: >-
+    The Apache Grails IntelliJ Plugin adds Apache Grails support to IntelliJ IDEA Ultimate:
+    GSP language support, Grails project structure and navigation, run configurations,
+    taglib and domain class support, and integrations for i18n, coverage, Hibernate, Maven,
+    and language injection.
   REPO_SLUG: ${{ github.repository }}
   SVN_FOLDER: INTELLIJ
   SVN_PROJECT: grails
@@ -158,6 +163,8 @@ jobs:
   upload:
     name: "Upload Distributions to dist.apache.org"
     needs: [ publish, source ]
+    permissions:
+      contents: read # to check out the vote templates and resolve the tag SHA
     runs-on: ubuntu-latest
     env:
       SVN_USERNAME: ${{ secrets.SVC_DIST_GRAILS_USERNAME }}
@@ -166,7 +173,7 @@ jobs:
       - name: "📝 Establish release version"
         run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
       - name: "🛠️ Install tools"
-        run: sudo apt-get install -y subversion tree
+        run: sudo apt-get install -y subversion tree gettext-base # gettext-base provides envsubst for the vote email
       - name: "👀 Ensure dev/${{ env.SVN_PROJECT }}/${{ env.SVN_FOLDER }} folder exists"
         run: |
           set -e
@@ -215,11 +222,52 @@ jobs:
           tree
           svn add ${VERSION} --force
           svn commit -m "Upload ${PROJECT_NAME} distribution files for ${VERSION}" --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive
-      - name: "🗳 MANUAL - Start PMC Vote"
+      - name: "💾 Store Distribution SVN revision in a file"
+        # The vote email cites the SVN revision so voters can confirm they are looking at
+        # the same artifacts that were staged, even if the folder is touched afterwards.
         run: |
-          echo "::group::Manual Vote"
-          echo "Distributions staged at https://dist.apache.org/repos/dist/dev/${SVN_PROJECT}/${SVN_FOLDER}/${VERSION}"
-          echo "Start a [VOTE] thread for ${PROJECT_NAME} ${VERSION} on dev@grails.apache.org."
+          cd dev-repo
+          svn info ${VERSION} > DIST_SVN_REVISION.txt
+          cat DIST_SVN_REVISION.txt
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          path: repo
+          ref: ${{ env.TAG }}
+      - name: "📝 Resolve the tag commit id"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # An annotated tag points at a tag object, so dereference it to the commit.
+        run: |
+          set -euo pipefail
+          ref_json=$(gh api "repos/${REPO_SLUG}/git/ref/tags/${TAG}")
+          type=$(jq -r '.object.type' <<< "$ref_json")
+          sha=$(jq -r '.object.sha' <<< "$ref_json")
+          if [ "$type" = "tag" ]; then
+            sha=$(gh api "repos/${REPO_SLUG}/git/tags/${sha}" --jq '.object.sha')
+          fi
+          echo "Found sha: $sha"
+          echo "SHA=${sha}" >> "$GITHUB_ENV"
+      - name: "📧 Print Grails PMC Vote Email"
+        run: |
+          export DIST_SVN_REVISION=$(awk '/Last Changed Rev:/ {print $4}' dev-repo/DIST_SVN_REVISION.txt)
+
+          echo "::group::Grails PMC Vote Email"
+          echo ""
+          echo "TO:"
+          echo "*************************************************"
+          echo "dev@grails.apache.org"
+          echo "*************************************************"
+          echo ""
+          echo "Subject:"
+          echo "*************************************************"
+          echo "[VOTE] Release ${PROJECT_NAME} ${VERSION}"
+          echo "*************************************************"
+          echo ""
+          echo "Body:"
+          echo "*************************************************"
+          cat repo/.github/vote_templates/staged.txt | envsubst
+          echo "*************************************************"
           echo "::endgroup::"
   release:
     environment: release # post-vote gate: required reviewers configured in .asf.yaml
@@ -269,9 +317,46 @@ jobs:
           echo "Update https://reporter.apache.org/addrelease.html?${SVN_PROJECT} to add"
           echo "${SVN_FOLDER}-${VERSION} as complete as of ${TODAY}"
           echo "::endgroup::"
-      - name: "📧 MANUAL - Send Vote Result & Announcement Emails"
+      - name: "📧 MANUAL - Send Vote Result Email"
         run: |
-          echo "::group::Manual Emails"
-          echo "Send [RESULT][VOTE] to dev@grails.apache.org and"
-          echo "[ANNOUNCE] ${PROJECT_NAME} ${VERSION} to announce@apache.org, dev@grails.apache.org, users@grails.apache.org."
+          echo "::group::Manual Vote Result Email"
+          echo ""
+          echo "Send a new email or reply to the original vote email by changing the subject."
+          echo ""
+          echo "TO:"
+          echo "*************************************************"
+          echo "dev@grails.apache.org"
+          echo "*************************************************"
+          echo ""
+          echo "Subject:"
+          echo "*************************************************"
+          echo "[RESULT][VOTE] ${PROJECT_NAME} ${VERSION}"
+          echo "*************************************************"
+          echo ""
+          echo "Body:"
+          echo "*************************************************"
+          cat .github/vote_templates/vote_succeeded.txt | envsubst
+          echo "*************************************************"
+          echo "::endgroup::"
+      - name: "📧 MANUAL - Send Announcement Email"
+        run: |
+          echo "::group::Announcement Email"
+          echo ""
+          echo "Announcements must be sent from your @apache.org address."
+          echo "See https://infra.apache.org/committer-email.html"
+          echo ""
+          echo "TO:"
+          echo "*************************************************"
+          echo "announce@apache.org, dev@grails.apache.org, users@grails.apache.org"
+          echo "*************************************************"
+          echo ""
+          echo "Subject:"
+          echo "*************************************************"
+          echo "[ANNOUNCE] ${PROJECT_NAME} ${VERSION}"
+          echo "*************************************************"
+          echo ""
+          echo "Body:"
+          echo "*************************************************"
+          cat .github/vote_templates/announce.txt | envsubst
+          echo "*************************************************"
           echo "::endgroup::"
