@@ -14,20 +14,17 @@
  * limitations under the License.
  */
 plugins {
-    id 'org.apache.grails.intellij.build.compiler'
+    id 'org.apache.grails.intellij.build.intellij-lib'
     id 'org.apache.grails.intellij.build.java-legacy'
-    id 'org.apache.grails.intellij.build.legacy-layout'
 }
 
-// runs inside the end user's JPS build process
+// runs inside user Grails/JPS builds
 legacyBytecode {
-    release = 11
+    release = 8
 }
 
 dependencies {
     intellijPlatform {
-        bundledPlugin 'org.intellij.groovy'
+        bundledPlugin 'com.intellij.gradle'
     }
-
-    compileOnly project(':grails-compiler-patch')
 }

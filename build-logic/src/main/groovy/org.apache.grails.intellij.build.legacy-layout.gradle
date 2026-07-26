@@ -18,13 +18,13 @@
  */
 
 // TRANSITIONAL. Declares the pre-restructure source layout inherited from the JetBrains JPS
-// monorepo (src/, gen/, resources/, compatibilityResources/, test/) so that the convention
+// monorepo (src/, gen/, resources/, test/) so that the convention
 // plugins can be introduced before any files move.
 //
 // Every project applies this while the restructure is in flight; it is deleted once all three
 // tiers have been normalized to src/main/java, src/main/resources and src/test/java. Declaring
 // a srcDir that does not exist is harmless, so one shared block covers all projects even
-// though only the plugin project has gen/, compatibilityResources/ and test/.
+// though only the plugin project has gen/ and test/.
 //
 // Do NOT add anything here that is not purely about the old layout.
 
@@ -32,7 +32,6 @@ sourceSets.named('main') { main ->
     main.java.srcDir 'src'
     main.java.srcDir 'gen'
     main.resources.srcDir 'resources'
-    main.resources.srcDir 'compatibilityResources'
 }
 
 sourceSets.named('test') { test ->

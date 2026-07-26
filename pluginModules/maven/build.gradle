@@ -25,6 +25,6 @@ dependencies {
         bundledPlugin 'com.intellij.java'
     }
 
-    compileOnly project(':grails-rt')
+    compileOnly project(':libs-grails-rt')
     compileOnly project(':')
 }

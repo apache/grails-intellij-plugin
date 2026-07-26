@@ -67,27 +67,27 @@ dependencies {
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.assertj:assertj-core:4.0.0-M1'
-    testImplementation project(':testFramework')
+    testImplementation project(':libs-testFramework')
     testCompileOnly project(':pluginModules-i18n')
     testCompileOnly project(':pluginModules-copyright')
 
-    implementation project(':gradle-tooling')
-    implementation project(':grails-rt')
+    implementation project(':libs-gradle-tooling')
+    implementation project(':libs-grails-rt')
 
     // JPS/build
-    runtimeOnly project(':grails-compiler-patch')
-    runtimeOnly project(':jps-plugin')
+    runtimeOnly project(':libs-compiler-grails-compiler-patch')
+    runtimeOnly project(':libs-compiler-jps-plugin')
 
     // Aggregate JaCoCo coverage from every module into the root testCodeCoverageReport.
     jacocoAggregation project(':pluginModules-copyright')
     jacocoAggregation project(':pluginModules-coverage')
-    jacocoAggregation project(':gradle-tooling')
-    jacocoAggregation project(':grails-compiler-patch')
-    jacocoAggregation project(':grails-rt')
+    jacocoAggregation project(':libs-gradle-tooling')
+    jacocoAggregation project(':libs-compiler-grails-compiler-patch')
+    jacocoAggregation project(':libs-grails-rt')
     jacocoAggregation project(':pluginModules-hibernate')
     jacocoAggregation project(':pluginModules-i18n')
-    jacocoAggregation project(':jps-plugin')
+    jacocoAggregation project(':libs-compiler-jps-plugin')
     jacocoAggregation project(':pluginModules-langInjection')
     jacocoAggregation project(':pluginModules-maven')
-    jacocoAggregation project(':testFramework')
+    jacocoAggregation project(':libs-testFramework')
 }

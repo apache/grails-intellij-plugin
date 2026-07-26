@@ -19,7 +19,6 @@ import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 plugins {
     id 'org.apache.grails.intellij.build.intellij-lib'
     id 'org.apache.grails.intellij.build.kotlin'
-    id 'org.apache.grails.intellij.build.legacy-layout'
 }
 
 dependencies {

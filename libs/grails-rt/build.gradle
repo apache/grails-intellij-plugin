@@ -16,7 +16,6 @@
 plugins {
     id 'org.apache.grails.intellij.build.lib'
     id 'org.apache.grails.intellij.build.java-legacy'
-    id 'org.apache.grails.intellij.build.legacy-layout'
 }
 
 // runs inside user Grails builds; located at runtime via GrailsRtMarker, not by name

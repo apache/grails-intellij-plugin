@@ -16,12 +16,11 @@
 plugins {
     id 'org.apache.grails.intellij.build.compiler'
     id 'org.apache.grails.intellij.build.java-legacy'
-    id 'org.apache.grails.intellij.build.legacy-layout'
 }
 
-// runs inside user Grails/JPS builds
+// runs inside the end user's JPS build process
 legacyBytecode {
-    release = 8
+    release = 11
 }
 
 dependencies {
@@ -29,16 +28,5 @@ dependencies {
         bundledPlugin 'org.intellij.groovy'
     }
 
-    compileOnly('org.grails:grails-core:1.2.0') {
-        exclude group: 'org.codehaus.groovy' // groovy pinned explicitly below
-    }
-    // era-correct Groovy for the Grails 1.x/2.x patchers (superset of the APIs used);
-    // must NOT be the IDE's bundled Groovy 5 — see compileClasspath exclusion below
-    compileOnly 'org.codehaus.groovy:groovy-all:2.4.21'
-}
-
-// this patch runs inside Grails 2.x builds, so it must compile against the era-correct
-// Groovy (groovy-all 1.6.7 via grails-core above), not the IDE's bundled Groovy 5
-configurations.named('compileClasspath') { config ->
-    config.exclude group: 'bundledPlugin', module: 'com.intellij.groovy.scripting'
+    compileOnly project(':libs-compiler-grails-compiler-patch')
 }

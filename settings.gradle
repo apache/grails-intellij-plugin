@@ -26,8 +26,13 @@ rootProject.name = 'grails-intellij-plugin'
     project(":pluginModules-$name").projectDir = file("pluginModules/$name")
 }
 
-include 'gradle-tooling'
-include 'grails-compiler-patch'
-include 'grails-rt'
-include 'jps-plugin'
-include 'testFramework'
+
+['gradle-tooling', 'grails-rt', 'testFramework'].each { name ->
+    include "libs-$name"
+    project(":libs-$name").projectDir = file("libs/$name")
+}
+
+['jps-plugin', 'grails-compiler-patch'].each { name ->
+    include "libs-compiler-$name"
+    project(":libs-compiler-$name").projectDir = file("libs/compiler/$name")
+}

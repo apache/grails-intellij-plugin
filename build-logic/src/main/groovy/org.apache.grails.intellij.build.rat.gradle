@@ -82,11 +82,13 @@ tasks.named('rat') { task ->
             '**/META-INF/MANIFEST.MF',
             // build outputs are generated and never shipped in the source distro. Anchored to
             // explicit depths rather than "**/build/**" so a source package named "build" would
-            // still be audited. Three levels are needed: the root, the tier directories, and the
-            // nested projects under pluginModules/ and libs/.
+            // still be audited. Four levels are needed: the root, the tier directories, the
+            // projects under pluginModules/ and libs/, and the compiler projects one level
+            // deeper again at libs/compiler/<project>/build.
             'build/**',
             '*/build/**',
             '*/*/build/**',
+            '*/*/*/build/**',
     ])
     // Never let a license audit be skipped. upToDateWhen alone is not enough: RatTask is
     // @CacheableTask and org.gradle.caching=true, so a build-cache hit would skip the audit
