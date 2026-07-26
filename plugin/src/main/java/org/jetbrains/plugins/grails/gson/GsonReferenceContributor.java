@@ -13,15 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.jetbrains.plugins.grails.gson;
 
-package org.jetbrains.plugins.grails.gson
+import com.intellij.psi.PsiReferenceContributor;
+import com.intellij.psi.PsiReferenceRegistrar;
+import org.jetbrains.annotations.NotNull;
 
-import org.jetbrains.plugins.grails.GsonConstants
-import org.jetbrains.plugins.groovy.lang.psi.GroovyFile
-import org.jetbrains.plugins.groovy.lang.resolve.ExpectedPackageNameProvider
+public final class GsonReferenceContributor extends PsiReferenceContributor {
 
-internal class GsonExpectedPackageProvider : ExpectedPackageNameProvider {
-  override fun inferPackageName(file: GroovyFile): String? {
-    return if (file.virtualFile.nameSequence.endsWith(GsonConstants.FILE_SUFFIX)) "" else null
+  @Override
+  public void registerReferenceProviders(@NotNull PsiReferenceRegistrar registrar) {
+    registrar.registerReferenceProvider(GsonPatterns.TEMPLATE_REFERENCE_PLACE, new GsonTemplateReferenceProvider());
   }
 }

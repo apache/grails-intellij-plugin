@@ -312,6 +312,10 @@ class TraitInjectorService(
       return getInjectedTraits(clazz, artefactType)
     }
 
+    // @JvmStatic so Java callers reach this as TraitInjectorService.getInjectedTraits(...) rather
+    // than through .Companion. This class stays Kotlin (it is built on coroutines), so the
+    // annotation is how it keeps a usable surface for the converted Java callers.
+    @JvmStatic
     fun getInjectedTraits(context: PsiElement, artefactType: String): Collection<String> {
       val result: MutableSet<String> = LinkedHashSet()
       result.addAll(doGetInjectedTraits(context, artefactType))
