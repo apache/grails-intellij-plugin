@@ -16,6 +16,7 @@
 
 package org.jetbrains.plugins.groovy.mvc.plugins;
 
+import com.intellij.credentialStore.Credentials;
 import com.intellij.ide.BrowserUtil;
 import com.intellij.ide.plugins.PluginManagerMain;
 import com.intellij.ide.ui.search.SearchUtil;
@@ -25,7 +26,6 @@ import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.ActionToolbar;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogBuilder;
 import com.intellij.openapi.ui.Messages;
@@ -42,8 +42,10 @@ import com.intellij.ui.PopupHandler;
 import com.intellij.ui.ScrollPaneFactory;
 import com.intellij.ui.SpeedSearchBase;
 import com.intellij.ui.TableUtil;
-import com.intellij.util.net.HttpConfigurable;
 import com.intellij.util.net.HttpProxyConfigurable;
+import com.intellij.util.net.ProxyConfiguration;
+import com.intellij.util.net.ProxyCredentialStore;
+import com.intellij.util.net.ProxySettings;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NonNls;
@@ -135,15 +137,7 @@ public class MvcPluginsMain {
     final ActionGroup actionGroup = getActionGroup();
     installTableActions(myAvailablePluginsTable, actionGroup);
 
-    myHttpProxySettingsButton.addActionListener(new ActionListener() {
-      @SuppressWarnings("deprecation")
-      @Override
-      public void actionPerformed(@NotNull ActionEvent e) {
-        // 2026.2: HttpConfigurable can no longer be cloned via read/writeExternal and
-        // HttpProxyConfigurable edits the global proxy settings directly
-        doEditProxySettings(HttpConfigurable.getInstance());
-      }
-    });
+    myHttpProxySettingsButton.addActionListener(e -> doEditProxySettings());
 
     myTablePanel.setMinimumSize(new Dimension(350, -1));
     myDescriptionTextArea.setPreferredSize(new Dimension(-1, 300));
@@ -172,8 +166,13 @@ public class MvcPluginsMain {
     tableSelectionChanged(pluginTable);
   }
 
-  private void doEditProxySettings(final HttpConfigurable cfg) {
-    if (!ShowSettingsUtil.getInstance().editConfigurable(main, new HttpProxyConfigurable())) {
+  private void doEditProxySettings() {
+    // The dialog always edits the application-wide ProxySettings, so the proxy the user just
+    // entered is read back from there below. Pointing it at a detached ProxySettings copy is not
+    // possible in 2026.2: the ProxyUtils.editConfigurable overload that accepts one is deprecated
+    // to DeprecationLevel.ERROR and discards that argument, which would leave the Grails command
+    // configured with the pre-dialog proxy.
+    if (!HttpProxyConfigurable.editConfigurable(main)) {
       return;
     }
 
@@ -187,14 +186,19 @@ public class MvcPluginsMain {
       // Return to editing proxy setting. We have to use invokeLater to releasing EDT, it's needing for releasing MvcConsole when process will done.
       ApplicationManager.getApplication().invokeLater(() -> {
         if (myDialogBuilder.getWindow().isShowing()) {
-          doEditProxySettings(cfg);
+          doEditProxySettings();
         }
       });
 
       return;
     }
 
-    MvcPluginUtil.setFrameworkProxy(cfg, myApplication);
+    ProxyConfiguration config = ProxySettings.getInstance().getProxyConfiguration();
+    Credentials credentials = null;
+    if (config instanceof ProxyConfiguration.StaticProxyConfiguration staticConfig) {
+      credentials = ProxyCredentialStore.getInstance().getCredentials(staticConfig.getHost(), staticConfig.getPort());
+    }
+    MvcPluginUtil.setFrameworkProxy(config, credentials, myApplication);
   }
 
   public void addCustomPlugin(MvcPluginDescriptor plugin, String path) {

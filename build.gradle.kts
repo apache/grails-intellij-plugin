@@ -69,6 +69,7 @@ dependencies {
         testBundledPlugin("com.intellij.hibernate")
         testBundledPlugin("HtmlTools")
         testBundledPlugin("org.jetbrains.idea.maven")
+        testBundledPlugin("com.intellij.copyright") // GspCopyrightUpdaterTest
 
         testFramework(TestFrameworkType.Plugin.ExternalSystem)
         testFramework(TestFrameworkType.Plugin.Java)
@@ -80,6 +81,7 @@ dependencies {
     testImplementation("org.assertj:assertj-core:4.0.0-M1")
     testImplementation(project(":testFramework"))
     testCompileOnly(project(":i18n"))
+    testCompileOnly(project(":copyright"))
 
     implementation(project(":gradle-tooling"))
     implementation(project(":grails-rt"))
@@ -230,10 +232,14 @@ tasks.rat {
             "**/*.png", "**/*.svg", "**/*.ico", "**/*.jpg", "**/*.gif",
             // JAR manifest format has no comment syntax
             "grails-rt/resources/META-INF/MANIFEST.MF",
-        ) + subprojects.map {
-            // per-subproject build directories
-            it.layout.buildDirectory.get().asFile.relativeTo(rootProject.projectDir).path + "/**"
-        } + listOf("build/**")
+            // build outputs are generated and never shipped in the source distro. Listed as globs
+            // rather than derived from subprojects so directories Gradle does not enumerate as
+            // subprojects are covered too: included builds, and leftover build dirs from modules no
+            // longer in settings.gradle.kts. Anchored to the root and one level down instead of
+            // "**/build/**" so a source package named "build" would still be audited.
+            "build/**",
+            "*/build/**",
+        )
     )
     // never cache license audits
     outputs.upToDateWhen { false }

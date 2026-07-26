@@ -2,6 +2,7 @@
 **/build
 **/.gradle
 **/.intellijPlatform
+.kotlin
 gradle-bootstrap/gradlew
 gradle-bootstrap/gradlew.bat
 gradle-bootstrap/gradle

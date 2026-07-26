@@ -182,7 +182,8 @@
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">
-    <registryKey key="grails.advanced.mode" defaultValue="false"/>
+    <registryKey key="grails.advanced.mode" defaultValue="false"
+                 description="Use to enable advanced mode for the domain class relations editor."/>
     <registryKey key="grails.simple.debug" defaultValue="false"
                  description="Use simple debug strategy: pass --debug-jvm and then poll 5005. This switch works only for Grails &gt;= 3.1.5."/>
     <registryKey key="grails.add.plain.output" defaultValue="true"

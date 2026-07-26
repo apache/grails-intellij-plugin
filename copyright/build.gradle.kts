@@ -33,9 +33,9 @@ repositories {
 dependencies {
     intellijPlatform {
         intellijIdea(properties("platformVersion"))
+        // UpdateGspFileCopyright derives from this plugin's UpdatePsiFileCopyright and needs
+        // nothing from javaee/JSP; see that class for why the JSP original's checks were inert.
         bundledPlugin("com.intellij.copyright")
-        bundledPlugin("com.intellij.jsp")
-        bundledModule("intellij.javaee.jsp.copyright") // UpdateJspFileCopyright moved here in 2026.2
     }
 
     compileOnly(project(":"))

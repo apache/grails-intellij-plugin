@@ -16,6 +16,7 @@
 
 package org.jetbrains.plugins.groovy.mvc.plugins;
 
+import com.intellij.credentialStore.Credentials;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.execution.process.OSProcessHandler;
 import com.intellij.execution.process.ProcessEvent;
@@ -33,7 +34,7 @@ import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vcs.FileStatus;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.util.net.HttpConfigurable;
+import com.intellij.util.net.ProxyConfiguration;
 import org.jdom.Document;
 import org.jdom.Element;
 import org.jdom.JDOMException;
@@ -85,7 +86,9 @@ public final class MvcPluginUtil {
 
   private MvcPluginUtil() { }
 
-  private static void setProxyOld(final @NotNull HttpConfigurable cfg, @NotNull OldGrailsApplication application) {
+  private static void setProxyOld(final @NotNull ProxyConfiguration proxyConfig,
+                                  final @Nullable Credentials credentials,
+                                  @NotNull OldGrailsApplication application) {
     try {
       GrailsCommandExecutor executor = GrailsCommandExecutor.getGrailsExecutor(application);
       if (!(executor instanceof GrailsCommandLineExecutor)) return;
@@ -96,28 +99,31 @@ public final class MvcPluginUtil {
 
       GrailsConsole.getInstance(application.getProject()).getConsole().attachToProcess(handler);
       final OutputStreamWriter writer = new OutputStreamWriter(handler.getProcess().getOutputStream(), StandardCharsets.UTF_8);
-      writer.write(cfg.USE_HTTP_PROXY ? "y\n" : "n\n");
+      final boolean useProxy = proxyConfig instanceof ProxyConfiguration.StaticProxyConfiguration;
+      writer.write(useProxy ? "y\n" : "n\n");
       writer.flush();
 
       handler.addProcessListener(new ProcessListener() {
 
         @Override
         public void onTextAvailable(final @NotNull ProcessEvent event, final @NotNull Key outputType) {
+          if (!useProxy) return;
+          ProxyConfiguration.StaticProxyConfiguration staticConfig = (ProxyConfiguration.StaticProxyConfiguration)proxyConfig;
           String text = event.getText();
 
           try {
             if (text.contains(ENTER_HTTP_PROXY_HOST)) {
-              writer.append(cfg.PROXY_HOST).append('\n');
+              writer.append(staticConfig.getHost()).append('\n');
             }
             else if (text.contains(ENTER_HTTP_PROXY_PORT)) {
-              writer.write(cfg.PROXY_PORT);
+              writer.write(String.valueOf(staticConfig.getPort()));
               writer.write('\n');
             }
             else if (text.contains(ENTER_HTTP_PROXY_USERNAME)) {
-              writer.append(cfg.getProxyLogin()).append('\n');
+              writer.append(proxyLogin(credentials)).append('\n');
             }
             else if (text.contains(ENTER_HTTP_PROXY_PASSWORD)) {
-              writer.append(cfg.getPlainProxyPassword()).append('\n');
+              writer.append(proxyPassword(credentials)).append('\n');
             }
             writer.flush();
           }
@@ -137,11 +143,15 @@ public final class MvcPluginUtil {
     }
   }
 
-  private static void setProxyNew(@NotNull HttpConfigurable cfg, final @NotNull OldGrailsApplication application) {
-    if (cfg.USE_HTTP_PROXY) {
-      MvcCommand command = new MvcCommand("add-proxy", "IDEA_PROXY", "--host=" + cfg.PROXY_HOST,
-              "--port=" + cfg.PROXY_PORT, "--username=" + cfg.getProxyLogin(),
-              "--password=" + cfg.getPlainProxyPassword());
+  private static void setProxyNew(@NotNull ProxyConfiguration proxyConfig,
+                                  @Nullable Credentials credentials,
+                                  final @NotNull OldGrailsApplication application) {
+    if (proxyConfig instanceof ProxyConfiguration.StaticProxyConfiguration staticConfig) {
+      MvcCommand command = new MvcCommand("add-proxy", "IDEA_PROXY",
+              "--host=" + staticConfig.getHost(),
+              "--port=" + staticConfig.getPort(),
+              "--username=" + proxyLogin(credentials),
+              "--password=" + proxyPassword(credentials));
       GrailsCommandExecutorUtil.executeInModal(
               application, command, GrailsBundle.message("progress.text.execute.add.proxy.command"),
               () -> GrailsCommandExecutorUtil.executeInModal(
@@ -162,15 +172,25 @@ public final class MvcPluginUtil {
     }
   }
 
-  public static void setFrameworkProxy(@NotNull HttpConfigurable cfg, @NotNull OldGrailsApplication application) {
+  public static void setFrameworkProxy(@NotNull ProxyConfiguration proxyConfig,
+                                       @Nullable Credentials credentials,
+                                       @NotNull OldGrailsApplication application) {
     assert !GrailsConsole.getInstance(application.getProject()).isExecuting();
 
     if (application.getGrailsVersion().isAtLeast("1.3.2")) {
-      setProxyNew(cfg, application);
+      setProxyNew(proxyConfig, credentials, application);
     }
     else {
-      setProxyOld(cfg, application);
+      setProxyOld(proxyConfig, credentials, application);
     }
+  }
+
+  private static @NotNull String proxyLogin(@Nullable Credentials credentials) {
+    return StringUtil.notNullize(credentials != null ? credentials.getUserName() : null);
+  }
+
+  private static @NotNull String proxyPassword(@Nullable Credentials credentials) {
+    return StringUtil.notNullize(credentials != null ? credentials.getPasswordAsString() : null);
   }
 
   public static String cleanPath(final String path) {
