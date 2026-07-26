@@ -64,7 +64,7 @@ anything. Concrete checklist:
 
 **0.1b Dormant code inherited from the JetBrains import** — decide revive vs delete for
 each. All of these arrived already-orphaned in `3d4bc40` (the initial import); none was
-broken by later work. They are documented in `grails-rt/README.md` so they are not
+broken by later work. They are documented in `libs/grails-rt/README.md` so they are not
 rediscovered as bugs. Deleting them would shrink `grails-rt` to the two Groovy resources
 that Grails 3+ actually uses.
 - [ ] `GrailsExecutionUtils.addAgentJar` has **no callers**, so the `-javaagent:` path
@@ -79,8 +79,8 @@ that Grails 3+ actually uses.
       `GrailsTaskManagerExtension`, gated on a Gradle task named `grails-test-app` that
       only the old Grails Gradle plugin defines — so it is unreachable on Grails 3+ too.
       Grails 7/8 test-event reporting needs a different mechanism; scope that in 2.6.
-- [ ] Untracked `assetPipeline/` build output remains from a module deleted from
-      `settings.gradle`. Safe to remove.
+- [x] ~~Untracked `assetPipeline/` build output remains from a module deleted from
+      `settings.gradle`.~~ Removed during the restructure.
 
 **0.2 Real-app walkthrough** — generate three apps and open each with the plugin:
 1. Grails **7.0.x** release (via `https://start.grails.org` — forge production
@@ -136,7 +136,16 @@ Walk this checklist per app and record works / broken / missing:
 - [ ] Provide new-UI (20×20) icon variants for the gutter/toolwindow/artefact icons;
       audit `GrailsIconProvider` and `GroovyMvcIcons` (generated) coverage.
 - [ ] Verify dumb-mode safety of the heavier contributors (member contributors and
-      reference providers should be index-tolerant).
+      reference providers should be index-tolerant). **Partly done**: the GSP taglib chain
+      (`GspXmlRootTagImpl` → `GspTagLibUtil` → `GrailsArtifact`) was throwing
+      `IndexNotReadyException` when a GSP was opened before import finished — fixed, with
+      `GspTagLibDumbModeTest` as the regression guard. Two lessons for the rest of the
+      audit: (a) a directory scan being index-free is not sufficient, because resolving a
+      member on a found Groovy class still hits the stub index via supertype resolution;
+      (b) any cache holding a degraded dumb-mode result needs
+      `DumbService.getModificationTracker()` as a dependency, since indexing finishing does
+      not inherently bump `PsiModificationTracker`. The remaining contributors have not
+      been swept.
 - [ ] Encode the supported-platform window in `pluginVerification.ides` (proposal:
       latest two IDE majors for the new plugin; "current major only, best effort" for
       legacy).
@@ -352,7 +361,8 @@ invisible to IntelliJ Community users. Using the Phase 0.3 reference counts:
       submodule (`com.intellij.persistence`, `com.intellij.javaee.jpa`), database
       integration (`com.intellij.database`), JSP-adjacent GSP features
       (`com.intellij.jsp`), JS/CSS injection (already optional).
-- [ ] The existing submodule layout (`hibernate/`, `langInjection/`, `i18n/`, …) is
+- [ ] The existing module layout (`pluginModules/hibernate/`, `pluginModules/langInjection/`,
+      `pluginModules/i18n/`, …) is
       most of the needed seam — the work is breaking compile-time references from
       core packages into Ultimate-only APIs (count known from Phase 0.3).
 - [ ] Decide the Marketplace story: one artifact with optional deps (recommended)
