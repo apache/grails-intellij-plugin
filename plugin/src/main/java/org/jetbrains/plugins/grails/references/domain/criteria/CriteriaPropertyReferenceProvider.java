@@ -17,7 +17,6 @@
 package org.jetbrains.plugins.grails.references.domain.criteria;
 
 import com.intellij.openapi.util.Condition;
-import com.intellij.openapi.util.Conditions;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiMethod;
@@ -32,16 +31,18 @@ public class CriteriaPropertyReferenceProvider extends GrailsMethodNamedArgument
 
   @Override
   public void register(GrailsMethodNamedArgumentReferenceProvider registrar) {
-    Condition<PsiMethod> condition = Conditions.or(
-      new ClassSourceCondition(CriteriaBuilderImplicitMemberContributor.CLASS_SOURCE),
-      new ClassNameCondition(CriteriaBuilderUtil.CRITERIA_BUILDER_CLASS)
-    );
+    // Not ClassNameCondition/ClassSourceCondition: several criteria DSL methods (eq, order, ...) are
+    // declared on a supertype/interface implemented by HibernateCriteriaBuilder (e.g.
+    // org.grails.datastore.mapping.query.api.Criteria) rather than on HibernateCriteriaBuilder itself,
+    // so an exact-class-name match misses them. CriteriaBuilderUtil.isCriteriaBuilderMethod accounts
+    // for that inheritance.
+    Condition<PsiMethod> condition = CriteriaBuilderUtil::isCriteriaBuilderMethod;
 
     registrar.register(0, this, condition,
                        // #CHECK# grails.orm.HibernateCriteriaBuilder
                        "property", "distinct", "avg", "calculatePropertyName", "count", "countDistinct", "groupProperty", "max", "min",
                        "sum", "gt", "ge", "lt", "le", "eq", "like", "rlike", "ilike", "in", "inList", "order", "sizeEq", "sizeGt", "sizeGe",
-                       "sizeLe", "sizeLt", "sizeNe", "ne", "notEqual", "between", "fetchMode",
+                       "sizeLe", "sizeLt", "sizeNe", "ne", "notEqual", "between", "fetchMode", "createAlias",
 
                            // From HibernateCriteriaBuilder.invokeMethod(...)
                        "isNull", "isNotNull", "isEmpty", "isNotEmpty");
