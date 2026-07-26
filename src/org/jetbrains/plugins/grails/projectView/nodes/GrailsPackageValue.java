@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-package org.jetbrains.plugins.grails.projectView.api
+package org.jetbrains.plugins.grails.projectView.nodes;
 
-import com.intellij.openapi.extensions.ExtensionPointName
+import org.jetbrains.annotations.NotNull;
 
-val EP_NAME: ExtensionPointName<GrailsViewNodeProvider> = ExtensionPointName.create("org.intellij.grails.viewNodeProvider")
+/** Node value for a flattened package; identity is the fqn, as with the Kotlin data class. */
+record GrailsPackageValue(@NotNull String packageFqn) {
+}

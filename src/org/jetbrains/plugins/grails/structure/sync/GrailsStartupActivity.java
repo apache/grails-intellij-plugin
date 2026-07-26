@@ -29,7 +29,7 @@ import kotlin.Unit;
 import kotlin.coroutines.Continuation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.plugins.grails.projectView.ShowHideKt;
+import org.jetbrains.plugins.grails.projectView.GrailsProjectViewPanes;
 import org.jetbrains.plugins.grails.references.TraitInjectorService;
 import org.jetbrains.plugins.grails.runner.GrailsCommandExecutor;
 import org.jetbrains.plugins.grails.service.GrailsBackgroundService;
@@ -60,7 +60,7 @@ public final class GrailsStartupActivity implements ProjectActivity, DumbAware {
         backgroundService.run(new GrailsRunConfigurationTask(project));
       }
       backgroundService.run(new GrailsSdkCheckTask(project));
-      ApplicationManager.getApplication().invokeLater(() -> ShowHideKt.showHide(project), project.getDisposed());
+      ApplicationManager.getApplication().invokeLater(() -> GrailsProjectViewPanes.showHide(project), project.getDisposed());
     });
 
     connection.subscribe(ModuleRootListener.TOPIC, new ModuleRootListener() {
