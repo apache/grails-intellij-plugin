@@ -75,18 +75,18 @@ dependencies {
     implementation project(':libs-grails-rt')
 
     // JPS/build
-    runtimeOnly project(':libs-compiler-grails-compiler-patch')
-    runtimeOnly project(':libs-compiler-jps-plugin')
+    runtimeOnly project(':compilers-grails-compiler-patch')
+    runtimeOnly project(':compilers-jps-plugin')
 
     // Aggregate JaCoCo coverage from every module into the root testCodeCoverageReport.
     jacocoAggregation project(':pluginModules-copyright')
     jacocoAggregation project(':pluginModules-coverage')
     jacocoAggregation project(':libs-gradle-tooling')
-    jacocoAggregation project(':libs-compiler-grails-compiler-patch')
+    jacocoAggregation project(':compilers-grails-compiler-patch')
     jacocoAggregation project(':libs-grails-rt')
     jacocoAggregation project(':pluginModules-hibernate')
     jacocoAggregation project(':pluginModules-i18n')
-    jacocoAggregation project(':libs-compiler-jps-plugin')
+    jacocoAggregation project(':compilers-jps-plugin')
     jacocoAggregation project(':pluginModules-langInjection')
     jacocoAggregation project(':pluginModules-maven')
     jacocoAggregation project(':libs-testFramework')

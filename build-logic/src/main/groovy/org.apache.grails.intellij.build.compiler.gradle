@@ -20,12 +20,14 @@
 // A compiler plugin: code that runs inside the end user's JPS build process rather than in the
 // IDE. These are the jars named by <compileServer.plugin classpath="..."/> in plugin.xml.
 //
-// It sits at libs/compiler/* on disk, because the source tiers mirror the packaged layout:
-// pluginModules/* are content modules and ship to lib/modules/, while everything under libs/ --
-// compiler plugins included -- ships to lib/.
+// Its own top-level tier, compilers/*, a sibling of libs/ rather than nested inside it, so no
+// project's coordinates are a prefix of another's and the directory layout says the same thing the
+// coordinates do. The directory is plural and the namespace singular, matching libs/ ->
+// org.apache.grails.intellij.lib: the directory holds several projects, the namespace names one tier.
 //
-// Its NAMESPACE is a sibling of lib rather than a child of it (org.apache.grails.intellij.compiler,
-// not ...intellij.lib.compiler), so no project's coordinates are a prefix of another's.
+// These jars still ship to lib/ in the distribution alongside the libraries -- only content
+// modules go to lib/modules/ -- but where a jar lands is a packaging detail, whereas the tier
+// records what the project IS.
 //
 // It is still called out separately because JPS resolves the classpath attribute by file name and
 // silently skips entries it cannot find, so these jar names are part of the plugin's contract and

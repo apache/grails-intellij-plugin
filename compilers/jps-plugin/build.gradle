@@ -28,5 +28,5 @@ dependencies {
         bundledPlugin 'org.intellij.groovy'
     }
 
-    compileOnly project(':libs-compiler-grails-compiler-patch')
+    compileOnly project(':compilers-grails-compiler-patch')
 }

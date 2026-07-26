@@ -33,6 +33,6 @@ rootProject.name = 'grails-intellij-plugin'
 }
 
 ['jps-plugin', 'grails-compiler-patch'].each { name ->
-    include "libs-compiler-$name"
-    project(":libs-compiler-$name").projectDir = file("libs/compiler/$name")
+    include "compilers-$name"
+    project(":compilers-$name").projectDir = file("compilers/$name")
 }
