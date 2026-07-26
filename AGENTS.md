@@ -106,6 +106,14 @@ is a pure aggregator — it owns only RAT and coverage aggregation, no sources.
 | `compilers/{grails-compiler-patch,jps-plugin}/` | `:compilers-*` | JPS build integration |
 | `build-logic/` | included build | Convention plugins, ids `org.apache.grails.intellij.build.*` |
 
+> **`.gitignore` trap.** `build-logic`'s helper classes live in package
+> `org.apache.grails.intellij.build`, i.e. a directory literally named `build`. A `**/build`
+> ignore pattern silently swallows it, so those sources never get committed and every local
+> build keeps working while a fresh checkout fails to compile the script plugins. The ignore
+> patterns are therefore depth-anchored (`/build/`, `/*/build/`, `/*/*/build/`). After adding a
+> file under `build-logic/src`, confirm it is not ignored:
+> `git status --porcelain --ignored=matching | grep src/` should print nothing.
+
 `plugin/` uses the standard source layout: `src/main/java` (Java, plus the few remaining
 Kotlin files), `src/main/gen` for generated JFlex lexers, `src/main/resources`, and
 `src/test/java`. `plugin/testdata/` sits next to the tests because Gradle sets

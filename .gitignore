@@ -1,5 +1,12 @@
 .idea
-**/build
+# Gradle build directories, matched by depth rather than **/build: build-logic's convention
+# plugins live in package org.apache.grails.intellij.build, so **/build silently swallowed
+# build-logic/src/main/groovy/org/apache/grails/intellij/build/ and its sources were never
+# committed. Depths cover /build, <project>/build and <tier>/<project>/build, the same shape
+# the RAT excludes use.
+/build/
+/*/build/
+/*/*/build/
 **/.gradle
 **/.intellijPlatform
 .kotlin
