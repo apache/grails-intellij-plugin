@@ -27,6 +27,7 @@ import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiModificationTracker;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.apache.grails.intellij.plugin.pluginSupport.buildTestData.GrailsBuildTestDataEntityMemberProvider;
 import org.apache.grails.intellij.plugin.pluginSupport.buildTestData.GrailsBuildTestDataMemberProvider;
 import org.apache.grails.intellij.plugin.pluginSupport.seachable.GrailsSearchableMemberProvider;
 import org.apache.grails.intellij.plugin.references.bootstrap.GrailsBootStrapMemberProvider;
@@ -57,7 +58,8 @@ public final class GrailsArtifactNonCodeMemberProcessor extends NonCodeMembersCo
       res = new EnumMap<>(GrailsArtifact.class);
 
       res.put(GrailsArtifact.CONTROLLER, new MemberProvider[]{new ControllerMembersProvider()});
-      res.put(GrailsArtifact.DOMAIN, new MemberProvider[]{new DomainMembersProvider(), new GrailsSearchableMemberProvider(), new GrailsBuildTestDataMemberProvider()});
+      res.put(GrailsArtifact.DOMAIN, new MemberProvider[]{new DomainMembersProvider(), new GrailsSearchableMemberProvider(), new GrailsBuildTestDataMemberProvider(),
+                                                     new GrailsBuildTestDataEntityMemberProvider()});
       res.put(GrailsArtifact.TAGLIB, new MemberProvider[]{new TaglibMembersProvider()});
       res.put(GrailsArtifact.JOB, new MemberProvider[]{new JobsMemberProvider()});
       res.put(GrailsArtifact.FILTER, new MemberProvider[]{new FilterMemberProvider()});
