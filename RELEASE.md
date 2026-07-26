@@ -27,8 +27,10 @@ reproducible from the tagged commit — see
 requirement and not just good practice.
 
 The pipeline is encoded in [`.github/workflows/release.yml`](.github/workflows/release.yml)
-and is triggered when a **GitHub Release is published** for a tag. It runs in four stages,
-described in sections 2–5 below.
+and is triggered when a **GitHub Release is published** for a tag. It runs in six jobs:
+`publish`, `source`, and `upload` stage the artifacts (sections 3–5), then `release`
+(section 8), `marketplace` (section 9), and `close` (section 10) each wait on their own
+approval gate.
 
 ## Contents
 
@@ -40,7 +42,9 @@ described in sections 2–5 below.
 - [5. Stage to dist.apache.org (`upload` job)](#5-stage-to-distapacheorg-upload-job)
 - [6. Verify the staged artifacts](#6-verify-the-staged-artifacts)
 - [7. Vote](#7-vote)
-- [8. Publish the release (`release` job)](#8-publish-the-release-release-job)
+- [8. Promote the distributions (`release` job)](#8-promote-the-distributions-release-job)
+- [9. Publish to the JetBrains Marketplace (`marketplace` job)](#9-publish-to-the-jetbrains-marketplace-marketplace-job)
+- [10. Close the release (`close` job)](#10-close-the-release-close-job)
 - [Rollback](#rollback)
 - [Verifying a Reproducible Build](#verifying-a-reproducible-build)
 - [Appendix: GPG & the KEYS file](#appendix-gpg--the-keys-file)
@@ -71,6 +75,13 @@ the 2026.3 line would start at `263.0.0`. Release tags are the version prefixed 
 The version lives in `gradle.properties` and is overridden per release with
 `-Pversion=${VERSION}`, so the checked-in value does not have to be bumped before tagging.
 
+Between releases the checked-in value is a snapshot: the `close` job
+([section 10](#10-close-the-release-close-job)) bumps it to the next **patch** version with a
+`-SNAPSHOT` suffix, so closing `v262.0.0` leaves the branch at `262.0.1-SNAPSHOT`. Nothing
+automates the other two segments — bump `minor` by hand when the next release is feature
+work, and `platform-branch` (together with `platformVersion` and `pluginSinceBuild`) when
+the plugin moves to a new IntelliJ Platform branch.
+
 ## 1. Prerequisites
 
 - The release tag points at the exact commit to be released.
@@ -79,9 +90,14 @@ The version lives in `gradle.properties` and is overridden per release with
 - ASF signing + dist secrets are configured: `GRAILS_GPG_KEY`, `GPG_KEY_ID`,
   `SVC_DIST_GRAILS_USERNAME`, `SVC_DIST_GRAILS_PASSWORD`.
   See [Appendix: Release secrets](#appendix-release-secrets).
-- The `release` environment reviewers are set in [`.asf.yaml`](.asf.yaml). GitHub does not
-  allow private groups as approvers, so approvers are listed individually and there is a
-  hard limit of 6. Add yourself before starting if you are not already listed.
+- The `release`, `marketplace`, and `close` environment reviewers are set in
+  [`.asf.yaml`](.asf.yaml). GitHub does not allow private groups as approvers, so approvers
+  are listed individually and there is a hard limit of 6. Add yourself before starting if you
+  are not already listed.
+- GitHub Actions is allowed to create pull requests (**Settings > Actions > General >
+  Workflow permissions**). Without it the `close` job
+  ([section 10](#10-close-the-release-close-job)) pushes the merge-back branch but cannot open
+  the pull request, and fails.
 - The JDK is pinned by [`.sdkmanrc`](.sdkmanrc); CI reads the version from it so local and
   CI builds match. See [INSTALL](INSTALL) for local build setup.
 - No planning documents that are excluded from the license audit
@@ -101,8 +117,9 @@ The version lives in `gradle.properties` and is overridden per release with
 4. Check **Set as a pre-release** for milestone / release-candidate versions.
 5. Click **Publish release**. This triggers the `Release` workflow.
 
-The first three jobs (`publish`, `source`, `upload`) run without approval. The final
-`release` job is gated on the `release` GitHub environment and will wait for a reviewer.
+The first three jobs (`publish`, `source`, `upload`) run without approval. The `release`,
+`marketplace`, and `close` jobs each run behind a GitHub environment of the same name and
+will wait for a reviewer, so they are approved one at a time in that order.
 
 ## 3. Build & stage the plugin ZIP (`publish` job)
 
@@ -243,16 +260,17 @@ expanded with `envsubst`:
 | --- | --- | --- |
 | `staged.txt` | `upload` job | `[VOTE]` to `dev@grails.apache.org` |
 | `vote_succeeded.txt` | `release` job | `[RESULT][VOTE]` to `dev@grails.apache.org` |
-| `announce.txt` | `release` job | `[ANNOUNCE]` to `announce@apache.org`, `dev@`, `users@` |
+| `announce.txt` | `close` job | `[ANNOUNCE]` to `announce@apache.org`, `dev@`, `users@` |
 
 Edit the templates rather than the workflow when the wording needs to change. Placeholders
 in angle brackets (`<X>`, `<NAME>`, `<PREVIOUS_VERSION>`) are deliberately left for the
 release manager to fill in; everything in `${...}` is substituted automatically.
 
-## 8. Publish the release (`release` job)
+## 8. Promote the distributions (`release` job)
 
-After the vote succeeds, approve the `release` job (the `release` GitHub environment
-requires the reviewers listed in `.asf.yaml`):
+This job publishes the **official ASF release**: the voted-on distributions move from
+`dist/dev` to `dist/release`. After the vote succeeds, approve it (the `release` GitHub
+environment requires the reviewers listed in `.asf.yaml`):
 
 1. **MANUAL:** confirm the vote result on `dev@grails.apache.org`.
 2. **MANUAL:** promote the staged artifacts from `dist/dev` to `dist/release`. ASF
@@ -263,16 +281,62 @@ requires the reviewers listed in `.asf.yaml`):
    ```
    The script also offers to remove prior release folders — ASF dist keeps only the
    current release, with older ones served from the archive.
-3. `./gradlew publishPlugin -Pversion=${VERSION}` — publish the convenience binary to the
-   JetBrains Marketplace.
-4. **MANUAL:** record the release at <https://reporter.apache.org/addrelease.html?grails>
-   as `INTELLIJ-<version>`, dated the day the distributions were promoted.
-5. **MANUAL:** send the `[RESULT][VOTE]` and `[ANNOUNCE]` emails. The job's last two steps
-   print both, rendered from
-   [`.github/vote_templates`](.github/vote_templates) — copy them from the log and fill in
-   the angle-bracket placeholders. Announcements must come from your `@apache.org` address
-   (see <https://infra.apache.org/committer-email.html>).
-6. Flag the GitHub Release as **latest**.
+3. **MANUAL:** send the `[RESULT][VOTE]` email. The step prints it rendered from
+   [`.github/vote_templates/vote_succeeded.txt`](.github/vote_templates) — copy it from the
+   log and fill in the angle-bracket placeholders.
+4. Flag the GitHub Release as **latest**.
+
+## 9. Publish to the JetBrains Marketplace (`marketplace` job)
+
+The convenience binary goes out on its own gate, behind the `marketplace` GitHub
+environment, once the official artifacts are promoted:
+
+```bash
+./gradlew publishPlugin -Pversion=${VERSION}
+```
+
+It is a separate job rather than a step in `release` because it is the one action in the
+pipeline that cannot be walked back — a Marketplace version can be hidden but not withdrawn
+— so it gets its own approval instead of riding along with the ASF promotion. That also
+means a Marketplace-side failure (expired `PUBLISH_TOKEN`, signing secret drift) can be
+re-run on its own without re-approving the promotion job.
+
+The ASF release is complete at the end of section 8 whether or not this job runs; the plugin
+simply is not installable from inside the IDE until it does.
+
+## 10. Close the release (`close` job)
+
+The last job records the release and tidies the repository up for the next one. It is gated
+on its own `close` GitHub environment, so it waits for approval after the plugin is live on
+the Marketplace:
+
+1. **MANUAL:** record the release at <https://reporter.apache.org/addrelease.html?grails>
+   as `INTELLIJ-<version>`, dated the day the distributions were promoted. This runs first,
+   because it is the ASF-facing record of what just went out.
+2. Run [`apache/grails-github-actions/post-release@asf`](https://github.com/apache/grails-github-actions/tree/asf/post-release),
+   the same shared action grails-core uses, so the mechanics are identical across Grails
+   repositories. It:
+   - closes the GitHub milestone named after the released version, if one exists;
+   - creates branch `merge-back-<version>` from the release tag;
+   - bumps `version` in [`gradle.properties`](gradle.properties) to the next patch snapshot
+     (`262.0.0` → `262.0.1-SNAPSHOT`), committed as `[skip ci] Bump version to …`;
+   - opens a pull request from that branch into the branch the release targeted
+     (`github.event.release.target_commitish`).
+
+   Because the branch is cut from the **tag**, the PR carries both the version bump and any
+   commit that only existed on the tag, which is what keeps release-time fixes from being
+   orphaned.
+3. **MANUAL:** review and merge that pull request, resolving conflicts if the target branch
+   has moved on. The step prints the reminder with the branch name.
+
+   If the checked-in version needs more than a patch bump — feature work, or a move to a new
+   IntelliJ Platform branch — edit `gradle.properties` in that PR before merging it. See
+   [Versioning](#versioning).
+4. **MANUAL:** send the `[ANNOUNCE]` email, rendered from
+   [`.github/vote_templates/announce.txt`](.github/vote_templates). It is the pipeline's last
+   step so the announcement goes out only once the plugin is actually installable from the
+   Marketplace and the repository is back on a snapshot version. Announcements must come from
+   your `@apache.org` address (see <https://infra.apache.org/committer-email.html>).
 
 ## Rollback
 
@@ -303,7 +367,7 @@ git push --delete origin v<version>
 
 plus deleting the GitHub Release from the Releases page.
 
-Nothing is published to the JetBrains Marketplace until the post-vote `release` job runs,
+Nothing is published to the JetBrains Marketplace until the post-vote `marketplace` job runs,
 so aborting before that point leaves no public trace.
 
 ## Verifying a Reproducible Build

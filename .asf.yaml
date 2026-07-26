@@ -18,6 +18,30 @@
 github:
   # deployment environments to delay releasing until the necessary steps have completed
   environments:
+    close:
+      required_reviewers:
+        - id: jdaugherty
+          type: User
+        - id: matrei
+          type: User
+        - id: jamesfredley
+          type: User
+        - id: sbglasius
+          type: User
+      wait_timer: 0
+      prevent_self_review: false
+    marketplace:
+      required_reviewers:
+        - id: jdaugherty
+          type: User
+        - id: matrei
+          type: User
+        - id: jamesfredley
+          type: User
+        - id: sbglasius
+          type: User
+      wait_timer: 0
+      prevent_self_review: false
     release:
       required_reviewers:
         - id: jdaugherty

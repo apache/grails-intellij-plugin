@@ -34,6 +34,7 @@ env:
   SVN_FOLDER: INTELLIJ
   SVN_PROJECT: grails
   TAG: ${{ github.event.release.tag_name }}
+  TARGET_BRANCH: ${{ github.event.release.target_commitish }}
   VERSION: will be computed in each job
 concurrency:
   group: release-pipeline-${{ github.event.release.target_commitish }}
@@ -271,7 +272,7 @@ jobs:
           echo "::endgroup::"
   release:
     environment: release # post-vote gate: required reviewers configured in .asf.yaml
-    name: "VOTE SUCCEEDED - Publish Release"
+    name: "VOTE SUCCEEDED - Promote Distributions"
     needs: [ publish, source, upload ]
     runs-on: ubuntu-latest
     steps:
@@ -287,6 +288,45 @@ jobs:
           echo "::group::Manual ASF Artifact Promotion"
           echo "Run .github/scripts/releaseDistributions.sh ${TAG} ${SVN_FOLDER} <ASF_USER>"
           echo "::endgroup::"
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+      - name: "🛠️ Install tools"
+        run: sudo apt-get install -y gettext-base # gettext-base provides envsubst for the vote result email
+      - name: "📧 MANUAL - Send Vote Result Email"
+        run: |
+          echo "::group::Manual Vote Result Email"
+          echo ""
+          echo "Send a new email or reply to the original vote email by changing the subject."
+          echo ""
+          echo "TO:"
+          echo "*************************************************"
+          echo "dev@grails.apache.org"
+          echo "*************************************************"
+          echo ""
+          echo "Subject:"
+          echo "*************************************************"
+          echo "[RESULT][VOTE] ${PROJECT_NAME} ${VERSION}"
+          echo "*************************************************"
+          echo ""
+          echo "Body:"
+          echo "*************************************************"
+          cat .github/vote_templates/vote_succeeded.txt | envsubst
+          echo "*************************************************"
+          echo "::endgroup::"
+  # The convenience binary goes out on its own gate, after the official ASF artifacts have
+  # been promoted. Pushing to the Marketplace is the one step in this pipeline that cannot be
+  # undone -- Marketplace versions can be hidden but not withdrawn -- so it is approved on its
+  # own rather than riding along with the promotion job.
+  marketplace:
+    environment: marketplace # gate: required reviewers configured in .asf.yaml
+    name: "VOTE SUCCEEDED - Publish to JetBrains Marketplace"
+    needs: [ publish, source, upload, release ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: "📝 Establish release version"
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
       - name: "📥 Checkout repository"
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -310,6 +350,19 @@ jobs:
           PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
         run: ./gradlew publishPlugin -Pversion=${VERSION}
+  close:
+    environment: close # separate gate again, so the bump is approved only once the release is really out
+    name: "VOTE SUCCEEDED - Close Release"
+    needs: [ publish, source, upload, release, marketplace ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # to push the merge-back branch
+      issues: write # to close the release milestone
+      pull-requests: write # to open the merge-back pull request
+      actions: write # in case the tag carries pending changes to this workflow
+    steps:
+      - name: "📝 Establish release version"
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
       - name: "✅ MANUAL - Update ASF Reporter"
         run: |
           echo "::group::Manual ASF Reporter Update"
@@ -317,27 +370,30 @@ jobs:
           echo "Update https://reporter.apache.org/addrelease.html?${SVN_PROJECT} to add"
           echo "${SVN_FOLDER}-${VERSION} as complete as of ${TODAY}"
           echo "::endgroup::"
-      - name: "📧 MANUAL - Send Vote Result Email"
+      - name: "🛠️ Install tools"
+        run: sudo apt-get install -y gettext-base # gettext-base provides envsubst for the announcement email
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # post-release checks out the target branch as well as the tag
+          ref: ${{ env.TAG }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: "⚙️ Run post-release"
+        # The same shared action grails-core uses: closes the release milestone, branches
+        # merge-back-${VERSION} off the tag, bumps `version` in gradle.properties to the next
+        # SemVer patch snapshot (262.0.0 -> 262.0.1-SNAPSHOT), and opens a PR back into
+        # ${TARGET_BRANCH}. A new IntelliJ Platform branch (262 -> 263) cannot be inferred from
+        # SemVer arithmetic, so that segment is bumped by hand -- see RELEASE.md § Versioning.
+        uses: apache/grails-github-actions/post-release@asf
+      - name: "🌎 MANUAL - Merge the close-release pull request"
         run: |
-          echo "::group::Manual Vote Result Email"
-          echo ""
-          echo "Send a new email or reply to the original vote email by changing the subject."
-          echo ""
-          echo "TO:"
-          echo "*************************************************"
-          echo "dev@grails.apache.org"
-          echo "*************************************************"
-          echo ""
-          echo "Subject:"
-          echo "*************************************************"
-          echo "[RESULT][VOTE] ${PROJECT_NAME} ${VERSION}"
-          echo "*************************************************"
-          echo ""
-          echo "Body:"
-          echo "*************************************************"
-          cat .github/vote_templates/vote_succeeded.txt | envsubst
-          echo "*************************************************"
+          echo "::group::Merge Close Release PR - MANUAL"
+          echo "post-release pushed merge-back-${VERSION} from tag ${TAG} with the snapshot bump and"
+          echo "opened a PR against ${TARGET_BRANCH}. Resolve any conflicts and merge it, so neither"
+          echo "the bump nor the tagged commit is left orphaned."
           echo "::endgroup::"
+      # Last step in the pipeline: announce only once the release is public and the
+      # repository is back on a snapshot version.
       - name: "📧 MANUAL - Send Announcement Email"
         run: |
           echo "::group::Announcement Email"
