@@ -1,0 +1,58 @@
+/*
+ * Copyright 2000-2026 JetBrains s.r.o. and contributors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.grails.intellij.plugin.structure.sync;
+
+import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationGroupManager;
+import com.intellij.notification.NotificationListener;
+import com.intellij.notification.NotificationType;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.project.Project;
+import org.jetbrains.annotations.NotNull;
+import org.apache.grails.intellij.plugin.GrailsBundle;
+import org.apache.grails.intellij.plugin.runner.GrailsCommandExecutor;
+import org.apache.grails.intellij.plugin.structure.GrailsApplication;
+import org.apache.grails.intellij.plugin.ui.GrailsConfigureSDKDialog;
+
+import javax.swing.event.HyperlinkEvent;
+
+public class GrailsSdkCheckTask extends GrailsApplicationBackgroundTask {
+
+  public GrailsSdkCheckTask(@NotNull Project project) {
+    super(project, GrailsBundle.message("progress.title.check.sdk"));
+  }
+
+  @Override
+  protected void run(@NotNull GrailsApplication application, @NotNull ProgressIndicator indicator) {
+    final GrailsCommandExecutor executor = GrailsCommandExecutor.getGrailsExecutor(application);
+    if (executor != null) return;
+
+    final String content = GrailsBundle.message("grails.sdk.not.found.content", application.getName());
+    NotificationGroupManager.getInstance().getNotificationGroup("Grails Configure").createNotification(
+      GrailsBundle.message("grails.sdk.not.found.title"), content,
+      NotificationType.INFORMATION)
+      .setListener(
+        new NotificationListener.Adapter() {
+          @Override
+          protected void hyperlinkActivated(@NotNull Notification notification, @NotNull HyperlinkEvent e) {
+            new GrailsConfigureSDKDialog(application.getProject()).setGrailsApplication(application).show();
+          }
+        })
+      .setImportant(true)
+      .notify(application.getProject());
+  }
+}

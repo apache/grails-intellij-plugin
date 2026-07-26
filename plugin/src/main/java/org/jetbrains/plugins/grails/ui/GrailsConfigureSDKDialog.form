@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="org.jetbrains.plugins.grails.ui.GrailsConfigureSDKDialog">
+<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="org.apache.grails.intellij.plugin.ui.GrailsConfigureSDKDialog">
   <grid id="27dc6" binding="myCenterPanel" layout-manager="BorderLayout" hgap="0" vgap="0">
     <constraints>
       <xy x="20" y="20" width="500" height="85"/>
@@ -21,7 +21,7 @@
               <text resource-bundle="messages/GrailsBundle" key="sdk.form.label.application"/>
             </properties>
           </component>
-          <component id="ddfe8" class="org.jetbrains.plugins.grails.runner.ui.GrailsApplicationCombobox" binding="myApplicationCombobox">
+          <component id="ddfe8" class="org.apache.grails.intellij.plugin.runner.ui.GrailsApplicationCombobox" binding="myApplicationCombobox">
             <constraints>
               <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
             </constraints>

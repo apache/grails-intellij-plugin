@@ -34,7 +34,7 @@ dependencies {
 // pre-restructure branch: the resource-based manifest never made it into the jar.
 tasks.named('jar') {
     manifest.attributes(
-            'Premain-Class': 'org.jetbrains.groovy.grails.rt.Agent',
+            'Premain-Class': 'org.apache.grails.intellij.lib.grails.rt.Agent',
             'Can-Redefine-Classes': 'true',
     )
 }

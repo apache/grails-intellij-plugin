@@ -16,7 +16,7 @@
 -->
 <!--
   HQL injection into GORM find/findAll/executeQuery/executeUpdate is now performed
-  programmatically by org.jetbrains.plugins.grails.references.domain.GormHqlInjector.
+  programmatically by org.apache.grails.intellij.plugin.references.domain.GormHqlInjector.
   The previous IntelliLang matcher relied on the synthetic "Gorm:DomainDescriptor:DynamicMethod"
   light methods, which are only generated for GORM below 4; on GORM 4+ (Grails 3+) the finder
   methods come from the GormEntity trait and are not marked, so this matcher never fired there.

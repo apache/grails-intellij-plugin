@@ -20,11 +20,11 @@
   </dependencies>
 
   <extensions defaultExtensionNs="com.intellij">
-    <persistence.packagesProvider implementation="com.intellij.groovy.grails.hibernate.GormSessionFactoryContributor"/>
-    <postStartupActivity implementation="com.intellij.groovy.grails.hibernate.Grails3HibernateFacetActivity"/>
+    <persistence.packagesProvider implementation="org.apache.grails.intellij.module.hibernate.GormSessionFactoryContributor"/>
+    <postStartupActivity implementation="org.apache.grails.intellij.module.hibernate.Grails3HibernateFacetActivity"/>
   </extensions>
 
   <extensions defaultExtensionNs="org.intellij.grails">
-    <facetProvider implementation="com.intellij.groovy.grails.hibernate.GormHibernateFacetProvider"/>
+    <facetProvider implementation="org.apache.grails.intellij.module.hibernate.GormHibernateFacetProvider"/>
   </extensions>
 </idea-plugin>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="org.jetbrains.plugins.grails.ui.GrailsRunCommandDialog">
+<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="org.apache.grails.intellij.plugin.ui.GrailsRunCommandDialog">
   <grid id="27dc6" binding="myMainPanel" layout-manager="GridLayoutManager" row-count="4" column-count="2" same-size-horizontally="false" same-size-vertically="false" hgap="5" vgap="5">
     <margin top="0" left="0" bottom="0" right="0"/>
     <constraints>
@@ -18,7 +18,7 @@
           <text resource-bundle="messages/GrailsBundle" key="run.command.label.application"/>
         </properties>
       </component>
-      <component id="df39e" class="org.jetbrains.plugins.grails.runner.ui.GrailsApplicationCombobox" binding="myApplications">
+      <component id="df39e" class="org.apache.grails.intellij.plugin.runner.ui.GrailsApplicationCombobox" binding="myApplications">
         <constraints>
           <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
         </constraints>
@@ -32,7 +32,7 @@
           <text resource-bundle="messages/GrailsBundle" key="run.command.label.command"/>
         </properties>
       </component>
-      <component id="27ed2" class="org.jetbrains.plugins.grails.ui.EditorComboBoxWithHistory" binding="myCommand" custom-create="true">
+      <component id="27ed2" class="org.apache.grails.intellij.plugin.ui.EditorComboBoxWithHistory" binding="myCommand" custom-create="true">
         <constraints>
           <grid row="1" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
         </constraints>
@@ -49,7 +49,7 @@
           <text resource-bundle="messages/GrailsBundle" key="run.command.label.vm.options"/>
         </properties>
       </component>
-      <component id="768ef" class="org.jetbrains.plugins.grails.ui.EditorComboBoxWithHistory" binding="myVMOptions" custom-create="true">
+      <component id="768ef" class="org.apache.grails.intellij.plugin.ui.EditorComboBoxWithHistory" binding="myVMOptions" custom-create="true">
         <constraints>
           <grid row="2" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
         </constraints>

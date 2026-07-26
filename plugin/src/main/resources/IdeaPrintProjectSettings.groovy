@@ -16,7 +16,7 @@
 import grails.util.BuildSettings
 import grails.util.BuildSettingsHolder
 
-// This constants were copied from org.jetbrains.plugins.grails.config.PrintGrailsSettingsConstants
+// This constants were copied from org.apache.grails.intellij.plugin.config.PrintGrailsSettingsConstants
 final String COMPILE = "Compile"
 final String RUNTIME = "Runtime"
 final String TESTS = "Test"

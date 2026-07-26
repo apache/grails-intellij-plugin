@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="org.jetbrains.plugins.grails.runner.ui.GrailsRunConfigurationEditor">
+<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="org.apache.grails.intellij.plugin.runner.ui.GrailsRunConfigurationEditor">
   <grid id="27dc6" binding="myMainPanel" layout-manager="GridLayoutManager" row-count="7" column-count="2" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
     <margin top="0" left="0" bottom="0" right="0"/>
     <constraints>
@@ -17,7 +17,7 @@
           <text resource-bundle="messages/GrailsBundle" key="run.form.label.application"/>
         </properties>
       </component>
-      <component id="906a7" class="org.jetbrains.plugins.grails.runner.ui.GrailsApplicationCombobox" binding="myApplicationsCombo">
+      <component id="906a7" class="org.apache.grails.intellij.plugin.runner.ui.GrailsApplicationCombobox" binding="myApplicationsCombo">
         <constraints>
           <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
         </constraints>

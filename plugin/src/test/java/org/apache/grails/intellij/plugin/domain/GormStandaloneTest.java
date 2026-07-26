@@ -1,0 +1,191 @@
+/*
+ * Copyright 2000-2026 JetBrains s.r.o. and contributors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.grails.intellij.plugin.domain;
+
+import com.intellij.openapi.module.Module;
+import com.intellij.openapi.roots.ContentEntry;
+import com.intellij.openapi.roots.ModifiableRootModel;
+import com.intellij.psi.PsiFile;
+import com.intellij.testFramework.IdeaTestUtil;
+import com.intellij.testFramework.LightProjectDescriptor;
+import com.intellij.testFramework.PsiTestUtil;
+import com.intellij.testFramework.fixtures.DefaultLightProjectDescriptor;
+import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase;
+import junit.framework.TestCase;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.plugins.groovy.codeInspection.assignment.GroovyAssignabilityCheckInspection;
+import org.apache.grails.intellij.lib.testFramework.GrailsTestCase;
+import org.apache.grails.intellij.lib.testFramework.GrailsTestUtil;
+
+import java.io.IOException;
+
+public class GormStandaloneTest extends LightJavaCodeInsightFixtureTestCase {
+  private void createTestClasses() {
+    myFixture.addFileToProject("City.groovy", """
+      @grails.persistence.Entity
+      class City {
+      
+        String name
+      
+        static hasMany = [street: Street];
+      }
+      """);
+
+    myFixture.addFileToProject("Street.groovy", """
+      
+      @grails.persistence.Entity
+      class Street {
+        String name
+      
+        int index
+      
+        static hasMany = [houseNumbers: Integer]
+      }
+      """);
+  }
+
+  public void testAddToHighlighting() {
+    createTestClasses();
+
+    myFixture.enableInspections(GroovyAssignabilityCheckInspection.class);
+
+    PsiFile file = myFixture.addFileToProject("A.groovy", """
+      
+          def spb = new City(name: "Spb").save()
+      
+          spb.addToStreet(name: 'qqqRrr')
+          spb.addToStreet(name: 12)
+          spb.addToStreet(name: [1,2,3])
+          spb.addToStreet(name: [:])
+      
+          spb.addToStreet(name: 'qqqRrr', index: <warning descr="Type of argument 'index' can not be 'String'">'Rrr'</warning>)
+          spb.addToStreet(name: 'qqq12', index: 12)
+          spb.addToStreet(name: 'qqq12', index: <warning descr="Type of argument 'index' can not be 'ArrayList<Integer>'">[1,2,3]</warning>)
+      
+          spb.addToStreet(name: 'qqq12', houseNumbers: [1,2,3,4,5])
+          spb.addToStreet(name: 'qqq12', houseNumbers: <warning descr="Type of argument 'houseNumbers' can not be 'LinkedHashMap<String, Integer>'">['asda':232]</warning>)
+          spb.addToStreet(name: 'qqq12', houseNumbers: <warning descr="Type of argument 'houseNumbers' can not be 'ArrayList<String>'">["1", '2']</warning>)
+          spb.addToStreet(name: 'qqq12', houseNumbers: <warning descr="Type of argument 'houseNumbers' can not be 'String'">'asdasdasa'</warning>)
+          spb.addToStreet(name: 'qqq12', houseNumbers: <warning descr="Type of argument 'houseNumbers' can not be 'Integer'">23</warning>)
+      """);
+
+    myFixture.testHighlighting(true, false, true, file.getVirtualFile());
+  }
+
+  public void testCompletion() {
+    createTestClasses();
+
+    PsiFile file = myFixture.addFileToProject("A.groovy", """
+      
+      def spb = new City(name: "Spb").save()
+      spb.addToStreet(<caret>: )
+         \s""");
+
+    GrailsTestCase.checkCompletionStatic(myFixture, file, "name", "index", "houseNumbers");
+  }
+
+  public void testRenameParameter() {
+    createTestClasses();
+
+    PsiFile file = myFixture.addFileToProject("A.groovy", """
+      
+      def spb = new City(name: "Spb").save()
+      
+      spb.addToStreet(name<caret>: 'Nevskiy pr.')
+      spb.addToStreet(name: 'Lanskoe sh.')
+      
+      Street st = new Street()
+      println(st.name)
+      """);
+
+    myFixture.configureFromExistingVirtualFile(file.getVirtualFile());
+
+    myFixture.renameElementAtCaret("zzz");
+
+    TestCase.assertEquals("""
+                            
+                            def spb = new City(name: "Spb").save()
+                            
+                            spb.addToStreet(zzz: 'Nevskiy pr.')
+                            spb.addToStreet(zzz: 'Lanskoe sh.')
+                            
+                            Street st = new Street()
+                            println(st.zzz)
+                            """, file.getText());
+  }
+
+  public void testRenameMethod() {
+    PsiFile file = myFixture.addFileToProject("City.groovy", """
+      
+      @grails.persistence.Entity
+      class City {
+      
+          String name
+          int peopleCount
+          Set<String> street;
+      
+          static transients = ["sss", 'street']
+      
+          public String getSss<caret>() {
+      
+          }
+      }
+      """);
+
+    myFixture.configureFromExistingVirtualFile(file.getVirtualFile());
+
+    myFixture.renameElementAtCaret("getS");
+
+    myFixture.checkResult("""
+                            
+                            @grails.persistence.Entity
+                            class City {
+                            
+                                String name
+                                int peopleCount
+                                Set<String> street;
+                            
+                                static transients = ["s", 'street']
+                            
+                                public String getS() {
+                            
+                                }
+                            }
+                            """);
+  }
+
+  @Override
+  public final @NotNull LightProjectDescriptor getProjectDescriptor() {
+    return projectDescriptor;
+  }
+
+  // Pin Mock JDK 11: since 2026.2 the default Mock JDK 1.7 is no longer shipped (see GrailsTestCase).
+  private final LightProjectDescriptor projectDescriptor = new DefaultLightProjectDescriptor(IdeaTestUtil::getMockJdk11) {
+    @Override
+    public void configureModule(@NotNull Module module, @NotNull ModifiableRootModel model, @NotNull ContentEntry contentEntry) {
+      super.configureModule(module, model, contentEntry);
+
+      PsiTestUtil.addLibrary(model, "Grails14", GrailsTestUtil.getMockGrails14LibraryHome(), "grails-core-2.0.0.M1.jar");
+      try {
+        GrailsTestUtil.createGrailsApplication(myFixture, module, contentEntry, ".", false);
+      }
+      catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  };
+}

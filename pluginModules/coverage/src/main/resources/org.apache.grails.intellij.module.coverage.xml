@@ -25,6 +25,6 @@
   </dependencies>
 
   <extensions defaultExtensionNs="com.intellij">
-    <javaCoverageEngineExtension implementation="com.intellij.groovy.grails.coverage.GrailsCoverageExtension"/>
+    <javaCoverageEngineExtension implementation="org.apache.grails.intellij.module.coverage.GrailsCoverageExtension"/>
   </extensions>
 </idea-plugin>

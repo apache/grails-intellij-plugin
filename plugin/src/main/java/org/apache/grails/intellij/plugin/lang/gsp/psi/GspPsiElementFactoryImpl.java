@@ -1,0 +1,73 @@
+/*
+ * Copyright 2000-2026 JetBrains s.r.o. and contributors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.grails.intellij.plugin.lang.gsp.psi;
+
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.psi.PsiFileFactory;
+import org.jetbrains.annotations.NotNull;
+import org.apache.grails.intellij.plugin.fileType.GspFileType;
+import org.apache.grails.intellij.plugin.lang.gsp.GspDirectiveKind;
+import org.apache.grails.intellij.plugin.lang.gsp.psi.groovy.api.GspOuterHtmlElement;
+import org.apache.grails.intellij.plugin.lang.gsp.psi.gsp.api.GspFile;
+import org.apache.grails.intellij.plugin.lang.gsp.psi.gsp.api.GspScriptletTag;
+import org.apache.grails.intellij.plugin.lang.gsp.psi.gsp.api.directive.GspDirective;
+import org.apache.grails.intellij.plugin.lang.gsp.psi.gsp.api.directive.GspDirectiveAttribute;
+import org.apache.grails.intellij.plugin.lang.gsp.psi.gsp.api.gtag.GspXmlRootTag;
+
+public final class GspPsiElementFactoryImpl extends GspPsiElementFactory {
+
+  Project myProject;
+
+  public GspPsiElementFactoryImpl(Project project) {
+    myProject = project;
+  }
+
+  @Override
+  public GspDirective createDirectiveByKind(GspDirectiveKind kind) {
+    return createElementFromText("<%@ " + StringUtil.toLowerCase(kind.toString()) + " %>");
+  }
+
+  @Override
+  public GspDirectiveAttribute createDirectiveAttribute(@NotNull String name, @NotNull String value) {
+    GspDirective gspDirective = createElementFromText("<%@ " + "page " + name + "=" + "\"" + value + "\" %>");
+    return ((GspDirectiveAttribute) gspDirective.getAttribute(name));
+  }
+
+  @Override
+  public GspScriptletTag createScriptletTagFromText(String s) {
+    return createElementFromText("<%" + s + "%>");
+  }
+
+  @Override
+  public GspOuterHtmlElement createOuterHtmlElement(String text) {
+    return createElementFromText(text);
+  }
+
+  private GspFile createDummyFile(String s) {
+    return (GspFile) PsiFileFactory.getInstance(myProject).createFileFromText("DUMMY__." + GspFileType.GSP_FILE_TYPE.getDefaultExtension(), s);
+  }
+
+  @Override
+  public <T> T createElementFromText(String text) {
+    GspFile psiFile = createDummyFile(text);
+    GspXmlRootTag rootTag = psiFile.getRootTag();
+    assert rootTag != null;
+    return (T)rootTag.getFirstChild();
+  }
+
+}

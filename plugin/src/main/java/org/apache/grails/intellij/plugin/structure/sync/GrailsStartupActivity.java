@@ -1,0 +1,86 @@
+/*
+ * Copyright 2000-2026 JetBrains s.r.o. and contributors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.grails.intellij.plugin.structure.sync;
+
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManager;
+import com.intellij.openapi.project.DumbAware;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.roots.ModuleRootEvent;
+import com.intellij.openapi.roots.ModuleRootListener;
+import com.intellij.openapi.startup.ProjectActivity;
+import com.intellij.openapi.util.registry.Registry;
+import com.intellij.util.messages.MessageBusConnection;
+import kotlin.Unit;
+import kotlin.coroutines.Continuation;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.apache.grails.intellij.plugin.projectView.GrailsProjectViewPanes;
+import org.apache.grails.intellij.plugin.references.TraitInjectorService;
+import org.apache.grails.intellij.plugin.runner.GrailsCommandExecutor;
+import org.apache.grails.intellij.plugin.service.GrailsBackgroundService;
+import org.apache.grails.intellij.plugin.structure.GrailsApplication;
+import org.apache.grails.intellij.plugin.structure.GrailsApplicationListener;
+import org.apache.grails.intellij.plugin.structure.GrailsApplicationManager;
+
+/**
+ * Registers listeners for Grails structure events.
+ * The purpose is to ensure that
+ * <ul>
+ * <li>run configuration is created</li>
+ * <li>IDEA is able to run Grails commands (i.e {@link GrailsCommandExecutor#getGrailsExecutor(GrailsApplication)} returns non-null value)</li>
+ * </ul>
+ *
+ * @see GrailsApplicationListener
+ */
+public final class GrailsStartupActivity implements ProjectActivity, DumbAware {
+
+  @Override
+  public @Nullable Object execute(@NotNull Project project, @NotNull Continuation<? super Unit> continuation) {
+    if (ApplicationManager.getApplication().isUnitTestMode()) return null;
+
+    final MessageBusConnection connection = project.getMessageBus().connect();
+    connection.subscribe(GrailsApplicationListener.TOPIC, () -> {
+      final GrailsBackgroundService backgroundService = GrailsBackgroundService.getInstance(project);
+      if (Registry.is("grails.create.run.configurations")) {
+        backgroundService.run(new GrailsRunConfigurationTask(project));
+      }
+      backgroundService.run(new GrailsSdkCheckTask(project));
+      ApplicationManager.getApplication().invokeLater(() -> GrailsProjectViewPanes.showHide(project), project.getDisposed());
+    });
+
+    connection.subscribe(ModuleRootListener.TOPIC, new ModuleRootListener() {
+      @Override
+      public void rootsChanged(@NotNull ModuleRootEvent event) {
+        TraitInjectorService.queueUpdate(project);
+      }
+    });
+
+    GrailsApplicationManager.getInstance(project).queueUpdate();
+    TraitInjectorService.queueUpdate(project);
+
+    // Gradle-based applications are detected from external system data, which is loaded
+    // asynchronously on project open; recompute once it becomes available, otherwise
+    // applications stay undetected until the next manual Gradle sync.
+    ExternalProjectsManager.getInstance(project).runWhenInitialized(() -> {
+      GrailsApplicationManager.getInstance(project).queueUpdate();
+      TraitInjectorService.queueUpdate(project);
+    });
+
+    return null;
+  }
+}

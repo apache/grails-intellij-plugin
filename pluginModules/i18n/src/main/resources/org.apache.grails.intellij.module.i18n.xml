@@ -23,19 +23,19 @@
   </dependencies>
 
   <extensions defaultExtensionNs="com.intellij.java-i18n">
-    <i18nizeHandlerProvider implementation="com.intellij.groovy.grails.i18n.GrailsI18nizeProvider"/>
+    <i18nizeHandlerProvider implementation="org.apache.grails.intellij.module.i18n.GrailsI18nizeProvider"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">
-    <psi.referenceContributor language="GSP" implementation="com.intellij.groovy.grails.i18n.GrailsI18nReferenceContributor"/>
+    <psi.referenceContributor language="GSP" implementation="org.apache.grails.intellij.module.i18n.GrailsI18nReferenceContributor"/>
 
     <localInspection language="Groovy" enabledByDefault="true" level="ERROR"
                      groupBundle="messages.GrailsBundle" groupPathKey="inspections.groupPath" groupKey="inspections.groupName"
                      bundle="messages.GrailsBundle" key="inspection.invalid.i.18.n.property.display.name"
-                     shortName="InvalidI18nProperty" implementationClass="com.intellij.groovy.grails.i18n.GrailsI18nInspection"/>
+                     shortName="InvalidI18nProperty" implementationClass="org.apache.grails.intellij.module.i18n.GrailsI18nInspection"/>
 
     <intentionAction>
-      <className>com.intellij.groovy.grails.i18n.GspI18nIntention</className>
+      <className>org.apache.grails.intellij.module.i18n.GspI18nIntention</className>
       <categoryKey>library.name</categoryKey>
     </intentionAction>
 

@@ -27,8 +27,8 @@ limitations under the License.
 ./gradlew test
 
 # Single test class / single test method
-./gradlew test --tests "org.jetbrains.plugins.grails.SomeTest"
-./gradlew test --tests "org.jetbrains.plugins.grails.SomeTest.testFeature"
+./gradlew test --tests "org.apache.grails.intellij.plugin.SomeTest"
+./gradlew test --tests "org.apache.grails.intellij.plugin.SomeTest.testFeature"
 
 # Build the plugin ZIP (written to build/distributions/)
 ./gradlew buildPlugin

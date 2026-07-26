@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.jetbrains.plugins.grails.lang.gsp.lexer.core;
+package org.apache.grails.intellij.plugin.lang.gsp.lexer.core;
 
 import com.intellij.lexer.FlexLexer;
 import com.intellij.psi.tree.IElementType;
@@ -25,7 +25,7 @@ import java.util.*;
 import java.lang.reflect.Field;
 import org.jetbrains.annotations.NotNull;
 import com.intellij.openapi.util.text.StringUtil;
-import org.jetbrains.plugins.grails.lang.gsp.lexer.*;
+import org.apache.grails.intellij.plugin.lang.gsp.lexer.*;
 
 
 public class _GspLexer implements FlexLexer, GspTokenTypesEx {

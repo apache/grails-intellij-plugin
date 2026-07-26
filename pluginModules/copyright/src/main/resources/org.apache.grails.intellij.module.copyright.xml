@@ -20,6 +20,6 @@
   </dependencies>
 
   <extensions defaultExtensionNs="com.intellij.copyright">
-    <updater filetype="GSP" implementationClass="com.intellij.groovy.grails.copyright.UpdateGspCopyrightsProvider"/>
+    <updater filetype="GSP" implementationClass="org.apache.grails.intellij.module.copyright.UpdateGspCopyrightsProvider"/>
   </extensions>
 </idea-plugin>

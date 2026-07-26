@@ -176,7 +176,7 @@ Detection must work from Gradle dependency data (the plugin already has a
 - [ ] **Corroborating signals** (don't hard-require): Groovy group
       `org.apache.groovy` (4/5) vs `org.codehaus.groovy` (≤3); Spring Boot 3 (Grails
       6/7) vs 4.1+ (Grails 8); Java baseline 21 (8.x).
-- [ ] Replace/extend `org.jetbrains.plugins.grails.util.Version` handling so 7.x/8.x
+- [ ] Replace/extend `org.apache.grails.intellij.plugin.util.Version` handling so 7.x/8.x
       version strings parse and feature-gate correctly (e.g. `.gml` support only when
       `grails-views-markup` present).
 
@@ -324,11 +324,14 @@ the construction step of the new plugin, immediately after the compliance fork:
 - [ ] New plugin id (proposal: `org.apache.grails.intellij`) + fresh Marketplace
       listing under the Apache vendor; declare mutual exclusivity with
       `org.intellij.grails` (both directions).
-- [ ] Package rename `org.jetbrains.plugins.grails.*` / `org.jetbrains.plugins.
-      groovy.mvc.*` → `org.apache.grails.intellij.*`: mechanical, but must update
-      every FQN in `plugin.xml`/module XMLs, bump all stub-index version keys
-      (inventory from Phase 0.3), and accept fresh persisted settings (new plugin =
-      no migration burden).
+- [x] ~~Package rename `org.jetbrains.plugins.grails.*` / `org.jetbrains.plugins.groovy.mvc.*`
+      → `org.apache.grails.intellij.*`.~~ **Done**, ahead of the fork: every project now has
+      a unique base package equal to its Gradle group plus artifact name. The two feared
+      costs did not materialise — all four `@State` names and the single index id are
+      literals, not FQNs, so no persisted settings were reset and no reindex was forced.
+      `libs/testFramework` keeps its vendored `com.intellij.*` /
+      `org.jetbrains.plugins.gradle.*` / `org.jetbrains.plugins.groovy.*` copies, which only
+      work because their FQN matches the platform's.
 - [ ] Delete, using the Phase 0.3 reachability map:
       - `Grails2Application`, `OldGrails*` (application, command provider, node
         provider), module-based structure sync paths in

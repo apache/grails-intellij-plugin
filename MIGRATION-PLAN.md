@@ -25,7 +25,7 @@ Kept as the record of what was inherited — this is **not** current state.
   Gradle Plugin 2.11.0, Kotlin 2.3.0, platform 2025.3.1 (`sinceBuild=253`), Java 21 (8/11
   for the runtime/JPS legacy modules). `pluginVersion=253.0.0`.
 - **Identity**: plugin id `org.intellij.grails`, vendor **JetBrains**, packages
-  `org.jetbrains.plugins.grails`.
+  `org.jetbrains.plugins.grails` (since renamed — see decision 2).
 - **Licensing**: `LICENSE.txt` = Apache-2.0 full text, **no NOTICE**, ~909 sources
   carrying the abbreviated JetBrains one-line header (`Copyright 2000-20xx JetBrains
   s.r.o. and contributors. Use of this source code is governed by the Apache 2.0
@@ -99,10 +99,10 @@ feasible; the constraints and the plan:
     disappears. Listing description gains a prominent pointer to the new plugin.
   - *New* plugin registers a fresh id (suggested: `org.apache.grails.intellij`) and a
     new listing under the Apache vendor. Because it has no persisted-state or listing
-    history, it is free to rename packages `org.jetbrains.plugins.grails` →
-    `org.apache.grails.intellij.*` from day one — this retires the package-rename
-    question deferred in decision 2 (it applies to the new plugin only; legacy never
-    renames).
+    history, it is free to carry the Apache packages. **This has now happened in this
+    repo**: every project was repackaged to `org.apache.grails.intellij.*`, so the fork
+    point already has the new names and the legacy line inherits them too (there is no
+    longer a variant that keeps `org.jetbrains.plugins.grails`).
 - **Mutual exclusivity**: both plugins register the GSP language, file type, run
   configuration type, and stub indices — the platform cannot load both. Declare the
   conflict (plugin.xml `<incompatible-with>` on each other's id; verify the mechanism

@@ -20,16 +20,16 @@
   </dependencies>
 
   <extensions defaultExtensionNs="org">
-    <intellij.grails.commandExecutor implementation="com.intellij.groovy.grails.maven.MavenCommandExecutor" order="FIRST"/>
-    <intellij.grails.applicationProvider implementation="com.intellij.groovy.grails.maven.GrailsMavenApplicationProvider" order="first"/>
-    <intellij.grails.viewNodeProvider implementation="com.intellij.groovy.grails.maven.MavenNodeProvider"/>
+    <intellij.grails.commandExecutor implementation="org.apache.grails.intellij.module.maven.MavenCommandExecutor" order="FIRST"/>
+    <intellij.grails.applicationProvider implementation="org.apache.grails.intellij.module.maven.GrailsMavenApplicationProvider" order="first"/>
+    <intellij.grails.viewNodeProvider implementation="org.apache.grails.intellij.module.maven.MavenNodeProvider"/>
   </extensions>
 
   <extensions defaultExtensionNs="org.jetbrains.idea.maven.importing">
-    <workspaceConfigurator implementation="com.intellij.groovy.grails.maven.GrailsMavenWorkspaceConfigurator"/>
+    <workspaceConfigurator implementation="org.apache.grails.intellij.module.maven.GrailsMavenWorkspaceConfigurator"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">
-    <programRunner implementation="com.intellij.groovy.grails.maven.GrailsMavenDebuggerRunner" order="before grailsDebuggerRunner"/>
+    <programRunner implementation="org.apache.grails.intellij.module.maven.GrailsMavenDebuggerRunner" order="before grailsDebuggerRunner"/>
   </extensions>
 </idea-plugin>
