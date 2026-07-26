@@ -84,7 +84,7 @@ public class NewGspAction extends NewGroovyActionBase {
       return false;
     }
 
-    final GrailsApplication application = GrailsActionUtilKt.getGrailsApplication(dataContext);
+    final GrailsApplication application = GrailsActionUtil.getGrailsApplication(dataContext);
     if (application == null) {
       return false;
     }

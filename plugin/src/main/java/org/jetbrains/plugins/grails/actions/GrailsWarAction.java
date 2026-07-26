@@ -33,7 +33,7 @@ public class GrailsWarAction extends AnAction {
 
   @Override
   public void actionPerformed(@NotNull AnActionEvent e) {
-    GrailsApplication application = GrailsActionUtilKt.getGrailsApplication(e.getDataContext());
+    GrailsApplication application = GrailsActionUtil.getGrailsApplication(e.getDataContext());
     GrailsCommandExecutor executor = GrailsCommandExecutor.getGrailsExecutor(application);
     if (executor == null) return;
 
@@ -49,7 +49,7 @@ public class GrailsWarAction extends AnAction {
 
   @Override
   public void update(@NotNull AnActionEvent e) {
-    GrailsApplication application = GrailsActionUtilKt.getGrailsApplication(e.getDataContext());
+    GrailsApplication application = GrailsActionUtil.getGrailsApplication(e.getDataContext());
     e.getPresentation().setVisible(GrailsCommandExecutor.getGrailsExecutor(application) != null);
   }
 

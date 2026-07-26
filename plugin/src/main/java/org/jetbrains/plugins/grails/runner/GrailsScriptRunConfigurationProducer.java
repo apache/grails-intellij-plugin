@@ -26,7 +26,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.plugins.grails.actions.GrailsActionUtilKt;
+import org.jetbrains.plugins.grails.actions.GrailsActionUtil;
 import org.jetbrains.plugins.grails.config.GrailsFramework;
 import org.jetbrains.plugins.grails.structure.GrailsApplication;
 import org.jetbrains.plugins.grails.util.version.Version;
@@ -45,7 +45,7 @@ final class GrailsScriptRunConfigurationProducer extends LazyRunConfigurationPro
   protected boolean setupConfigurationFromContext(@NotNull GrailsRunConfiguration configuration,
                                                   @NotNull ConfigurationContext context,
                                                   @NotNull Ref<PsiElement> sourceElement) {
-    GrailsApplication application = GrailsActionUtilKt.getGrailsApplication(context.getDataContext());
+    GrailsApplication application = GrailsActionUtil.getGrailsApplication(context.getDataContext());
     if (application == null) return false;
     if (application.getGrailsVersion().isAtLeast(Version.GRAILS_6_0)) return false;
 

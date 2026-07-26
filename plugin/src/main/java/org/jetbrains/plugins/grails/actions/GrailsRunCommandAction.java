@@ -64,7 +64,7 @@ public final class GrailsRunCommandAction extends AnAction {
   }
 
   private static @Nullable GrailsApplication getApplicationForSelection(@NotNull DataContext context, @NotNull Project project) {
-    GrailsApplication application = GrailsActionUtilKt.getGrailsApplication(context);
+    GrailsApplication application = GrailsActionUtil.getGrailsApplication(context);
     if (application != null) return application;
 
     GrailsApplicationManager applicationManager = GrailsApplicationManager.getInstance(project);

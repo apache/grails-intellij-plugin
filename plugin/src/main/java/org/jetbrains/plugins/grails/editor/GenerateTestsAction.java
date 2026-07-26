@@ -27,7 +27,7 @@ import com.intellij.psi.PsiClass;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.plugins.grails.GrailsBundle;
-import org.jetbrains.plugins.grails.actions.GrailsActionUtilKt;
+import org.jetbrains.plugins.grails.actions.GrailsActionUtil;
 import org.jetbrains.plugins.grails.runner.GrailsCommandExecutorUtil;
 import org.jetbrains.plugins.grails.structure.GrailsApplication;
 import org.jetbrains.plugins.grails.tests.GrailsTestUtils;
@@ -61,7 +61,7 @@ public class GenerateTestsAction extends AnAction {
     final Module module = e.getData(PlatformCoreDataKeys.MODULE);
     if (module == null) return;
 
-    GrailsApplication application = GrailsActionUtilKt.getGrailsApplication(e.getDataContext());
+    GrailsApplication application = GrailsActionUtil.getGrailsApplication(e.getDataContext());
     if (application == null) return;
 
     final PsiClass testedClass = getTestedClass(module);

@@ -52,7 +52,7 @@ public class GrailsConfigureSDKAction extends DumbAwareAction {
     final Project project = e.getProject();
     if (project == null) return;
 
-    final GrailsApplication application = GrailsActionUtilKt.getGrailsApplication(e.getDataContext());
+    final GrailsApplication application = GrailsActionUtil.getGrailsApplication(e.getDataContext());
     new GrailsConfigureSDKDialog(project).setGrailsApplication(application).show();
   }
 }

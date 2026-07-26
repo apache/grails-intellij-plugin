@@ -22,7 +22,7 @@ import com.intellij.ide.util.treeView.AbstractTreeNode;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.DataSink;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.plugins.grails.actions.GrailsActionUtilKt;
+import org.jetbrains.plugins.grails.actions.GrailsActionUtil;
 import org.jetbrains.plugins.grails.artefact.api.GrailsArtefactHandler;
 import org.jetbrains.plugins.grails.projectView.nodes.GrailsApplicationNode;
 import org.jetbrains.plugins.grails.projectView.nodes.GrailsArtefactHandlerNode;
@@ -56,9 +56,9 @@ public final class GrailsTreeStructureProvider implements TreeStructureProvider 
       }
       return null;
     });
-    sink.lazy(GrailsActionUtilKt.getGRAILS_APPLICATION(), () -> TreeNodeUtil.findValueOfType(single, GrailsApplication.class));
-    sink.lazy(GrailsActionUtilKt.getGRAILS_ARTEFACT_HANDLER(), () -> TreeNodeUtil.findValueOfType(single, GrailsArtefactHandler.class));
-    sink.lazy(GrailsActionUtilKt.getGRAILS_ARTEFACT_PACKAGE(),
+    sink.lazy(GrailsActionUtil.GRAILS_APPLICATION, () -> TreeNodeUtil.findValueOfType(single, GrailsApplication.class));
+    sink.lazy(GrailsActionUtil.GRAILS_ARTEFACT_HANDLER, () -> TreeNodeUtil.findValueOfType(single, GrailsArtefactHandler.class));
+    sink.lazy(GrailsActionUtil.GRAILS_ARTEFACT_PACKAGE,
               () -> single instanceof GrailsArtefactPackageNode<?> packageNode ? packageNode.getPackageFqn() : null);
   }
 

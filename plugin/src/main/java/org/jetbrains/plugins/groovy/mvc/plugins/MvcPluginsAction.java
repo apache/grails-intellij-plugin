@@ -27,7 +27,7 @@ import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.WindowManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.grails.GrailsBundle;
-import org.jetbrains.plugins.grails.actions.GrailsActionUtilKt;
+import org.jetbrains.plugins.grails.actions.GrailsActionUtil;
 import org.jetbrains.plugins.grails.runner.GrailsCommandExecutor;
 import org.jetbrains.plugins.grails.runner.GrailsConsole;
 import org.jetbrains.plugins.grails.structure.GrailsApplication;
@@ -46,7 +46,7 @@ public class MvcPluginsAction extends AnAction {
 
   @Override
   public void update(@NotNull AnActionEvent e) {
-    GrailsApplication application = GrailsActionUtilKt.getGrailsApplication(e.getDataContext());
+    GrailsApplication application = GrailsActionUtil.getGrailsApplication(e.getDataContext());
     e.getPresentation().setEnabledAndVisible(
       application instanceof OldGrailsApplication &&
       application.getGrailsVersion().isLessThan(Version.GRAILS_2_3_0) &&
@@ -61,7 +61,7 @@ public class MvcPluginsAction extends AnAction {
 
   @Override
   public void actionPerformed(@NotNull AnActionEvent e) {
-    OldGrailsApplication application = (OldGrailsApplication)GrailsActionUtilKt.getGrailsApplication(e.getDataContext());
+    OldGrailsApplication application = (OldGrailsApplication)GrailsActionUtil.getGrailsApplication(e.getDataContext());
     assert application != null;
     final Project project = application.getProject();
 

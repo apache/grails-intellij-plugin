@@ -75,13 +75,35 @@ public final class GrailsTestUtils {
 
   private GrailsTestUtils() { }
 
+  /**
+   * Grails 3 dropped the per-suffix test naming conventions in favour of a single {@code ...Spec}
+   * class next to the artefact, so it needs none of the short-name searching below.
+   */
+  private static void collectGrails3TestsForArtifact(@NotNull GrailsApplication application,
+                                                    @NotNull PsiClass artefact,
+                                                    @NotNull Collection<? super PsiClass> result) {
+    Module module = ModuleUtilCore.findModuleForPsiElement(artefact);
+    if (module == null) return;
+
+    String qualifiedName = artefact.getQualifiedName();
+    if (qualifiedName == null) return;
+    String packageName = StringUtil.getPackageName(qualifiedName);
+    String shortName = StringUtil.getShortName(qualifiedName);
+    String unitTestFqn = StringUtil.getQualifiedName(packageName, shortName + "Spec");
+
+    GlobalSearchScope scope = GlobalSearchScope.moduleWithDependentsScope(module);
+    PsiClass clazz = JavaPsiFacade.getInstance(application.getProject()).findClass(unitTestFqn, scope);
+    if (clazz == null) return;
+    result.add(clazz);
+  }
+
   public static Collection<PsiClass> getTestsForArtifact(@NotNull PsiClass psiClass, boolean searchTestForAnnotation) {
     final GrailsApplication application = GrailsApplicationManager.findApplication(psiClass);
     if (application == null) return Collections.emptyList();
 
     if (application.getGrailsVersion().isAtLeast(Version.GRAILS_3_0)) {
       Collection<PsiClass> result = new SmartList<>();
-      GrailsTestUtilsKt.getTestsForArtifact(application, psiClass, result);
+      collectGrails3TestsForArtifact(application, psiClass, result);
       return result;
     }
 

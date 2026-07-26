@@ -27,7 +27,7 @@ public class UpdateGrailsSettingsAction extends DumbAwareAction {
 
   @Override
   public void update(@NotNull AnActionEvent e) {
-    final GrailsApplication application = GrailsActionUtilKt.getGrailsApplication(e.getDataContext());
+    final GrailsApplication application = GrailsActionUtil.getGrailsApplication(e.getDataContext());
     e.getPresentation().setEnabledAndVisible(application instanceof OldGrailsApplication);
   }
 
@@ -38,7 +38,7 @@ public class UpdateGrailsSettingsAction extends DumbAwareAction {
 
   @Override
   public void actionPerformed(@NotNull AnActionEvent e) {
-    final GrailsApplication application = GrailsActionUtilKt.getGrailsApplication(e.getDataContext());
+    final GrailsApplication application = GrailsActionUtil.getGrailsApplication(e.getDataContext());
     if (application instanceof OldGrailsApplication) {
       GrailsFramework.forceSynchronizationSetting(((OldGrailsApplication)application).getModule());
     }

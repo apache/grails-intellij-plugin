@@ -75,7 +75,7 @@ public abstract class NewGrailsXXXAction extends AnAction implements DumbAware {
 
   @Override
   public void actionPerformed(final @NotNull AnActionEvent e) {
-    final GrailsApplication application = GrailsActionUtilKt.getGrailsApplication(e.getDataContext());
+    final GrailsApplication application = GrailsActionUtil.getGrailsApplication(e.getDataContext());
     if (application == null) return;
 
     final Project project = application.getProject();
@@ -109,7 +109,7 @@ public abstract class NewGrailsXXXAction extends AnAction implements DumbAware {
       }
     }
     else {
-      String aPackage = GrailsActionUtilKt.getArtefactPackage(e.getDataContext());
+      String aPackage = GrailsActionUtil.getArtefactPackage(e.getDataContext());
       if (aPackage != null) packageName = aPackage;
     }
 
@@ -127,7 +127,7 @@ public abstract class NewGrailsXXXAction extends AnAction implements DumbAware {
       );
     }
     else {
-      ArtefactData artefactData = GrailsActionUtilKt.getArtefactData(e.getDataContext());
+      ArtefactData artefactData = GrailsActionUtil.getArtefactData(e.getDataContext());
       return artefactData == null ? null : artefactData.getArtefactName();
     }
   }
@@ -157,7 +157,7 @@ public abstract class NewGrailsXXXAction extends AnAction implements DumbAware {
   }
 
   protected boolean isEnabled(AnActionEvent e) {
-    final GrailsApplication application = GrailsActionUtilKt.getGrailsApplication(e.getDataContext());
+    final GrailsApplication application = GrailsActionUtil.getGrailsApplication(e.getDataContext());
     if (application == null) return false;
     if (e.getData(LangDataKeys.IDE_VIEW) == null) return false;
 
@@ -168,7 +168,7 @@ public abstract class NewGrailsXXXAction extends AnAction implements DumbAware {
 
     if (!e.isFromActionToolbar()) {
       GrailsArtefactHandler expectedHandler = getArtefactHandler();
-      if (expectedHandler == null || GrailsActionUtilKt.getArtefactHandler(e.getDataContext()) != expectedHandler) {
+      if (expectedHandler == null || GrailsActionUtil.getArtefactHandler(e.getDataContext()) != expectedHandler) {
         VirtualFile vfile = e.getData(CommonDataKeys.VIRTUAL_FILE);
         if (vfile == null) return false;
         if (!vfile.isDirectory()) {
@@ -184,7 +184,7 @@ public abstract class NewGrailsXXXAction extends AnAction implements DumbAware {
       }
     }
     else {
-      if (GrailsActionUtilKt.getArtefactData(e.getDataContext()) == null) return false;
+      if (GrailsActionUtil.getArtefactData(e.getDataContext()) == null) return false;
     }
 
     return isEnabled(application);
