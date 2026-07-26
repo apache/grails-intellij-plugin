@@ -20,10 +20,12 @@
 // A compiler plugin: code that runs inside the end user's JPS build process rather than in the
 // IDE. These are the jars named by <compileServer.plugin classpath="..."/> in plugin.xml.
 //
-// It lives under the lib tier (libs/compiler/*) rather than beside it, because the source tiers
-// mirror the packaged layout: pluginModules/* are content modules and ship to lib/modules/, while
-// everything in libs/ -- compiler plugins included -- ships to lib/. The compiler subdirectory is
-// a sub-grouping within that tier, not a separate destination.
+// It sits at libs/compiler/* on disk, because the source tiers mirror the packaged layout:
+// pluginModules/* are content modules and ship to lib/modules/, while everything under libs/ --
+// compiler plugins included -- ships to lib/.
+//
+// Its NAMESPACE is a sibling of lib rather than a child of it (org.apache.grails.intellij.compiler,
+// not ...intellij.lib.compiler), so no project's coordinates are a prefix of another's.
 //
 // It is still called out separately because JPS resolves the classpath attribute by file name and
 // silently skips entries it cannot find, so these jar names are part of the plugin's contract and
@@ -36,12 +38,12 @@ plugins {
 
 def shortName = projectDir.name
 
-group = 'org.apache.grails.intellij.lib.compiler'
+group = 'org.apache.grails.intellij.compiler'
 base.archivesName = shortName
 
 // Pinned, not derived. IPGP's default is "${rootProject.name}.${project.path with ':' -> '.'}",
 // which tracks both the root project name and the project's depth in the tree; that is exactly
 // how the descriptor's classpath attribute went stale before.
 tasks.named('composedJar') { task ->
-    task.archiveBaseName = "org.apache.grails.intellij.lib.compiler.$shortName"
+    task.archiveBaseName = "org.apache.grails.intellij.compiler.$shortName"
 }
