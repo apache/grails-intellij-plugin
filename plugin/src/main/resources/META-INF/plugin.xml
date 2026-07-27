@@ -56,7 +56,7 @@
     <module name="intellij.regexp"/>
   </dependencies>
 
-  <content namespace="jetbrains">
+  <content namespace="grails">
     <module name="org.apache.grails.intellij.module.copyright"/>
     <module name="org.apache.grails.intellij.module.i18n"/>
     <module name="org.apache.grails.intellij.module.maven"/>
