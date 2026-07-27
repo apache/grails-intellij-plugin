@@ -31,7 +31,7 @@ env:
     taglib and domain class support, and integrations for i18n, coverage, Hibernate, Maven,
     and language injection.
   REPO_SLUG: ${{ github.repository }}
-  SVN_FOLDER: INTELLIJ
+  SVN_FOLDER: intellij
   SVN_PROJECT: grails
   TAG: ${{ github.event.release.tag_name }}
   TARGET_BRANCH: ${{ github.event.release.target_commitish }}
