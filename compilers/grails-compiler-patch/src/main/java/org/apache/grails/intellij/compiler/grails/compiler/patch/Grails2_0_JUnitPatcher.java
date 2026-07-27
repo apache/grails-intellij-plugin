@@ -42,7 +42,10 @@ public class Grails2_0_JUnitPatcher extends CompilationUnitPatcher {
       @Override
       public void call(SourceUnit source, GeneratorContext context, ClassNode classNode) throws CompilationFailedException {
         if (hasTestForAnnotation(classNode)) {
-          source.getAST().addStaticStarImport(null, ClassHelper.make("org.junit.Assert"));
+          // The first argument keys ModuleNode.staticStarImports and must be the imported class
+          // name, as Groovy's own parser passes it for `import static org.junit.Assert.*`. Passing
+          // null leaves a null-keyed entry that later compiler phases are not written to expect.
+          source.getAST().addStaticStarImport("org.junit.Assert", ClassHelper.make("org.junit.Assert"));
         }
       }
     }, Phases.CONVERSION);
