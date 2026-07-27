@@ -40,7 +40,7 @@ permissions:
   contents: write # to delete the release and tag
   actions: write # to cancel the in-flight release run
 env:
-  SVN_FOLDER: INTELLIJ
+  SVN_FOLDER: intellij
   SVN_PROJECT: grails
   TAG: ${{ github.event.inputs.release_tag }}
 jobs:

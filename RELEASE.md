@@ -148,8 +148,8 @@ the source distribution, and why `verify-distributions.sh` asserts both that
 
 ## 5. Stage to dist.apache.org (`upload` job)
 
-1. Ensure `dist/dev/grails/INTELLIJ` exists in the ASF dist SVN.
-2. Upload the source distribution under `dist/dev/grails/INTELLIJ/${VERSION}/sources/`
+1. Ensure `dist/dev/grails/intellij` exists in the ASF dist SVN.
+2. Upload the source distribution under `dist/dev/grails/intellij/${VERSION}/sources/`
    and the convenience binary under `.../${VERSION}/distribution/`, each with its
    signature and checksum.
 
@@ -178,7 +178,7 @@ etc/bin/download-release-artifacts.sh v262.0.0 /tmp/grails-ij-verify
 ```
 
 Fetches the source and binary distributions (each with `.asc` and `.sha512`) from
-`https://dist.apache.org/repos/dist/dev/grails/INTELLIJ/${VERSION}`, plus the Grails
+`https://dist.apache.org/repos/dist/dev/grails/intellij/${VERSION}`, plus the Grails
 `KEYS` file.
 
 ### 6.2 Verify checksums, signatures, and archive contents
@@ -277,7 +277,7 @@ environment requires the reviewers listed in `.asf.yaml`):
    infrastructure requires this be done by a human under their own credentials, so it
    cannot be automated:
    ```bash
-   .github/scripts/releaseDistributions.sh v<version> INTELLIJ <ASF_USER>
+   .github/scripts/releaseDistributions.sh v<version> intellij <ASF_USER>
    ```
    The script also offers to remove prior release folders — ASF dist keeps only the
    current release, with older ones served from the archive.
@@ -289,11 +289,24 @@ environment requires the reviewers listed in `.asf.yaml`):
 ## 9. Publish to the JetBrains Marketplace (`marketplace` job)
 
 The convenience binary goes out on its own gate, behind the `marketplace` GitHub
-environment, once the official artifacts are promoted:
+environment, once the official artifacts are promoted. The job does **not** rebuild the
+plugin: it downloads the promoted ZIP from
+`dist/release/grails/intellij/${VERSION}/distribution/`, verifies its SHA-512 and its GPG
+signature against the Grails `KEYS` file, and uploads that exact file, so what lands on the
+Marketplace is byte-for-byte what the PMC voted on.
 
 ```bash
-./gradlew publishPlugin -Pversion=${VERSION}
+./gradlew publishPlugin -Pversion=${VERSION} \
+  -PpublishArchive=/path/to/apache-grails-intellij-plugin-${VERSION}-bin.zip \
+  -x buildPlugin -x signPlugin
 ```
+
+`-PpublishArchive` overrides `publishPlugin.archiveFile`, which otherwise points at a fresh
+`signPlugin` output. The two `-x` flags are required because `publishPlugin` hard-wires
+`dependsOn(buildPlugin, signPlugin)` when it is registered — without them the plugin is
+rebuilt and re-signed even though the uploaded file is the downloaded one. Omit all three
+arguments to publish a local build instead. No signing secrets are needed in this job: the
+promoted ZIP was already Marketplace-signed by the `publish` job in section 3.
 
 It is a separate job rather than a step in `release` because it is the one action in the
 pipeline that cannot be walked back — a Marketplace version can be hidden but not withdrawn
@@ -311,7 +324,7 @@ on its own `close` GitHub environment, so it waits for approval after the plugin
 the Marketplace:
 
 1. **MANUAL:** record the release at <https://reporter.apache.org/addrelease.html?grails>
-   as `INTELLIJ-<version>`, dated the day the distributions were promoted. This runs first,
+   as `intellij-<version>`, dated the day the distributions were promoted. This runs first,
    because it is the ASF-facing record of what just went out.
 2. Run [`apache/grails-github-actions/post-release@asf`](https://github.com/apache/grails-github-actions/tree/asf/post-release),
    the same shared action grails-core uses, so the mechanics are identical across Grails
@@ -349,8 +362,8 @@ Run the **Release - Abort Release** workflow
 Actions tab, giving it the release tag and ticking the confirmation box. It will:
 
 1. Refuse to continue if the version already exists under
-   `dist/release/grails/INTELLIJ` — that means the vote passed and the release is public.
-2. Remove the staged distributions from `dist/dev/grails/INTELLIJ/<version>`.
+   `dist/release/grails/intellij` — that means the vote passed and the release is public.
+2. Remove the staged distributions from `dist/dev/grails/intellij/<version>`.
 3. Cancel any in-flight `Release` workflow runs.
 4. Delete the GitHub Release and the git tag.
 
@@ -361,7 +374,7 @@ The equivalent manual steps, if the workflow cannot be used:
 
 ```bash
 svn rm -m "Abort Apache Grails IntelliJ Plugin <version>" \
-  https://dist.apache.org/repos/dist/dev/grails/INTELLIJ/<version>
+  https://dist.apache.org/repos/dist/dev/grails/intellij/<version>
 git push --delete origin v<version>
 ```
 

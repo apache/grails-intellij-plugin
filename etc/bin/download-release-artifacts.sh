@@ -40,8 +40,8 @@ fi
 
 VERSION="${RELEASE_TAG#v}"
 DIST_NAME="apache-grails-intellij-plugin"
-# The plugin releases under the shared `grails` dist project, in its own INTELLIJ folder.
-DEV_ROOT="https://dist.apache.org/repos/dist/dev/grails/INTELLIJ/${VERSION}"
+# The plugin releases under the shared `grails` dist project, in its own intellij folder.
+DEV_ROOT="https://dist.apache.org/repos/dist/dev/grails/intellij/${VERSION}"
 KEYS_URL="https://dist.apache.org/repos/dist/release/grails/KEYS"
 
 mkdir -p "${DOWNLOAD_LOCATION}"
