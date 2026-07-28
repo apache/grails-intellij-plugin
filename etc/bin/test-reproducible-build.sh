@@ -53,10 +53,15 @@ RESULTS="etc/bin/results"
 
 # List the release artifacts (plugin ZIP) and every module jar, one relative path per
 # line, sorted so the output is order-stable across runs.
+#
+# The jar walk must prune $RESULTS: it holds the previous build's copies at their original
+# */build/libs/*.jar sub-paths, and `git clean` deliberately spares it. Without the prune,
+# the second snapshot lists build 1's copies as artifacts of build 2, and every one of them
+# is then reported as build1=<missing> -- a spurious "NOT reproducible" verdict.
 list_artifacts() {
   {
     find plugin/build/distributions -type f -name '*.zip' 2> /dev/null || true
-    find . -type f -path '*/build/libs/*.jar' 2> /dev/null || true
+    find . -path "./${RESULTS}" -prune -o -type f -path '*/build/libs/*.jar' -print 2> /dev/null || true
   } | sed 's|^\./||' | sort
 }
 
