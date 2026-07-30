@@ -21,6 +21,7 @@ import com.intellij.openapi.vfs.JarFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.spring.SpringApiIcons;
 import com.intellij.spring.facet.SpringFacet;
 import com.intellij.spring.model.utils.SpringCommonUtils;
@@ -30,6 +31,7 @@ import org.apache.grails.intellij.plugin.fileType.GspFileType;
 import org.jetbrains.plugins.groovy.GroovyLanguage;
 import org.apache.grails.intellij.lib.testFramework.GrailsTestUtil;
 import org.apache.grails.intellij.lib.testFramework.HddGrailsTestCase;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
 
 import java.util.List;
 
@@ -157,6 +159,68 @@ public class GrailsSpringIntegrationTest extends HddGrailsTestCase {
       }
       """);
     HddGrailsTestCase.checkResolve(testFile, "yyy");
+  }
+
+  /**
+   * Contributing references to the literal makes IntelliLang resolve the enclosing call to look for an injected
+   * language, which in turn asks for the type of the {@code myService} argument. That reaches
+   * {@link org.apache.grails.intellij.plugin.spring.InjectedSpringBeanProvider}, where the platform forbids expensive
+   * computations. See <a href="https://github.com/apache/grails-intellij-plugin/issues/16">issue 16</a>.
+   */
+  public void testInjectedBeanTypeDuringReferenceContribution() {
+    addLanguageAnnotatedClass();
+    myFixture.addFileToProject("grails-app/services/MyService.groovy", "class MyService { def xxx() {} }");
+    PsiFile controller = addController("""
+                                         import static example.Queries.execute
+                                         class CccController {
+                                           def myService
+                                           def index() {
+                                             execute('select 1', myService)
+                                             myService.xxx()
+                                           }
+                                         }
+                                         """);
+
+    contributeReferencesToFirstLiteral(controller);
+
+    // The bean type must still be inferred: suppressing the assertion may not degrade to an unknown type,
+    // because whatever is computed here is cached for the rest of the session.
+    HddGrailsTestCase.checkResolve(controller);
+  }
+
+  /** The same as {@link #testInjectedBeanTypeDuringReferenceContribution}, reaching the Spring model through the
+   *  {@code applicationContext} member contributor instead of the field type enhancer. */
+  public void testApplicationContextBeanDuringReferenceContribution() {
+    addLanguageAnnotatedClass();
+    PsiFile controller = addController("""
+                                         import static example.Queries.execute
+                                         class CccController {
+                                           org.springframework.context.ApplicationContext ctx
+                                           def index() {
+                                             execute('select 1', ctx.pluginManager)
+                                           }
+                                         }
+                                         """);
+
+    contributeReferencesToFirstLiteral(controller);
+
+    HddGrailsTestCase.checkResolve(controller);
+  }
+
+  private void addLanguageAnnotatedClass() {
+    myFixture.addClass("""
+                         package example;
+                         import org.intellij.lang.annotations.Language;
+                         public class Queries {
+                           public static void execute(@Language("SQL") String query, Object parameter) {}
+                         }
+                         """);
+  }
+
+  private static void contributeReferencesToFirstLiteral(PsiFile file) {
+    GrLiteral literal = PsiTreeUtil.findChildOfType(file, GrLiteral.class);
+    assertNotNull(literal);
+    literal.getReferences();
   }
 
   public void testSpringInjectionAnnotator1() {

@@ -53,16 +53,18 @@ public final class InjectedSpringBeanProvider extends GrVariableEnhancer {
     PsiClass aClass = ((GrField)variable).getContainingClass();
     if (aClass == null || !isSupportInjection(aClass)) return null;
 
-    final CommonSpringModel model = SpringModelUtils.getInstance().getSpringModel(aClass);
+    return SpringModelAccess.compute(() -> {
+      final CommonSpringModel model = SpringModelUtils.getInstance().getSpringModel(aClass);
 
-    final SpringBeanPointer<?>  springBean = SpringModelSearchers.findBean(model, variable.getName());
-    if (springBean == null) return null;
+      final SpringBeanPointer<?>  springBean = SpringModelSearchers.findBean(model, variable.getName());
+      if (springBean == null) return null;
 
-    if (declaredType != null) {
-      if (!beanCanBeAssignedTo(springBean, declaredType)) return null;
-    }
+      if (declaredType != null) {
+        if (!beanCanBeAssignedTo(springBean, declaredType)) return null;
+      }
 
-    return springBean;
+      return springBean;
+    });
   }
 
   private static boolean beanCanBeAssignedTo(SpringBeanPointer<?> springBean, PsiType variableType) {
@@ -85,7 +87,8 @@ public final class InjectedSpringBeanProvider extends GrVariableEnhancer {
     SpringBeanPointer<?>  bean = getInjectedBean(variable);
 
     if (bean != null) {
-      return TypesUtil.getLeastUpperBound(bean.getEffectiveBeanTypes().toArray(PsiType.EMPTY_ARRAY), variable.getManager());
+      return SpringModelAccess.compute(
+        () -> TypesUtil.getLeastUpperBound(bean.getEffectiveBeanTypes().toArray(PsiType.EMPTY_ARRAY), variable.getManager()));
     }
 
     return null;

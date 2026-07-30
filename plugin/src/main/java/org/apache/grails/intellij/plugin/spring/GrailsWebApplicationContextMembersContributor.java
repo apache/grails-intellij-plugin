@@ -36,6 +36,9 @@ import org.jetbrains.plugins.groovy.lang.psi.impl.synthetic.GrLightVariable;
 import org.jetbrains.plugins.groovy.lang.resolve.NonCodeMembersContributor;
 import org.jetbrains.plugins.groovy.lang.resolve.ResolveUtil;
 
+import java.util.ArrayList;
+import java.util.List;
+
 final class GrailsWebApplicationContextMembersContributor extends NonCodeMembersContributor {
   @Override
   public String getParentClassName() {
@@ -54,33 +57,43 @@ final class GrailsWebApplicationContextMembersContributor extends NonCodeMembers
     if (structure == null) return;
 
     Module module = structure.getModule();
-
-    final SpringModel model = SpringManager.getInstance(module.getProject()).getCombinedModel(module);
-
     PsiManager manager = structure.getManager();
-
     String nameHint = ResolveUtil.getNameHint(processor);
 
-    if (nameHint == null) {
-      for (SpringBeanPointer<?> pointer : model.getAllCommonBeans()) {
-        if (pointer.isValid()) {
-          PsiType type = TypesUtil.getLeastUpperBound(pointer.getEffectiveBeanTypes().toArray(PsiType.EMPTY_ARRAY), manager);
-          PsiElement psiElement = pointer.getPsiElement();
-          if (psiElement != null) {
-            if (!processor.execute(new GrLightVariable(manager, pointer.getName(), type, psiElement), state)) return;
-          }
-        }
-      }
+    // The beans are collected up front so that the whole Spring model lookup stays inside the single
+    // SpringModelAccess scope, and the processor runs outside it.
+    for (GrLightVariable bean : SpringModelAccess.compute(() -> collectBeans(module, manager, nameHint))) {
+      if (!processor.execute(bean, state)) return;
     }
-    else {
+  }
+
+  private static List<GrLightVariable> collectBeans(@NotNull Module module, @NotNull PsiManager manager, @Nullable String nameHint) {
+    final SpringModel model = SpringManager.getInstance(module.getProject()).getCombinedModel(module);
+
+    if (nameHint != null) {
       SpringBeanPointer<?>  bean = SpringModelSearchers.findBean(model, nameHint);
-      if (bean != null && bean.isValid()) {
-        PsiType type = TypesUtil.getLeastUpperBound(bean.getEffectiveBeanTypes().toArray(PsiType.EMPTY_ARRAY), manager);
-        PsiElement psiElement = bean.getPsiElement();
-        if (psiElement != null) {
-          if (!processor.execute(new GrLightVariable(manager, nameHint, type, psiElement), state)) return;
-        }
-      }
+      // The bean may have been found by an alias, so the name asked for wins over the bean's own name.
+      GrLightVariable variable = bean == null ? null : createVariable(manager, nameHint, bean);
+      return variable == null ? List.of() : List.of(variable);
     }
+
+    List<GrLightVariable> beans = new ArrayList<>();
+    for (SpringBeanPointer<?> pointer : model.getAllCommonBeans()) {
+      GrLightVariable variable = createVariable(manager, pointer.getName(), pointer);
+      if (variable != null) beans.add(variable);
+    }
+    return beans;
+  }
+
+  private static @Nullable GrLightVariable createVariable(@NotNull PsiManager manager,
+                                                          String name,
+                                                          @NotNull SpringBeanPointer<?> pointer) {
+    if (!pointer.isValid()) return null;
+
+    PsiElement psiElement = pointer.getPsiElement();
+    if (psiElement == null) return null;
+
+    PsiType type = TypesUtil.getLeastUpperBound(pointer.getEffectiveBeanTypes().toArray(PsiType.EMPTY_ARRAY), manager);
+    return new GrLightVariable(manager, name, type, psiElement);
   }
 }
