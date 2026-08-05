@@ -54,7 +54,7 @@ public class GrailsRunCommandDialog extends DialogWrapper {
   private final Project myProject;
 
   public GrailsRunCommandDialog(@NotNull Project project) {
-    super(project, false, IdeModalityType.PROJECT);
+    super(project, false, IdeModalityType.IDE);
     myProject = project;
 
     myApplicationsLabel.setLabelFor(myApplications);
