@@ -60,12 +60,12 @@ jobs:
           ARTIFACT_URL: ${{ steps.upload-plugin.outputs.artifact-url }}
         run: |
           {
-            echo "## 📦 Plugin Build"
+            echo "## 📦 Snapshot Plugin Build"
             echo ""
             echo "| File | Size | Download |"
             echo "|------|------|----------|"
             for zip in plugin/build/distributions/*.zip; do
-              echo "| \`$(basename "$zip")\` | $(du -h "$zip" | cut -f1) | [${{ steps.plugin-zip.outputs.name }} artifact]($ARTIFACT_URL) |"
+              echo "| \`$(basename "$zip")\` | $(du -h "$zip" | cut -f1) | [snapshot ${{ steps.plugin-zip.outputs.name }} artifact]($ARTIFACT_URL) |"
             done
           } >> "$GITHUB_STEP_SUMMARY"
   verify:
