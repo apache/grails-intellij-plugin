@@ -23,7 +23,6 @@ import org.jetbrains.annotations.NotNull;
 import org.apache.grails.intellij.plugin.config.GrailsConstants;
 import org.apache.grails.intellij.plugin.structure.GrailsApplicationManager;
 
-import java.util.Arrays;
 import java.util.Objects;
 
 /** Was showHide.kt; adds or removes the Grails project view pane as applications appear or go away. */
@@ -37,7 +36,7 @@ public final class GrailsProjectViewPanes {
   public static void showHide(@NotNull Project project) {
     GrailsApplicationManager grailsApplicationManager = GrailsApplicationManager.getInstance(project);
     ProjectView projectView = ProjectView.getInstance(project);
-    boolean hasPane = Arrays.asList(projectView.getPaneIds()).contains(ID);
+    boolean hasPane = projectView.getPaneIds().contains(ID);
     if (grailsApplicationManager.hasApplications()) {
       if (!hasPane) {
         projectView.addProjectPane(getPane(project));
