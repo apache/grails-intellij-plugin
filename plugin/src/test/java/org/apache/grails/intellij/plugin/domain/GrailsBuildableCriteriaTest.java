@@ -239,8 +239,9 @@ public class GrailsBuildableCriteriaTest extends GrailsTestCase {
   }
 
   /**
-   * {@code call}/{@code doCall} back the {@code def c = Ddd.createCriteria(); c { ... }} form and are
-   * dynamic in the very same way {@code count} is.
+   * {@code call} backs the {@code def c = Ddd.createCriteria(); c { ... }} form — Groovy's implicit-call
+   * resolution looks for {@code call}, not {@code doCall} — and is dynamic in the very same way
+   * {@code count} is.
    */
   public void testShorthandCallForm() {
     PsiFile file = myFixture.addFileToProject("src/groovy/Ggg.groovy", """

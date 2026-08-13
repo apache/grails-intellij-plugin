@@ -21,4 +21,5 @@ public interface GormClassNames {
   String ENTITY_ANNO = "grails.gorm.annotation.Entity";
   String ENTITY_TRAIT = "org.grails.datastore.gorm.GormEntity";
   String QUERY_CREATOR = "org.grails.datastore.mapping.query.QueryCreator";
+  String BUILDABLE_CRITERIA = "org.grails.datastore.mapping.query.api.BuildableCriteria";
 }

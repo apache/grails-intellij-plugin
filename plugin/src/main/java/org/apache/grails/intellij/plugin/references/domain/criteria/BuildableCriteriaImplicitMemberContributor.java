@@ -27,6 +27,7 @@ import com.intellij.psi.ResolveState;
 import com.intellij.psi.scope.DelegatingScopeProcessor;
 import com.intellij.psi.scope.PsiScopeProcessor;
 import com.intellij.psi.util.InheritanceUtil;
+import org.apache.grails.intellij.plugin.gorm.GormClassNames;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.plugins.groovy.lang.resolve.NonCodeMembersContributor;
@@ -36,29 +37,38 @@ import org.jetbrains.plugins.groovy.util.dynamicMembers.DynamicMemberUtils;
 import java.util.Set;
 
 /**
- * Since GORM 4 {@code createCriteria()} comes from the {@code GormEntity} trait and is declared to return
- * {@link #BUILDABLE_CRITERIA_CLASS}, not {@link CriteriaBuilderUtil#CRITERIA_BUILDER_CLASS}. That interface
- * declares {@code get}, {@code list}, {@code listDistinct} and {@code scroll}, which is why those forms
- * resolve out of the box, but the remaining closure-terminal calls only exist in
+ * From GORM 4 on, {@code createCriteria()} comes from the {@code GormEntity} trait and is declared to return
+ * {@code BuildableCriteria}, not {@code HibernateCriteriaBuilder}. That interface declares {@code get},
+ * {@code list}, {@code listDistinct} and {@code scroll}, which is why those forms resolve out of the box,
+ * but the remaining closure-terminal calls only exist in
  * {@code AbstractHibernateCriteriaBuilder.invokeMethod(...)} and are therefore invisible to resolution:
  * {@code Ddd.createCriteria().count { ... }} used to resolve to nothing, which in turn left
  * {@link CriteriaBuilderUtil#checkCriteriaClosure} unable to find the domain class, so no property inside
  * the closure could be navigated either.
  */
 final class BuildableCriteriaImplicitMemberContributor extends NonCodeMembersContributor {
-  public static final String BUILDABLE_CRITERIA_CLASS = "org.grails.datastore.mapping.query.api.BuildableCriteria";
 
   /**
-   * Members of {@link CriteriaBuilderImplicitMemberContributor#CLASS_SOURCE} that
-   * {@link #BUILDABLE_CRITERIA_CLASS} (or its {@code Criteria} supertype) does not declare itself.
-   * Contributing the rest would duplicate real methods.
+   * The qualifier-level terminal calls a {@code BuildableCriteria}-typed qualifier accepts but that neither
+   * it nor its {@code Criteria} supertype declares, so resolution cannot see them without help.
+   *
+   * <p>This is deliberately narrower than "every member of
+   * {@link CriteriaBuilderImplicitMemberContributor#CLASS_SOURCE} the interface does not declare":
+   * closure-body members such as {@code projections} are missing from both interfaces too, but they are
+   * supplied inside the closure by {@link CriteriaClosureMemberContributor}, and contributing them here
+   * would put a bogus entry on every {@code createCriteria()} qualifier instead. Contributing a member the
+   * interface does declare would duplicate the real method.
+   *
+   * <p>Of the {@code def c = Ddd.createCriteria(); c { ... }} shorthand, only {@code call} is load-bearing:
+   * that is what Groovy's implicit-call resolution looks for. {@code doCall} is closure protocol and is kept
+   * only for parity with {@code CLASS_SOURCE}.
    */
   // #CHECK# org.grails.datastore.mapping.query.api.BuildableCriteria against org.grails.orm.hibernate.query.AbstractHibernateCriteriaBuilder#invokeMethod(...)
   private static final Set<String> MEMBERS_MISSING_FROM_BUILDABLE_CRITERIA = Set.of("count", "call", "doCall");
 
   @Override
   protected String getParentClassName() {
-    return BUILDABLE_CRITERIA_CLASS;
+    return GormClassNames.BUILDABLE_CRITERIA;
   }
 
   @Override
