@@ -69,12 +69,12 @@ final class BuildableCriteriaImplicitMemberContributor extends NonCodeMembersCon
                                      @NotNull ResolveState state) {
     if (aClass == null) return;
 
+    String nameHint = ResolveUtil.getNameHint(processor);
+    if (nameHint != null && !MEMBERS_MISSING_FROM_BUILDABLE_CRITERIA.contains(nameHint)) return;
+
     // HibernateCriteriaBuilder implements BuildableCriteria since GORM 4, and a qualifier typed as the
     // builder is already served by CriteriaBuilderImplicitMemberContributor.
     if (InheritanceUtil.isInheritor(aClass, CriteriaBuilderUtil.CRITERIA_BUILDER_CLASS)) return;
-
-    String nameHint = ResolveUtil.getNameHint(processor);
-    if (nameHint != null && !MEMBERS_MISSING_FROM_BUILDABLE_CRITERIA.contains(nameHint)) return;
 
     // Same class source as CriteriaBuilderImplicitMemberContributor, so that the contributed methods pass
     // CriteriaBuilderImplicitMemberContributor.isMine() and keep working with CriteriaBuilderUtil and
