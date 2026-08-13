@@ -110,6 +110,7 @@
     <membersContributor implementation="org.apache.grails.intellij.plugin.references.GrailsResourceClassMemberContributor"/>
     <membersContributor implementation="org.apache.grails.intellij.plugin.references.filter.GrailsFilterClosureMemberContributor"/>
     <membersContributor implementation="org.apache.grails.intellij.plugin.references.domain.criteria.CriteriaBuilderImplicitMemberContributor"/>
+    <membersContributor implementation="org.apache.grails.intellij.plugin.references.domain.criteria.BuildableCriteriaImplicitMemberContributor"/>
     <membersContributor implementation="org.apache.grails.intellij.plugin.config.BuildConfigMemberContributor"/>
     <membersContributor implementation="org.apache.grails.intellij.plugin.config.ConfigMemberContributor"/>
     <membersContributor implementation="org.apache.grails.intellij.plugin.spring.GrailsWebApplicationContextMembersContributor"/> <!-- Spring Support -->
