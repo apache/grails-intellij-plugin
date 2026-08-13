@@ -24,11 +24,20 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiReference;
+import com.intellij.psi.PsiType;
+import com.intellij.psi.ResolveState;
+import com.intellij.psi.scope.PsiScopeProcessor;
+import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.testFramework.UsefulTestCase;
 import org.apache.grails.intellij.lib.testFramework.GrailsTestCase;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.groovy.lang.psi.api.GroovyResolveResult;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrField;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariable;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariableDeclaration;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
+import org.jetbrains.plugins.groovy.lang.resolve.NonCodeMembersContributor;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -74,16 +83,25 @@ public class GrailsBuildableCriteriaTest extends GrailsTestCase {
       }
       """);
 
+    // #CHECK# org.grails.datastore.mapping.query.api.BuildableCriteria
+    // The @DelegatesTo annotations are part of the fixture, not decoration: in real GORM they give every
+    // terminal closure a Criteria delegate, which is a candidate source competing with everything the
+    // criteria contributors put inside those closures. The getTargetClass/cache/readOnly/join/select members
+    // the real interface also declares are left out — nothing in the plugin looks at them.
     myFixture.addFileToProject("src/java/org/grails/datastore/mapping/query/api/BuildableCriteria.java", """
       package org.grails.datastore.mapping.query.api;
 
       import groovy.lang.Closure;
+      import groovy.lang.DelegatesTo;
+
+      import java.util.Map;
 
       public interface BuildableCriteria extends Criteria {
-        Object get(Closure callable);
-        Object list(Closure callable);
-        Object listDistinct(Closure callable);
-        Object scroll(Closure callable);
+        Object get(@DelegatesTo(Criteria.class) Closure callable);
+        Object list(@DelegatesTo(Criteria.class) Closure callable);
+        Object list(Map params, @DelegatesTo(Criteria.class) Closure callable);
+        Object listDistinct(@DelegatesTo(Criteria.class) Closure callable);
+        Object scroll(@DelegatesTo(Criteria.class) Closure callable);
       }
       """);
 
@@ -101,6 +119,7 @@ public class GrailsBuildableCriteriaTest extends GrailsTestCase {
         public Criteria and(Closure callable) { return this; }
         public Object get(Closure callable) { return null; }
         public Object list(Closure callable) { return null; }
+        public Object list(java.util.Map params, Closure callable) { return null; }
         public Object listDistinct(Closure callable) { return null; }
         public Object scroll(Closure callable) { return null; }
       }
@@ -183,6 +202,8 @@ public class GrailsBuildableCriteriaTest extends GrailsTestCase {
   /**
    * Every closure-terminal form has to end up with the same delegate, whether the method is contributed
    * ({@code count}, {@code call}) or declared by BuildableCriteria itself ({@code get}, {@code list}, ...).
+   * The {@code list(Map, Closure)} overload is real on BuildableCriteria too, so the paginated form belongs
+   * here rather than in a test of its own.
    */
   public void testNavigateToPropertyInsideEveryTerminalClosure() {
     PsiFile file = myFixture.addFileToProject("src/groovy/Ggg.groovy", """
@@ -194,6 +215,7 @@ public class GrailsBuildableCriteriaTest extends GrailsTestCase {
           Ddd.createCriteria().count { ge('aaa', 'x') }
           Ddd.createCriteria().get { ge('aaa', 'x') }
           Ddd.createCriteria().list { ge('aaa', 'x') }
+          Ddd.createCriteria().list(max: 10) { ge('aaa', 'x') }
           Ddd.createCriteria().listDistinct { ge('aaa', 'x') }
           Ddd.createCriteria().scroll { ge('aaa', 'x') }
           c { ge('aaa', 'x') }
@@ -201,6 +223,10 @@ public class GrailsBuildableCriteriaTest extends GrailsTestCase {
         }
       }
       """);
+
+    // Covers the terminal calls themselves, which the property loop below says nothing about: without this
+    // listDistinct, scroll and list(Map, Closure) are not asserted to resolve anywhere in the class.
+    GrailsTestCase.checkResolve(file);
 
     String text = file.getText();
     List<String> unresolvedForms = new ArrayList<>();
@@ -219,7 +245,7 @@ public class GrailsBuildableCriteriaTest extends GrailsTestCase {
       propertyCount++;
     }
 
-    assertEquals("Not every terminal form was checked", 7, propertyCount);
+    assertEquals("Not every terminal form was checked", 8, propertyCount);
     UsefulTestCase.assertEmpty("The property does not resolve in these forms", unresolvedForms);
   }
 
@@ -306,10 +332,243 @@ public class GrailsBuildableCriteriaTest extends GrailsTestCase {
     List<String> variants = myFixture.getLookupElementStrings();
     assertNotNull(variants);
 
-    // 'count' is contributed, 'get' and 'list' are declared by BuildableCriteria itself.
-    for (String member : new String[]{"count", "get", "list"}) {
+    // 'count' is contributed, 'get' is declared by BuildableCriteria itself.
+    for (String member : new String[]{"count", "get"}) {
       assertEquals("Unexpected number of '" + member + "' variants in " + variants,
                    1, Collections.frequency(variants, member));
     }
+
+    // 'list' is the exception: BuildableCriteria really declares both list(Closure) and list(Map, Closure),
+    // so two variants are the two overloads rather than a member contributed on top of a declared one.
+    assertEquals("Expected exactly the two real 'list' overloads in " + variants,
+                 2, Collections.frequency(variants, "list"));
+  }
+
+  /**
+   * Since GORM 4 HibernateCriteriaBuilder implements BuildableCriteria, so a qualifier typed as the builder
+   * matches both contributors and BuildableCriteriaImplicitMemberContributor bails out on it — the builder is
+   * already served by CriteriaBuilderImplicitMemberContributor.
+   *
+   * <p>Resolution and completion cannot observe that guard: both contributors hand the same
+   * {@code CLASS_SOURCE} to DynamicMemberUtils, which caches its synthetic class per source string, so the
+   * duplicate is the very same PsiMethod instance and both dedupe it by element. Nothing in the plugin
+   * enforces that shared-{@code CLASS_SOURCE} invariant though, hence the guard — and hence this test, which
+   * counts contributions through a bare {@link PsiScopeProcessor} because that does no deduplication at all.
+   */
+  public void testBuilderQualifierIsServedByOneContributorOnly() {
+    PsiFile file = myFixture.addFileToProject("src/groovy/Hhh.groovy", """
+
+      class Hhh {
+        void someMethod(grails.orm.HibernateCriteriaBuilder builder) {
+          builder.count { ge('aaa', 'bbb') }
+        }
+      }
+      """);
+
+    assertEquals("'count' was contributed more than once to a HibernateCriteriaBuilder-typed qualifier",
+                 1, countContributionsOf("count", file));
+  }
+
+  /**
+   * The counterpart of {@link #testBuilderQualifierIsServedByOneContributorOnly()}: on a qualifier typed as
+   * BuildableCriteria only this contributor applies, so a single contribution here is what proves the
+   * counting above sees contributed members at all and cannot pass vacuously.
+   */
+  public void testBuildableCriteriaQualifierIsServedOnce() {
+    PsiFile file = myFixture.addFileToProject("src/groovy/Hhh.groovy", """
+
+      class Hhh {
+        void someMethod() {
+          Ddd.createCriteria().count { ge('aaa', 'bbb') }
+        }
+      }
+      """);
+
+    assertEquals("'count' was not contributed exactly once to a BuildableCriteria-typed qualifier",
+                 1, countContributionsOf("count", file));
+  }
+
+  /**
+   * The projections-to-result-type logic in CriteriaBuilderUtil.getResultType0() is only reached for methods
+   * CriteriaReturnTypeCalculator recognises, i.e. the ones CriteriaBuilderImplicitMemberContributor
+   * contributes plus {@code withCriteria}. On a GORM 4+ classpath the shorthand form is what gets there: it
+   * resolves to the contributed {@code call}, whose declared {@code List} return type sends the calculator
+   * looking for the domain class and the projections block. The GrailsCriteriaProjections* tests cover this
+   * logic only on the bundled pre-4 jars, where every terminal is contributed.
+   */
+  public void testProjectionResultTypeOnShorthandForm() {
+    assertVariableType("List<Integer>", """
+      def c = Ddd.createCriteria()
+      def variable = c {
+        projections { countDistinct('aaa') }
+      }
+      """);
+
+    assertVariableType("List<String>", """
+      def c = Ddd.createCriteria()
+      def variable = c {
+        projections { max('aaa') }
+      }
+      """);
+
+    // Two projections in one block widen the element type instead of picking the first.
+    assertVariableType("List<Object[]>", """
+      def c = Ddd.createCriteria()
+      def variable = c {
+        projections {
+          countDistinct('aaa')
+          countDistinct('bbb')
+        }
+      }
+      """);
+
+    // A projection on an unknown property falls back to Object rather than failing.
+    assertVariableType("List<Object>", """
+      def c = Ddd.createCriteria()
+      def variable = c {
+        projections { max('nonExistent') }
+      }
+      """);
+  }
+
+  /**
+   * Known gap, pinned so that closing it shows up as a diff: on a GORM 4+ classpath the terminals
+   * BuildableCriteria declares itself resolve to the real interface methods, which
+   * CriteriaReturnTypeCalculator does not recognise — it only applies the projections logic to the members
+   * CriteriaBuilderImplicitMemberContributor contributes and to {@code withCriteria}. So the declared
+   * {@code Object} return type stands and neither the domain class nor the projections block reaches the
+   * result type. This is about return typing only; resolution and navigation inside those closures work,
+   * which is what the rest of this class covers.
+   */
+  public void testProjectionResultTypeIsNotAppliedToDeclaredTerminals() {
+    assertVariableType("Object", """
+      def variable = Ddd.createCriteria().list {
+        projections { countDistinct('aaa') }
+      }
+      """);
+
+    assertVariableType("Object", """
+      def variable = Ddd.createCriteria().get {
+        projections { max('aaa') }
+      }
+      """);
+
+    assertVariableType("Object", """
+      def variable = Ddd.createCriteria().list(max: 10) {
+        projections { max('aaa') }
+      }
+      """);
+
+    // count is contributed rather than declared, so it keeps its Integer return type — the calculator hands
+    // the projections block back for List and Object returns only.
+    assertVariableType("Integer", """
+      def variable = Ddd.createCriteria().count {
+        projections { countDistinct('aaa') }
+      }
+      """);
+  }
+
+  /**
+   * grails.gorm.CriteriaBuilder is the non-Hibernate implementor of BuildableCriteria (the MongoDB/Neo4j
+   * path). It declares its own {@code count(Closure)} and does not inherit HibernateCriteriaBuilder, so the
+   * guard in BuildableCriteriaImplicitMemberContributor does not fire for it and the contributed {@code count}
+   * meets a real one. The real method has to win, and there has to be exactly one candidate.
+   */
+  public void testNonHibernateImplementorKeepsItsOwnCount() {
+    myFixture.addFileToProject("src/java/grails/gorm/CriteriaBuilder.java", """
+      package grails.gorm;
+
+      import groovy.lang.Closure;
+      import org.grails.datastore.mapping.query.api.BuildableCriteria;
+      import org.grails.datastore.mapping.query.api.Criteria;
+
+      public class CriteriaBuilder implements BuildableCriteria {
+        public Criteria eq(String propertyName, Object value) { return this; }
+        public Criteria ge(String propertyName, Object value) { return this; }
+        public Criteria order(String propertyName, String direction) { return this; }
+        public Criteria and(Closure callable) { return this; }
+        public Object get(Closure callable) { return null; }
+        public Object list(Closure callable) { return null; }
+        public Object list(java.util.Map params, Closure callable) { return null; }
+        public Object listDistinct(Closure callable) { return null; }
+        public Object scroll(Closure callable) { return null; }
+        public Number count(Closure callable) { return null; }
+      }
+      """);
+
+    PsiFile file = myFixture.addFileToProject("src/groovy/Iii.groovy", """
+
+      class Iii {
+        void someMethod(grails.gorm.CriteriaBuilder builder) {
+          builder.cou<caret>nt { ge('aaa', 'bbb') }
+        }
+      }
+      """);
+
+    myFixture.configureFromExistingVirtualFile(file.getVirtualFile());
+
+    PsiReference reference = file.findReferenceAt(myFixture.getCaretOffset());
+    UsefulTestCase.assertInstanceOf(reference, GrReferenceExpression.class);
+
+    GroovyResolveResult[] results = ((GrReferenceExpression)reference).multiResolve(false);
+    UsefulTestCase.assertSize(1, results);
+
+    PsiMethod resolved = (PsiMethod)results[0].getElement();
+    assertNotNull(resolved);
+    assertEquals("count", resolved.getName());
+
+    PsiType returnType = resolved.getReturnType();
+    assertNotNull(returnType);
+    assertEquals("The contributed 'count' won over the one the class declares", "Number", returnType.getPresentableText());
+  }
+
+  /**
+   * Puts {@code text} in a file of its own and checks the {@code variable} it declares has {@code type}.
+   */
+  private void assertVariableType(@NotNull String type, @NotNull String text) {
+    PsiFile file = myFixture.addFileToProject("src/groovy/Type" + myTypeCheckCount++ + ".groovy", text);
+
+    GrVariable variable = null;
+    for (PsiElement e = file.getFirstChild(); e != null; e = e.getNextSibling()) {
+      if (e instanceof GrVariableDeclaration declaration) variable = declaration.getVariables()[0];
+    }
+
+    assertNotNull("No variable declaration in " + text, variable);
+
+    PsiType variableType = variable.getTypeGroovy();
+    assertNotNull(text, variableType);
+    assertEquals(text, type, variableType.getPresentableText());
+  }
+
+  private int myTypeCheckCount;
+
+  /**
+   * Runs every applicable {@link NonCodeMembersContributor} against the qualifier of {@code .<memberName>}
+   * and counts how many times {@code memberName} is contributed.
+   */
+  private static int countContributionsOf(@NotNull String memberName, @NotNull PsiFile file) {
+    int offset = file.getText().indexOf('.' + memberName);
+    assertTrue("No '." + memberName + "' call in the file", offset >= 0);
+
+    GrReferenceExpression place = PsiTreeUtil.getParentOfType(file.findElementAt(offset + 1), GrReferenceExpression.class);
+    assertNotNull(place);
+
+    GrExpression qualifier = place.getQualifierExpression();
+    assertNotNull(qualifier);
+
+    PsiType qualifierType = qualifier.getType();
+    assertNotNull("The qualifier has no type, so no contributor would run", qualifierType);
+
+    int[] contributions = {0};
+
+    NonCodeMembersContributor.runContributors(qualifierType, new PsiScopeProcessor() {
+      @Override
+      public boolean execute(@NotNull PsiElement element, @NotNull ResolveState state) {
+        if (element instanceof PsiMethod method && memberName.equals(method.getName())) contributions[0]++;
+        return true;
+      }
+    }, place, ResolveState.initial());
+
+    return contributions[0];
   }
 }
