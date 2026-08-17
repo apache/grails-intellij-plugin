@@ -96,6 +96,15 @@ public class ControllerMembersProvider extends MemberProvider {
 
   public static final String MIME_API_CLASS = "org.codehaus.groovy.grails.plugins.web.api.ControllersMimeTypesApi";
 
+  /**
+   * Marker for the trait-based controller model of Grails 3 and later. Its super-traits
+   * ({@code ResponseRenderer}, {@code ResponseRedirector}, {@code RequestForwarder}, {@code DataBinder},
+   * {@code WebAttributes}, {@code ServletAttributes}) declare every member {@link #CLASS_SOURCE} used to
+   * inject, and Grails3TraitInjectorContributor already adds the trait as a supertype of each controller,
+   * so those members are real code members there.
+   */
+  private static final String CONTROLLER_TRAIT_CLASS = "grails.artefact.Controller";
+
   @Override
   public void processMembers(PsiScopeProcessor processor, PsiClass psiClass, GrReferenceExpression ref) {
     PsiScopeProcessor executeProcessor = processor;
@@ -131,10 +140,14 @@ public class ControllerMembersProvider extends MemberProvider {
         if (!GrailsPsiUtil.enhance(executeProcessor, controllerRestApiClass, objectType, CONTROLLER_METHOD_KIND)) return;
       }
     }
-    else {
-      // Grails version < 1.4
+    else if (facade.findClass(CONTROLLER_TRAIT_CLASS, resolveScope) == null) {
+      // Grails version < 1.4: no API classes and no controller trait, so nothing declares these members
       if (!DynamicMemberUtils.process(executeProcessor, psiClass, ref, CLASS_SOURCE)) return;
     }
+    // Grails 3+ needs no injection here: contributing CLASS_SOURCE on top of the trait members made every
+    // named-argument call ambiguous ("Method call is ambiguous" on render(view: '...') under
+    // @CompileStatic/@GrailsCompileStatic), because the injected render(Map, Closure = null) is applicable
+    // to the same call as the trait's render(Map) and neither is more specific.
 
     if (!GspTagLibUtil.processGrailsTags(processor, ref, ResolveState.initial(), ResolveUtil.getNameHint(processor), classHint)) return;
   }
