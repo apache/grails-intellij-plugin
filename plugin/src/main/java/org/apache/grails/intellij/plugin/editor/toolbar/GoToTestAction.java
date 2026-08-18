@@ -52,9 +52,11 @@ public class GoToTestAction extends GrailsToolbarVfileAction {
     List<VirtualFile> result = new ArrayList<>();
 
     for (GrailsArtifact artefactType : GrailsEditorToolbar.DECORATED_ARTEFACT_TYPES) {
-      for (GrClassDefinition artifact : artefactType.getInstances(artefactData.getModule(),
-                                                                 artefactData.getPackageName(),
-                                                                 artefactData.getArtefactName())) {
+      // Same package-preferring lookup the Go To <artefact> actions use, so the tests of a sibling
+      // artefact kept in another package stay reachable.
+      for (GrClassDefinition artifact : artefactType.getInstancesPreferringPackage(artefactData.getModule(),
+                                                                                  artefactData.getPackageName(),
+                                                                                  artefactData.getArtefactName())) {
         for (PsiClass testClass : GrailsTestUtils.getTestsForArtifact(artifact, true)) {
           ContainerUtil.addIfNotNull(result, testClass.getContainingFile().getVirtualFile());
         }

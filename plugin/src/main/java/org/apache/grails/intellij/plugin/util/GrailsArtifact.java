@@ -276,6 +276,23 @@ public enum GrailsArtifact {
            });
   }
 
+  /**
+   * The artefacts named {@code artefactName} that the "Go To &lt;artefact&gt;" actions navigate to:
+   * the ones in {@code packageName} when there are any, otherwise every artefact with that name
+   * regardless of package.
+   *
+   * <p>Co-locating the artefacts of one concept is a convention, not a rule - a domain shared by an
+   * upstream project, or a controller kept under a {@code web} package, would otherwise be
+   * unreachable from the toolbar. Every caller must share this policy, so navigation from an
+   * artefact does not depend on which action is used.
+   */
+  public @NotNull Collection<GrClassDefinition> getInstancesPreferringPackage(@NotNull Module module,
+                                                                             @Nullable String packageName,
+                                                                             @NotNull String artefactName) {
+    Collection<GrClassDefinition> samePackage = getInstances(module, packageName, artefactName);
+    return samePackage.isEmpty() ? getInstances(module, artefactName) : samePackage;
+  }
+
   private GrailsArtifactCache getCache(final @NotNull Module module) {
     final Project project = module.getProject();
     return CachedValuesManager.getManager(project).getCachedValue(module, cacheKey, () -> {
