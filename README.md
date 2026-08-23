@@ -5,8 +5,12 @@ GSP language support (parsing, highlighting, completion, refactoring), Grails pr
 structure and navigation, run configurations, taglib/domain-class support, and
 integrations for i18n, coverage, Hibernate, Maven, and language injection.
 
-This codebase was originally developed by JetBrains s.r.o. and imported from
-[JetBrains/intellij-obsolete-plugins](https://github.com/JetBrains/intellij-obsolete-plugins).
+This codebase was originally developed by JetBrains s.r.o. and donated to the Apache
+Software Foundation under a software grant. It was imported from the `grails` directory of
+[JetBrains/intellij-obsolete-plugins](https://github.com/JetBrains/intellij-obsolete-plugins)
+at commit
+[`dfe54ea`](https://github.com/JetBrains/intellij-obsolete-plugins/commit/dfe54eaecdbe50ba9c7c1ed162ff9a547fa3ca4a)
+(tree `a8bd06f`), the last commit to touch that directory upstream.
 
 ## Requirements
 

@@ -223,3 +223,34 @@ Unblocked by the JetBrains software grant being filed, and carried out under #23
       divergence from `HEADER`.
 - [x] Revisit RAT config: no changes needed, as expected (both header forms are Apache-2.0 to
       RAT). Audit re-run after the replacement: 996 standards, all Apache licensed, 0 unknown.
+
+### IP clearance record
+
+Facts the [IP clearance form](https://incubator.apache.org/ip-clearance/) needs. The import
+commit `3d4bc40` is a squash whose message names only the repository, so the upstream
+revision is recorded here instead.
+
+| | |
+| --- | --- |
+| Upstream repository | `JetBrains/intellij-obsolete-plugins` |
+| Donated subtree | `grails/` |
+| Upstream commit | `dfe54eaecdbe50ba9c7c1ed162ff9a547fa3ca4a` (2026-02-25, "Move Grails to obsolete plugins (IDEA-379825)") — the last commit to touch `grails/` |
+| Subtree tree object | `a8bd06f07db0f285916880e5029375f6583f6d8b` |
+| Import commit here | `3d4bc40c8c31832c84415a9a11ee68deba3277e4` (2026-06-30) |
+
+Verified rather than assumed: all **1330** blobs under `grails/` at that upstream commit are
+byte-identical to their counterparts in `3d4bc40`, with nothing added or missing on either
+side. The subtree was unchanged upstream between `dfe54ea` and `530c89a`, the upstream default
+branch head at the time of import, so `dfe54ea` is the exact provenance of the snapshot.
+
+Two sets of files inside the donated tree are worth a line on the form because they carry
+someone else's package names or copyright:
+
+- `libs/testFramework/**` files in `com.intellij` / `org.jetbrains` packages were present in
+  the import commit rather than copied in later. JetBrains owns them and they fall inside the
+  donated tree, so the grant covers them.
+- `plugin/testdata/mockGrails11/scripts/*.groovy` carry `Copyright 2004-2005 the original
+  author or authors` and trace to the Grails codebase already granted to the ASF, so their
+  provenance is covered independently of the JetBrains grant. They are test fixtures whose
+  content *is* the test input, which is why they keep their original headers and are
+  RAT-excluded.
