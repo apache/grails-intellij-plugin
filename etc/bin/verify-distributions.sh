@@ -134,8 +134,9 @@ require_entries "${SRC_ZIP}" "source distribution" \
 # are resolved from Maven at test time rather than committed, so a jar appearing in the source
 # distribution means one of those two arrangements has regressed.
 #
-# .git / .github / .asf.yaml are infrastructure that is not part of the release, and the planning
-# documents are working notes that do not belong in a release either.
+# .git / .github / .asf.yaml are infrastructure that is not part of the release, and the two
+# planning documents are RAT-excluded on the grounds that they are removed before the first
+# release, so nothing should have to audit them in a distribution.
 forbid_entries "${SRC_ZIP}" "source distribution" \
   '\.jar$' \
   '/gradlew$' \
@@ -144,8 +145,7 @@ forbid_entries "${SRC_ZIP}" "source distribution" \
   '/\.github/' \
   '/\.asf\.yaml$' \
   '/MIGRATION-PLAN\.md$' \
-  '/IMPROVEMENT-PLAN\.md$' \
-  '/AGENTS\.md$'
+  '/IMPROVEMENT-PLAN\.md$'
 echo "✅ source distribution contents verified"
 
 verify_archive "${BIN_ZIP}"

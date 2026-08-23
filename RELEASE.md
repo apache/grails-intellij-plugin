@@ -137,7 +137,7 @@ will wait for a reviewer, so they are approved one at a time in that order.
 
 1. Check out the tag, then remove files that must not ship in a source release
    (`.git`, `.github`, `.asf.yaml`, `gradlew`/`gradlew.bat`, `gradle/wrapper`, and the
-   `MIGRATION-PLAN.md` / `IMPROVEMENT-PLAN.md` / `AGENTS.md` working notes).
+   `MIGRATION-PLAN.md` / `IMPROVEMENT-PLAN.md` planning documents).
 2. Zip to `apache-grails-intellij-plugin-${VERSION}-src.zip`.
 3. GPG-detached-sign (`.asc`) and checksum (`.sha512`).
 4. Upload all three to the GitHub Release.
