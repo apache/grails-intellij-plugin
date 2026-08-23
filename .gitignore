@@ -18,3 +18,9 @@ gradle-bootstrap/gradle
 .DS_Store
 # reproducible-build and release-verification output (etc/bin/*.sh)
 etc/bin/results
+# Third-party test fixture jars, resolved from Maven at test time by plugin/build.gradle rather
+# than committed: ASF source releases must not ship third-party binaries, and hibernate-core is
+# LGPL 2.1 (Category X), which may not sit in the repository at all.
+/plugin/testdata/mockGrails11/dist/*.jar
+/plugin/testdata/mockGrails11/lib/*.jar
+/plugin/testdata/mockGrails14/*.jar
