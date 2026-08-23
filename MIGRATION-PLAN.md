@@ -205,18 +205,21 @@ Dropped as no longer applicable:
   a workflow artifact rather than channel publishing, so CI publishes nothing and there is
   no job to gate.
 
-## Phase 9 — Post-grant follow-up (BLOCKED until software grant recorded)
+## Phase 9 — Post-grant follow-up (grant filed; done)
 
-Do **not** start any of this until the JetBrains software grant is recorded with the
-ASF Secretary and IP clearance is filed (incubator IP-clearance form, even for a
-non-incubating PMC receiving a codebase).
+Unblocked by the JetBrains software grant being filed, and carried out under #23.
 
-- Wholesale replacement of the JetBrains-attributed Apache 2.0 headers with the
-  canonical ASF header from `HEADER` (script in `etc/bin/`, one mechanical commit —
-  the former "option A"). Run in the legacy repo too if the fork has happened.
-- Move the JetBrains copyright into `NOTICE` and add the "donated to the ASF" wording,
-  confirmed against the grant text.
-- Update the Phase 8 grep guard: the ASF header becomes required on all non-excluded
-  files; the JetBrains-attributed form should no longer appear.
-- Revisit RAT config: no changes expected (both header forms are Apache-2.0 to RAT),
-  but re-run the audit after the replacement.
+- [x] Wholesale replacement of the JetBrains-attributed Apache 2.0 headers with the
+      canonical ASF header from `HEADER` — 948 files, one mechanical commit, by
+      `etc/bin/apply-asf-headers.py` (which replaced the pre-grant
+      `expand-jetbrains-headers.py`). Run in the legacy repo too if the fork has happened.
+- [x] Move the JetBrains copyright into `NOTICE` and add the "donated to the ASF" wording.
+      **Still to confirm against the executed grant text** — the wording used is
+      "donated to the Apache Software Foundation under a software grant", and the
+      redundant `Licensed under the Apache License, Version 2.0.` line is gone.
+- [x] The header guard: `apply-asf-headers.py --check`, in the RAT workflow. It enforces the
+      one thing RAT cannot see — *which* ALv2 header a file carries — so it needs no copy of
+      RAT's exclusion list, and it fails on either a JetBrains-attributed header or any other
+      divergence from `HEADER`.
+- [x] Revisit RAT config: no changes needed, as expected (both header forms are Apache-2.0 to
+      RAT). Audit re-run after the replacement: 996 standards, all Apache licensed, 0 unknown.

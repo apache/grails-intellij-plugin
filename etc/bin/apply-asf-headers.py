@@ -25,8 +25,14 @@ comment syntax the file already uses, and changes nothing else.
 The header text is read from the HEADER file at the repository root, so that file stays the
 single definition of what the header says.
 
-    ./etc/bin/apply-asf-headers.py --check    report what would change, touch nothing
     ./etc/bin/apply-asf-headers.py            rewrite
+    ./etc/bin/apply-asf-headers.py --check    change nothing, and fail if anything would
+
+--check is the CI guard.  RAT already proves every non-excluded file carries an Apache 2.0
+header, but it cannot tell the two forms apart -- the JetBrains-attributed boilerplate and
+the ASF header are both the ALv2 appendix to RAT, which is why it was green before this
+sweep and stays green after.  This closes exactly that gap, and being anchored on the
+copyright notice rather than on a file list, it needs no copy of RAT's exclusions.
 
 Exits non-zero if any file carries a JetBrains-attributed header this script cannot
 identify, so a file is never silently left behind.
@@ -150,7 +156,8 @@ def tracked_files():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true", help="report only, change nothing")
+    parser.add_argument("--check", action="store_true",
+                        help="change nothing, and exit non-zero if anything would change")
     args = parser.parse_args()
 
     lines_of_header = header_lines()
@@ -191,12 +198,20 @@ def main():
                 handle.write(updated)
         rewritten.append(path)
 
-    verb = "would rewrite" if args.check else "rewrote"
-    print(f"{verb} {len(rewritten)} files")
-    if skipped:
-        print(f"already canonical: {len(skipped)}")
     for path, reason in unhandled:
         print(f"UNHANDLED {path}: {reason}", file=sys.stderr)
+
+    if args.check:
+        for path in rewritten:
+            print(f"JetBrains-attributed header: {path}", file=sys.stderr)
+        if rewritten or unhandled:
+            print(f"\n{len(rewritten) + len(unhandled)} file(s) do not carry the canonical ASF "
+                  f"header from HEADER.\nRun ./etc/bin/apply-asf-headers.py to fix.", file=sys.stderr)
+            return 1
+        print("all tracked files carry the canonical ASF header")
+        return 0
+
+    print(f"rewrote {len(rewritten)} files")
     if unhandled:
         print(f"\n{len(unhandled)} file(s) left untouched -- see above", file=sys.stderr)
         return 1

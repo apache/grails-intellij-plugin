@@ -32,6 +32,11 @@ jobs:
     steps:
       - name: "📥 Checkout repository"
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: "🧾 Verify the canonical ASF source header"
+        # RAT cannot do this: the JetBrains-attributed boilerplate the codebase carried before the
+        # software grant and the ASF header are both the ALv2 appendix to it, so RAT is green either
+        # way. This is what pins every file to the header text in HEADER.
+        run: ./etc/bin/apply-asf-headers.py --check
       - name: "📝 Read JDK version from .sdkmanrc"
         id: sdkmanrc
         run: echo "java=$(grep -E '^java=' .sdkmanrc | cut -d= -f2 | sed 's/-librca$//')" >> "$GITHUB_OUTPUT"
