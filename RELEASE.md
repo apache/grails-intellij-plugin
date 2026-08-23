@@ -136,7 +136,8 @@ will wait for a reviewer, so they are approved one at a time in that order.
 ## 4. Create the source distribution (`source` job)
 
 1. Check out the tag, then remove files that must not ship in a source release
-   (`.git`, `.github`, `.asf.yaml`, `gradlew`/`gradlew.bat`, `gradle/wrapper`).
+   (`.git`, `.github`, `.asf.yaml`, `gradlew`/`gradlew.bat`, `gradle/wrapper`, and the
+   `MIGRATION-PLAN.md` / `IMPROVEMENT-PLAN.md` / `AGENTS.md` working notes).
 2. Zip to `apache-grails-intellij-plugin-${VERSION}-src.zip`.
 3. GPG-detached-sign (`.asc`) and checksum (`.sha512`).
 4. Upload all three to the GitHub Release.
@@ -145,6 +146,16 @@ The Gradle Wrapper jar is removed because ASF source releases may not contain co
 binaries. [`gradle-bootstrap`](gradle-bootstrap) regenerates it — that is why it ships in
 the source distribution, and why `verify-distributions.sh` asserts both that
 `gradle-bootstrap` is present and that no `gradle-wrapper.jar` is.
+
+That wrapper jar is the only binary the repository tracks, so once the `source` job has
+stripped it the source distribution contains no compiled binaries at all — which is why
+`verify-distributions.sh` forbids `*.jar` outright rather than just the wrapper. The mock
+Grails installations the tests run against do need real third-party jars, but those are
+resolved from Maven at test time (see the fixture library list in
+[`plugin/build.gradle`](plugin/build.gradle)) instead of being committed, so running
+`./gradlew test` from an extracted source distribution needs network access on its first
+run. Nothing in the release verification path does: `verify.sh` runs checksums, signatures,
+`rat` and a reproducible `buildPlugin`, never `check` or `test`.
 
 ## 5. Stage to dist.apache.org (`upload` job)
 
@@ -192,10 +203,12 @@ For both archives this verifies the `.sha512` checksum and the `.asc` detached s
 signature), then checks the contents:
 
 - **Source distribution** must contain `LICENSE`, `NOTICE`, `README.md`, `INSTALL`,
-  `RELEASE.md`, `.sdkmanrc`, and `gradle-bootstrap/`, and must **not** contain
-  `gradle-wrapper.jar`, `gradlew`, `.git/`, `.github/`, or `.asf.yaml`.
-- **Binary distribution** must carry `META-INF/LICENSE`, `META-INF/NOTICE`, and
-  `META-INF/plugin.xml` inside the composed plugin jar.
+  `RELEASE.md`, `.sdkmanrc`, and `gradle-bootstrap/`, and must **not** contain any `*.jar`,
+  `gradlew`, `.git/`, `.github/`, `.asf.yaml`, or the planning documents.
+- **Binary distribution** must carry `LICENSE` and `NOTICE` at the root of the plugin
+  directory — the ZIP is the unit being distributed, and ASF policy requires both files in
+  every unit of distribution regardless of its format — as well as `META-INF/LICENSE`,
+  `META-INF/NOTICE`, and `META-INF/plugin.xml` inside the composed plugin jar.
 
 The equivalent manual commands are:
 

@@ -101,8 +101,16 @@ tasks.named('processResources') { task ->
 // standardDsls/ is packaged as loose files under <plugin>/lib/standardDsls/ rather than as jar
 // resources, so it is excluded from the resource set and copied into the sandbox instead.
 // pluginName is a Property mapped lazily so it tracks projectName above.
+//
+// LICENSE and NOTICE go in alongside it, at the root of the plugin directory. The ZIP built from
+// this sandbox is the unit that gets staged, voted on and distributed, and policy requires both
+// files in every unit of distribution "whether the unit of distribution is a .jar, .msi, .tar.gz,
+// .zip, .exe installer, or any other file format" -- having them only in the composed jar's
+// META-INF, as processResources does above, does not satisfy that for the ZIP itself.
 tasks.withType(PrepareSandboxTask).configureEach { task ->
     task.from(layout.projectDirectory.dir('standardDsls')) {
         into task.pluginName.map { "$it/lib/standardDsls/" }
     }
+    task.from(layout.settingsDirectory.file('LICENSE')) { into task.pluginName }
+    task.from(layout.settingsDirectory.file('NOTICE')) { into task.pluginName }
 }

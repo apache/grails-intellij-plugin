@@ -129,22 +129,36 @@ require_entries "${SRC_ZIP}" "source distribution" \
   '/RELEASE\.md$' \
   '/\.sdkmanrc$' \
   '/gradle-bootstrap/build\.gradle$'
-# ASF source releases must not ship compiled binaries; the Gradle Wrapper jar is one, and
-# .git / .github / .asf.yaml are infrastructure that is not part of the release.
+# ASF source releases must not ship compiled binaries. No jar of any kind belongs here: the
+# Gradle Wrapper jar is stripped by the release workflow, and the third-party test fixture jars
+# are resolved from Maven at test time rather than committed, so a jar appearing in the source
+# distribution means one of those two arrangements has regressed.
+#
+# .git / .github / .asf.yaml are infrastructure that is not part of the release, and the planning
+# documents are working notes that do not belong in a release either.
 forbid_entries "${SRC_ZIP}" "source distribution" \
-  'gradle-wrapper\.jar$' \
+  '\.jar$' \
   '/gradlew$' \
   '/gradlew\.bat$' \
   '/\.git/' \
   '/\.github/' \
-  '/\.asf\.yaml$'
+  '/\.asf\.yaml$' \
+  '/MIGRATION-PLAN\.md$' \
+  '/IMPROVEMENT-PLAN\.md$' \
+  '/AGENTS\.md$'
 echo "✅ source distribution contents verified"
 
 verify_archive "${BIN_ZIP}"
 echo "==> Checking binary distribution contents"
-# ASF policy: the convenience binary must carry LICENSE and NOTICE. The build puts them in
-# META-INF of the composed plugin jar (see processResources in the intellij-plugin convention
-# plugin), so check inside that jar rather than at the top level of the ZIP.
+# ASF policy: the convenience binary must carry LICENSE and NOTICE, and the ZIP is the unit that
+# gets staged, voted on and distributed -- policy applies "whether the unit of distribution is a
+# .jar, .msi, .tar.gz, .zip, .exe installer, or any other file format". They sit at the root of
+# the plugin directory (see PrepareSandboxTask in the intellij-plugin convention plugin).
+require_entries "${BIN_ZIP}" "binary distribution" \
+  '^[^/]*/LICENSE$' \
+  '^[^/]*/NOTICE$'
+# They are in the composed plugin jar's META-INF as well (see processResources in the same
+# convention plugin), which is checked below.
 #
 # Identify that jar by name rather than by position: <plugin-dir>/lib/<plugin-dir>-<version>.jar.
 # lib/ also holds the compiler and lib-tier jars, and picking the first entry would silently
