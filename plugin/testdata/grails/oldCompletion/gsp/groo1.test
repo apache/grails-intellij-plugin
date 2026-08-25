@@ -7,8 +7,12 @@ char
 checkBox
 class
 cleanup
+collect
+collect
 controllerName
 cookie
+country
+countrySelect
 createLink
 createLinkTo
 createOutputCapturingClosure

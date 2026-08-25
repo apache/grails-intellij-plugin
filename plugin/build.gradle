@@ -187,8 +187,46 @@ def fixtureJarTasks = fixtureLibraries.collect { String directory, Map<String, S
     }
 }
 
-// The tests read testdata/ by absolute path at runtime rather than as a declared input, so the
-// dependency has to be wired explicitly.
-tasks.withType(Test).configureEach {
-    dependsOn fixtureJarTasks
+// The tests read testdata/ by absolute path at runtime rather than as a declared input, so both the
+// task dependency and the input have to be wired explicitly. Without the input, a change to a
+// fixture jar or an expected-completion file leaves :plugin:test UP-TO-DATE, and the suite reports
+// success without having run against what changed.
+tasks.withType(Test).configureEach { task ->
+    task.dependsOn fixtureJarTasks
+    task.inputs.dir(layout.projectDirectory.dir('testdata'))
+            .withPropertyName('testData')
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+
+    // The IntelliJ test sandbox keeps a persistent index and VFS cache under system-test, and
+    // nothing invalidates it when a library jar under testdata/ is replaced: JarFileSystem re-reads
+    // a jar root only on an explicit refresh, so the tests go on resolving PSI against the jars the
+    // cache was built from. That is how a local run can pass on a commit CI fails, CI never having
+    // the cache -- silently, because the stale answers look like ordinary passing tests.
+    //
+    // So start every test run from an empty one, the state CI is always in. It is not a measurable
+    // cost: the caches survive between runs but each test builds its own project, so a warm full
+    // suite times the same as a cold one.
+    task.doFirst { Task testTask ->
+        // Read the sandbox location out of the arguments the platform plugin actually passes to the
+        // test JVM, rather than rebuilding the path here. If the plugin ever stops passing it, fail
+        // instead of quietly leaving a stale cache in place -- a silent one is the whole problem.
+        String option = '-Didea.system.path='
+        String systemPath = testTask.jvmArgumentProviders
+                .collectMany { provider -> provider.asArguments().toList() }
+                .find { String argument -> argument.startsWith(option) }
+        if (systemPath == null) {
+            throw new GradleException(
+                    "Cannot clear the IntelliJ test index: no $option among the test JVM arguments.")
+        }
+
+        File systemDirectory = new File(systemPath.substring(option.length()))
+        if (!systemDirectory.isDirectory()) return
+
+        // Empty it rather than remove it. prepareTest, which has already run by now, creates the
+        // directory and nothing recreates it afterwards; running the tests against a missing
+        // idea.system.path leaves every index in REQUIRES_REBUILD and fails the whole suite.
+        if (!systemDirectory.deleteDir() || !systemDirectory.mkdirs()) {
+            throw new GradleException("Failed to clear the IntelliJ test index at $systemDirectory.")
+        }
+    }
 }

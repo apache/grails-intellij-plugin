@@ -3,12 +3,15 @@
 </html>
 -----
 get1_gsp
+getAt
 getBinding
 getClass
 getGroovyPageFileName
 getHtmlParts
 getMetaClass
+getMetaPropertyValues
 getOut
 getOutputStack
 getPluginContextPath
+getProperties
 getProperty

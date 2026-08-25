@@ -191,7 +191,7 @@ public class GrailsDomainConstraintTest extends GrailsTestCase {
                                }
                                """);
 
-    checkCompletionVariants(ddd2, "unique", "updateable");
+    checkCompletionVariants(ddd2, "unique", "updateable", "use");
   }
 
   private void doTestReferenceProvider(String classText) {

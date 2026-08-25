@@ -47,7 +47,7 @@ public class GrailsSpringIntegrationTest extends HddGrailsTestCase {
     myFixture.addFileToProject("grails-app/views/index.gsp", "<% applicationContext.getBean(\"<caret>\") %>");
 
     myFixture.testCompletionVariants("grails-app/views/index.gsp", "grailsConfigurator", "myService", "pluginManager",
-                                     "grailsResourceHolder", "conversionService");
+                                     "grailsResourceHolder", "conversionService", "grailsUrlMappingsHolder", "messageSource");
   }
 
   @Override

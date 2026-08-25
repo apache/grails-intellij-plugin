@@ -53,6 +53,8 @@ g:bugoga
 g:checkBox
 g:collect
 g:cookie
+g:country
+g:countrySelect
 g:createLink
 g:createLinkTo
 g:currencySelect
@@ -65,11 +67,13 @@ g:elseif
 g:encodeAs
 g:escapeJavascript
 g:field
+g:fieldError
 g:fieldValue
 g:findAll
 g:foo
 g:form
 g:formRemote
+g:formatBoolean
 g:formatDate
 g:formatNumber
 g:grep
@@ -90,6 +94,7 @@ g:message
 g:meta
 g:pageProperty
 g:paginate
+g:passwordField
 g:radio
 g:radioGroup
 g:remoteField
@@ -108,6 +113,7 @@ g:submitToRemote
 g:textArea
 g:textField
 g:timeZoneSelect
+g:unless
 g:uploadForm
 g:validate
 g:while
@@ -149,6 +155,9 @@ ol
 output
 p
 picture
+plugin:isAvailable
+plugin:isNotAvailable
+plugin:path
 ppp:bar
 ppp:foo
 pre

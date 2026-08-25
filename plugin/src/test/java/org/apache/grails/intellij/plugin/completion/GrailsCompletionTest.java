@@ -181,7 +181,7 @@ public class GrailsCompletionTest extends GrailsTestCase {
     myFixture.copyFileToProject(getTestName(false) + ".groovy", path);
     myFixture.configureByFile(path);
     myFixture.completeBasic();
-    myFixture.assertPreferredCompletionItems(0, "id", "ident", "isDirty", "isDirty");
+    myFixture.assertPreferredCompletionItems(0, "id", "ident", "identity", "isDirty", "isDirty");
   }
 
   public void testGdslInGspScript() {
@@ -260,7 +260,7 @@ public class GrailsCompletionTest extends GrailsTestCase {
     for (Integer i : new IntRange(0, 5)) {
       myFixture.configureByText("a" + i + ".gsp", text);
       myFixture.completeBasic();
-      assertEquals(List.of("form", "g:form", "g:formatDate", "g:formatNumber", "g:formRemote", "g:uploadForm"),
+      assertEquals(List.of("form", "g:form", "g:formatBoolean", "g:formatDate", "g:formatNumber", "g:formRemote", "g:uploadForm"),
                    myFixture.getLookupElementStrings());
       getLookup().setCurrentItem(getLookup().getItems().get(1));
       myFixture.type(" ");
