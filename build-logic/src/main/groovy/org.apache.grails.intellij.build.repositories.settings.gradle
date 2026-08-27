@@ -41,6 +41,35 @@ dependencyResolutionManagement {
 
     repositories {
         mavenCentral()
+        // The Apache Grails Artifactory, for the eleven test-fixture artifacts Maven Central never
+        // received: the Grails 2.0.0/1.4.0 milestones and spring-test 3.1.0.M2 were published only to
+        // the now-defunct SpringSource repositories, and this is where they survive. Declared after
+        // mavenCentral so it is consulted only for what Central cannot serve, and pinned to exact
+        // versions so it can never quietly become the source of anything else.
+        maven {
+            name = 'grailsCore'
+            url = 'https://repo.grails.org/grails/core'
+            // Artifacts only, no POM parsing: spring-test 3.1.0.M2 declares an
+            // org.springframework:spring-parent:3.1.0.M2 that was never published anywhere, so
+            // reading its metadata fails the resolution outright. Every dependency served from
+            // here is declared artifact-only (`@jar`), so there is no metadata to lose.
+            metadataSources {
+                artifact()
+            }
+            content {
+                includeVersion 'org.grails', 'grails-bootstrap', '2.0.0.M2'
+                includeVersion 'org.grails', 'grails-core', '2.0.0.M1'
+                includeVersion 'org.grails', 'grails-datastore-gorm', '1.0.0.RC1'
+                includeVersion 'org.grails', 'grails-hibernate', '2.0.0.M1'
+                includeVersion 'org.grails', 'grails-plugin-controllers', '1.4.0.M1'
+                includeVersion 'org.grails', 'grails-plugin-gsp', '2.0.0.RC1'
+                includeVersion 'org.grails', 'grails-plugin-mimetypes', '1.4.0.M1'
+                includeVersion 'org.grails', 'grails-plugin-testing', '1.4.0.M1'
+                includeVersion 'org.grails', 'grails-test', '2.0.0.M2'
+                includeVersion 'org.grails', 'grails-web', '2.0.0.M1'
+                includeVersion 'org.springframework', 'spring-test', '3.1.0.M2'
+            }
+        }
         intellijPlatform {
             defaultRepositories()
         }

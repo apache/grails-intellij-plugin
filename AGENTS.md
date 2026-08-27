@@ -52,11 +52,16 @@ limitations under the License.
    with the new behavior. Run all affected tests and ensure they pass before committing.
 4. **Apache license header required** on all new source files (enforced by `./gradlew rat`).
    Every RAT exclude in the `rat` convention plugin must carry an inline justification.
-   - **New files use the ASF header** (verbatim from the `HEADER` file: *"Licensed to the
+   - **Every file uses the ASF header** (verbatim from the `HEADER` file: *"Licensed to the
      Apache Software Foundation (ASF) under one or more contributor license agreements…"*),
-     rendered as a `/* … */` block for Java/Kotlin or `<!-- … -->` for XML. **Do NOT** copy
-     the `Copyright 2000-2026 JetBrains s.r.o. and contributors` header — that appears only on
-     files inherited through the migration; new work is ASF-owned.
+     rendered as a `/* … */` block for Java/Kotlin/Gradle/Groovy, `#` for properties and
+     `META-INF/services` files, or `<!-- … -->` for XML. **No copyright notice belongs in a
+     header** — attribution lives in `NOTICE`. The `Copyright 2000-2026 JetBrains s.r.o. and
+     contributors` form the codebase was imported with is gone as of the software grant and
+     must not reappear.
+   - `./etc/bin/apply-asf-headers.py --check` is the guard, and runs in the RAT workflow;
+     without `--check` it rewrites. RAT cannot do this job — both header forms are the ALv2
+     appendix to it, so it is green either way.
 5. **Test-fixture JDK conventions (2026.2+)** — Mock JDK 1.7 is no longer shipped:
    - **Light fixtures**: `GrailsTestCase` pins `DefaultLightProjectDescriptor(IdeaTestUtil::getMockJdk11)`
      via `getTestJdk()`. Override `getTestJdk()` to a real JDK only when the test needs

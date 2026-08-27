@@ -10,4 +10,6 @@ render
 renderErrors
 request
 resource
+respondsTo
+respondsTo
 response

@@ -133,6 +133,9 @@ jobs:
           rm -f grails-intellij-plugin/.asf.yaml
           rm -f grails-intellij-plugin/gradlew grails-intellij-plugin/gradlew.bat
           rm -rf grails-intellij-plugin/gradle/wrapper
+          # planning documents, RAT-excluded as removed before the first release
+          rm -f grails-intellij-plugin/MIGRATION-PLAN.md
+          rm -f grails-intellij-plugin/IMPROVEMENT-PLAN.md
       - name: "📦 Create source distribution ZIP"
         run: zip -r ${DIST_NAME}-${VERSION}-src.zip grails-intellij-plugin
       - name: "🔐 Set up GPG" # use env var to not expose the key
