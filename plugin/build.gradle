@@ -111,7 +111,7 @@ def fixtureLibraries = [
                 // referenced unversioned, as TestUtils.GROOVY_JAR
                 'org.codehaus.groovy:groovy-all:1.6.7'                  : 'groovy-all.jar',
                 // LGPL 2.1 (Category X): resolved here, never committed, never distributed
-                'org.hibernate:hibernate-core:3.3.1.GA'                 : 'hibernate-core-3.3.1.GA.jar',
+                'org.hibernate:hibernate-core:7.4.6.Final'                 : 'hibernate-core-7.4.6.Final.jar',
                 'junit:junit:4.8.1'                                     : 'junit-4.8.1.jar',
                 // the fixture keeps the SpringSource OSGi bundle names these jars shipped under
                 'org.springframework:spring-beans:3.0.3.RELEASE'        : 'org.springframework.beans-3.0.3.RELEASE.jar',
