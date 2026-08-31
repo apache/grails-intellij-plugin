@@ -133,7 +133,7 @@ def fixtureLibraries = [
                 // configureGrails14() sorts sources out by name, so this belongs in the same directory
                 'org.grails:grails-plugin-gsp:2.0.0.RC1:sources'        : 'grails-plugin-gsp-2.0.0.RC1-sources.jar',
                 'org.grails:grails-plugin-mimetypes:1.4.0.M1'           : 'grails-plugin-mimetypes-1.4.0.M1.jar',
-                'org.grails:grails-plugin-rest:2.3.0'                   : 'grails-plugin-rest-2.3.0.jar',
+                'org.grails:grails-plugin-rest:6.2.3'                   : 'grails-plugin-rest-6.2.3.jar',
                 'org.grails:grails-plugin-servlets:2.2.1'               : 'grails-plugin-servlets-2.2.1.jar',
                 'org.grails:grails-plugin-testing:1.4.0.M1'             : 'grails-plugin-testing-1.4.0.M1.jar',
                 'org.grails:grails-spring:2.2.3'                        : 'grails-spring-2.2.3.jar',
