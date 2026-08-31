@@ -51,14 +51,9 @@ public abstract class GrailsGoToArtefactActionBase extends GrailsToolbarTargetAc
 
   @Override
   public @NotNull Collection<GrClassDefinition> getNavigateTargets(@NotNull ArtefactData artefactData) {
-    // Prefer an artefact in the same package as the current one, but fall back to matching by name
-    // alone: in multi-project builds a shared artefact (e.g. a domain in an upstream project) often
-    // lives in a different package than the controller/service that uses it.
-    Collection<GrClassDefinition> samePackage =
-      myArtefactType.getInstances(artefactData.getModule(), artefactData.getPackageName(), artefactData.getArtefactName());
-    return samePackage.isEmpty()
-           ? myArtefactType.getInstances(artefactData.getModule(), artefactData.getArtefactName())
-           : samePackage;
+    return myArtefactType.getInstancesPreferringPackage(artefactData.getModule(),
+                                                        artefactData.getPackageName(),
+                                                        artefactData.getArtefactName());
   }
 
   @Override
