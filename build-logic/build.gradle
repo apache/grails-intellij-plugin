@@ -36,5 +36,5 @@ dependencies {
     implementation 'org.jetbrains.intellij.platform:intellij-platform-gradle-plugin:2.18.1'
     implementation 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.10'
     implementation 'org.nosphere.apache.rat:org.nosphere.apache.rat.gradle.plugin:0.8.1'
-    implementation 'org.sonatype.gradle.plugins:scan-gradle-plugin:3.1.6'
+    implementation 'org.sonatype.gradle.plugins:scan-gradle-plugin:4.0.0'
 }
