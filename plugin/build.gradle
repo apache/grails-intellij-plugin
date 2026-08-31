@@ -129,9 +129,9 @@ def fixtureLibraries = [
                 'org.grails:grails-hibernate:2.0.0.M1'                  : 'grails-hibernate-2.0.0.M1.jar',
                 'org.grails:grails-plugin-controllers:1.4.0.M1'         : 'grails-plugin-controllers-1.4.0.M1.jar',
                 'org.grails:grails-plugin-converters:2.2.1'             : 'grails-plugin-converters-2.2.1.jar',
-                'org.grails:grails-plugin-gsp:2.0.0.RC1'                : 'grails-plugin-gsp-2.0.0.RC1.jar',
+                'org.grails:grails-plugin-gsp:3.2.12'                : 'grails-plugin-gsp-3.2.12.jar',
                 // configureGrails14() sorts sources out by name, so this belongs in the same directory
-                'org.grails:grails-plugin-gsp:2.0.0.RC1:sources'        : 'grails-plugin-gsp-2.0.0.RC1-sources.jar',
+                'org.grails:grails-plugin-gsp:3.2.12:sources'        : 'grails-plugin-gsp-3.2.12-sources.jar',
                 'org.grails:grails-plugin-mimetypes:1.4.0.M1'           : 'grails-plugin-mimetypes-1.4.0.M1.jar',
                 'org.grails:grails-plugin-rest:2.3.0'                   : 'grails-plugin-rest-2.3.0.jar',
                 'org.grails:grails-plugin-servlets:2.2.1'               : 'grails-plugin-servlets-2.2.1.jar',
