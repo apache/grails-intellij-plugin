@@ -89,6 +89,22 @@ public final class MvcPluginUtil {
 
   private MvcPluginUtil() { }
 
+  /**
+   * Plugin descriptor files are untrusted input: they come from the project's own plugin
+   * directories and may originate from a third-party plugin. A default SAXBuilder resolves
+   * DOCTYPE declarations and external entities, which lets a crafted plugin.xml read local
+   * files or trigger SSRF. Disallowing DOCTYPE outright also blocks external entities, since
+   * an entity can only be declared inside one.
+   */
+  private static SAXBuilder createSecureSaxBuilder() {
+    SAXBuilder builder = new SAXBuilder();
+    builder.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+    builder.setFeature("http://xml.org/sax/features/external-general-entities", false);
+    builder.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+    builder.setExpandEntities(false);
+    return builder;
+  }
+
   private static void setProxyOld(final @NotNull ProxyConfiguration proxyConfig,
                                   final @Nullable Credentials credentials,
                                   @NotNull OldGrailsApplication application) {
@@ -278,7 +294,7 @@ public final class MvcPluginUtil {
     try {
       in = file.getInputStream();
 
-      Document document = new SAXBuilder().build(in);
+      Document document = createSecureSaxBuilder().build(in);
 
       Element root = document.getRootElement();
 
@@ -381,7 +397,7 @@ public final class MvcPluginUtil {
     Element root;
 
     try {
-      Document document = new SAXBuilder().build(inputStream);
+      Document document = createSecureSaxBuilder().build(inputStream);
       root = document.getRootElement();
     }
     catch (JDOMException e) {
