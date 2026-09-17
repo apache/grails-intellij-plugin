@@ -33,7 +33,7 @@ group = 'org.apache.grails.intellij.build'
 // separate build and cannot read the root build's properties.
 dependencies {
     // Dependabot (gradle ecosystem, /build-logic) keeps these versions current.
-    implementation 'org.jetbrains.intellij.platform:intellij-platform-gradle-plugin:2.18.1'
+    implementation 'org.jetbrains.intellij.platform:intellij-platform-gradle-plugin:2.19.0'
     implementation 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.20'
     implementation 'org.nosphere.apache.rat:org.nosphere.apache.rat.gradle.plugin:0.8.2'
     implementation 'org.sonatype.gradle.plugins:scan-gradle-plugin:4.1.0-02'
