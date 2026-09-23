@@ -75,6 +75,35 @@ echo "# Verifying Apache Grails IntelliJ Plugin ${VERSION}"
 echo "# Artifacts: ${DOWNLOAD_LOCATION}"
 echo "############################################################"
 
+# Fail fast on anything the verification scripts depend on but do not install themselves,
+# so a misconfigured environment is reported up front instead of halfway through a long
+# run. gradle is required, not optional: the RAT audit and the reproducible rebuild both
+# bootstrap the source distribution's wrapper with it, and a run that silently skips them
+# is a green result that verified less than it claims to have.
+preflight() {
+  local missing=0 tool
+  for tool in java gpg curl unzip gradle; do
+    if ! command -v "${tool}" > /dev/null 2>&1; then
+      echo "❌ Required tool not found on \$PATH: ${tool}"
+      missing=1
+    fi
+  done
+  if [ "${missing}" -ne 0 ]; then
+    echo "❌ Preflight checks failed. Resolve the issues above before running verification."
+    echo "   Locally: install the versions pinned in .sdkmanrc (\`sdk env install\`)."
+    echo "   In the container from etc/bin/Dockerfile: everything above is preinstalled,"
+    echo "   so a failure here means PATH was rebuilt by a login shell -- see RELEASE.md."
+    exit 1
+  fi
+}
+
+echo ""
+echo "### Preflight"
+preflight
+echo "✅ java:   $(java -version 2>&1 | head -n 1)"
+echo "✅ gradle: $(gradle --version | sed -n 's/^Gradle //p' | head -n 1)"
+echo "✅ gpg:    $(gpg --version | head -n 1)"
+
 echo ""
 echo "### 1/4 Downloading staged artifacts"
 "${SCRIPT_DIR}/download-release-artifacts.sh" "${RELEASE_TAG}" "${DOWNLOAD_LOCATION}"
@@ -92,14 +121,9 @@ rm -rf "${RAT_DIR}"
 mkdir -p "${RAT_DIR}"
 unzip -q "${DOWNLOAD_LOCATION}/apache-grails-intellij-plugin-${VERSION}-src.zip" -d "${RAT_DIR}"
 RAT_SRC="$(find "${RAT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
-if command -v gradle &> /dev/null; then
-  (cd "${RAT_SRC}/gradle-bootstrap" && gradle bootstrap)
-  (cd "${RAT_SRC}" && ./gradlew rat --no-daemon)
-  echo "✅ RAT audit passed"
-else
-  echo "⚠️  skipped: no 'gradle' on PATH to bootstrap the wrapper in the source distribution."
-  echo "   Install the version pinned in .sdkmanrc (e.g. 'sdk env install') to run this step."
-fi
+(cd "${RAT_SRC}/gradle-bootstrap" && gradle bootstrap)
+(cd "${RAT_SRC}" && ./gradlew rat --no-daemon)
+echo "✅ RAT audit passed"
 
 echo ""
 if [ "${SKIP_REPRODUCIBLE}" -eq 1 ]; then

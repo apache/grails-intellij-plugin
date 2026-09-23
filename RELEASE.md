@@ -177,9 +177,14 @@ etc/bin/verify.sh v262.0.0 /tmp/grails-ij-verify
 That script chains the four steps below and prints the manual checks it cannot perform.
 Add `--skip-reproducible` to stop before the slow rebuild step.
 
+`verify.sh` starts with a preflight that fails fast when `java`, `gpg`, `curl`, `unzip` or
+`gradle` is missing, rather than discovering it part-way through a long run.
+
 Because the rebuild comparison is sensitive to host-OS differences, prefer running it in
 the container described in
-[Appendix: Verification from a container](#appendix-verification-from-a-container).
+[Appendix: Verification from a container](#appendix-verification-from-a-container), where
+those tools are preinstalled and the scripts are on `PATH` (`cd grails-verify && verify.sh
+v262.0.0 .`).
 
 ### 6.1 Download the staged artifacts
 
@@ -474,17 +479,59 @@ they neither modify nor depend on your keyring.
 
 ## Appendix: Verification from a container
 
-The official artifacts are built on Linux in GitHub Actions. To reproduce that
-environment locally, use [`etc/bin/Dockerfile`](etc/bin/Dockerfile), which is pinned to
-the same Liberica JDK as `.sdkmanrc`. The image also installs the Gradle version from
-`.sdkmanrc` on `PATH` so the extracted source release can bootstrap its own wrapper:
+The official artifacts are built on Linux in GitHub Actions. To reproduce that environment
+locally, use [`etc/bin/Dockerfile`](etc/bin/Dockerfile). It mirrors
+[grails-core's container](https://github.com/apache/grails-core/blob/HEAD/etc/bin/Dockerfile)
+— same `groovy` user, same `/home/groovy` layout, same baked-in scripts on `PATH` — so the
+habit carries between the Grails repositories. It is pinned to the same Liberica JDK as
+`.sdkmanrc`, and also installs the Gradle version from `.sdkmanrc` so the extracted source
+release can bootstrap its own wrapper (grails-core bakes in its `gradlew` instead; here the
+wrapper is regenerated from `gradle-bootstrap`, which needs a real Gradle to run).
 
 ```bash
-docker build -t grails-ij:testing -f etc/bin/Dockerfile .
-docker run -it --rm -v "$(pwd):/home/builder/project" grails-ij:testing bash
+docker build -t grails-ij:testing -f etc/bin/Dockerfile . && \
+  docker run -it --rm -v $(pwd):/home/groovy/project grails-ij:testing bash
 # inside the container:
-etc/bin/verify.sh v262.0.0 /tmp/grails-ij-verify
+cd grails-verify
+verify.sh v262.0.0 .
 ```
+
+The verification scripts are **baked into the image** at `/home/groovy/scripts/etc/bin` and
+put on `PATH`, so they are callable by bare name from anywhere in the container and do not
+depend on the bind mount. `/home/groovy/grails-verify` is there as the working directory for
+downloads. Because the scripts are baked in, an edit to `etc/bin` only reaches the container
+on a rebuild — which is why the command above chains `build && run`. To exercise
+uncommitted script changes without rebuilding, run the mounted copies instead:
+
+```bash
+cd ~/project && etc/bin/verify.sh v262.0.0 /tmp/grails-ij-verify
+```
+
+The bind mount at `/home/groovy/project` is for the *project*: running
+`etc/bin/test-reproducible-build.sh` against the checkout, and copying results back to the
+host. Mount somewhere else and everything still works except those two things; the startup
+banner from [`etc/bin/container-profile.sh`](etc/bin/container-profile.sh) reports which
+case you are in, and restores the `PATH` entries that a login shell's `/etc/profile` drops.
+
+If artifacts differ and you want to inspect them on the host, copy the evidence out of the
+container into the mounted checkout, as grails-core does:
+
+```bash
+rsync -av ~/grails-verify/reproducible/ ~/project/etc/bin/results/reproducible/
+```
+
+The default `CMD` is a keep-alive loop, again matching grails-core, so the container can be
+started detached and attached to repeatedly — useful when a verification run is long:
+
+```bash
+docker run -d --name grails-ij-verify -v $(pwd):/home/groovy/project grails-ij:testing
+docker exec -it grails-ij-verify bash
+```
+
+On an Apple Silicon host the image builds as `linux/arm64`. That is fine for the
+reproducibility comparison — the artifacts are JVM bytecode and archive entries, not native
+code — but add `--platform linux/amd64` to both the `build` and the `run` if you want the
+container to match the CI runner's architecture exactly.
 
 Anyone bumping the JDK in `.sdkmanrc` must bump the `FROM` line in the Dockerfile to
 match, or the container will no longer reproduce the released artifacts.
@@ -522,4 +569,5 @@ The tooling that supports this:
 | `etc/bin/test-reproducible-build.sh` | Builds twice on one machine and compares artifact hashes. |
 | `etc/bin/verify-reproducible.sh` | Rebuilds from the staged source distribution and compares to the staged binary. |
 | `etc/bin/Dockerfile` | Linux environment matching CI, for ruling out host-OS differences. |
+| `etc/bin/container-profile.sh` | Shell profile inside that container: keeps the JDK and baked-in scripts on `PATH`, and prints the verification commands. |
 | `.sdkmanrc` | The pinned JDK and Gradle versions; the single source of truth for both CI and the Dockerfile. |
