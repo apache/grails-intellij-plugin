@@ -206,16 +206,32 @@ etc/bin/verify-distributions.sh v262.0.0 /tmp/grails-ij-verify
 ```
 
 For both archives this verifies the `.sha512` checksum and the `.asc` detached signature
-(imported into a throwaway GPG home, so a key you already trust locally cannot mask a bad
-signature), then checks the contents:
+(against a throwaway GPG home holding only the Grails `KEYS` file, so a key you already
+trust locally cannot mask a bad signature, and a signature that verifies is by definition
+from a key the PMC published to the release dist area), then checks the contents:
 
 - **Source distribution** must contain `LICENSE`, `NOTICE`, `README.md`, `INSTALL`,
-  `RELEASE.md`, `.sdkmanrc`, and `gradle-bootstrap/`, and must **not** contain any `*.jar`,
-  `gradlew`, `.git/`, `.github/`, `.asf.yaml`, or the planning documents.
+  `RELEASE.md`, `.sdkmanrc`, and `gradle-bootstrap/` **at the root of the distribution**, and
+  must **not** contain any `*.jar`, `gradlew`, `.git/`, `.github/`, `.asf.yaml`, or the
+  planning documents.
 - **Binary distribution** must carry `LICENSE` and `NOTICE` at the root of the plugin
   directory — the ZIP is the unit being distributed, and ASF policy requires both files in
   every unit of distribution regardless of its format — as well as `META-INF/LICENSE`,
   `META-INF/NOTICE`, and `META-INF/plugin.xml` inside the composed plugin jar.
+- **`LICENSE` and `NOTICE` contents**, in both archives: `LICENSE` must be the Apache
+  License 2.0 (title, version line, and end of the terms), and `NOTICE` must name *Apache
+  Grails IntelliJ Plugin* and carry the ASF copyright line. A file that is present but
+  empty, truncated, or copied from another project passes a name check and fails a vote, so
+  the contents are checked and not just the filenames.
+- **Referenced license files**: if `LICENSE` or `NOTICE` ever points at a bundled
+  third-party license — grails-core writes these as
+  `See licenses/LICENSE-MIT.txt for the full license terms.` — the referenced file must be
+  packaged in the same archive. Neither file carries such a reference today; the check is
+  there so the first bundled dependency cannot ship with a dangling pointer.
+- **Agreement across archives**: the `LICENSE`/`NOTICE` in the source zip, at the root of
+  the binary zip, and in the plugin jar's `META-INF` must be byte-identical. All three are
+  packaged from the one pair at the repository root, so a difference means one archive was
+  built from a stale copy.
 
 The equivalent manual commands are:
 
@@ -284,8 +300,11 @@ whose bytecode changed, and `Binary files ... differ` does not distinguish them.
 - Install the binary distribution into IntelliJ IDEA Ultimate via
   **Settings > Plugins > Install Plugin from Disk**, open a Grails project, and confirm
   the plugin loads and GSP support works.
-- Confirm the signing key belongs to a Grails PMC member — see
-  [Appendix: GPG & the KEYS file](#appendix-gpg--the-keys-file).
+
+Nothing else is left to check by hand. In particular, the signing key does not need a
+separate provenance check: step 6.2 verifies each signature against a keyring containing
+nothing but the Grails `KEYS` file from the ASF release dist area, which only the PMC can
+write to — see [Appendix: GPG & the KEYS file](#appendix-gpg--the-keys-file).
 
 ## 7. Vote
 

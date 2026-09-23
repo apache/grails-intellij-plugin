@@ -21,11 +21,17 @@
 # source distribution and the convenience binary this checks:
 #   * the .sha512 checksum
 #   * the .asc detached GPG signature, against the Grails KEYS file
-#   * that the archive contains the files ASF policy requires (LICENSE, NOTICE, ...)
+#   * that the archive contains the files ASF policy requires (LICENSE, NOTICE, ...) at its
+#     root, and that those two say what they must -- the Apache License 2.0, and a NOTICE
+#     naming this product -- rather than merely existing under the right name
+#   * that LICENSE and NOTICE are identical across both archives and the plugin jar
 #   * that the source distribution does NOT ship the Gradle Wrapper jar
 #
-# Signatures are verified in a throwaway GPG home so the caller's keyring is left alone
-# and so a key already trusted locally cannot mask a bad signature.
+# Signatures are verified in a throwaway GPG home holding nothing but the Grails KEYS file,
+# so the caller's keyring is left alone and a key already trusted locally cannot mask a bad
+# signature. That also makes the signature check the provenance check: KEYS lives in the ASF
+# release dist area, which only the PMC can write to, so a signature that verifies here was
+# made by a key the PMC published. There is no separate "is the signer a PMC member" step.
 #
 # Run etc/bin/download-release-artifacts.sh first to populate the download location.
 #
@@ -87,7 +93,7 @@ verify_archive() { # <zip file>
   echo "✅ checksum verified"
 
   gpg --homedir "${GPG_HOME}" --batch --verify "${zip}.asc" "${zip}"
-  echo "✅ signature verified"
+  echo "✅ signature verified against the Grails KEYS file"
 }
 
 # Match a pattern against a listing WITHOUT a pipe. `printf ... | grep -q` looks equivalent
@@ -132,18 +138,113 @@ forbid_entries() { # <zip file> <label> <entry>...
   [ "${found}" -eq 0 ]
 }
 
+# Read one entry out of a zip by its exact path. Addressing the entry exactly, rather than by
+# the pattern require_entries matched, means a LICENSE somewhere else in the tree can never
+# stand in for the one at the root that is being checked.
+entry_text() { # <zip file> <entry>
+  unzip -p "$1" "$2"
+}
+
+text_has() { # <text> <pattern>
+  grep -qE "$2" <<< "$1"
+}
+
+# Presence is not the check ASF policy asks for -- an empty, truncated or placeholder LICENSE
+# passes `unzip -Z1 | grep LICENSE` and fails a release vote. Match the landmarks of the
+# Apache License 2.0 instead: its title, the version line, and the end of the terms. Landmarks
+# rather than a hash of the whole file, so an editor's trailing-newline change is not reported
+# as a licensing problem.
+verify_license_text() { # <label> <text>
+  local label="$1" text="$2" bad=0 pattern
+  for pattern in \
+    '^[[:space:]]*Apache License$' \
+    '^[[:space:]]*Version 2\.0, January 2004$' \
+    '^[[:space:]]*END OF TERMS AND CONDITIONS$'; do
+    if ! text_has "${text}" "${pattern}"; then
+      echo "❌ ${label}: LICENSE is not the Apache License 2.0 -- no line matching '${pattern}'" >&2
+      bad=1
+    fi
+  done
+  [ "${bad}" -eq 0 ]
+}
+
+# NOTICE has to name this product and carry the ASF copyright; a NOTICE copied from another
+# project satisfies every structural check there is. The year is matched as a range or a single
+# year so the check survives the annual roll-over without edits.
+verify_notice_text() { # <label> <text>
+  local label="$1" text="$2" bad=0 pattern
+  for pattern in \
+    '^Apache Grails IntelliJ Plugin$' \
+    '^Copyright [0-9]{4}(-[0-9]{4})? The Apache Software Foundation$' \
+    'This product includes software developed at'; do
+    if ! text_has "${text}" "${pattern}"; then
+      echo "❌ ${label}: NOTICE has no line matching '${pattern}'" >&2
+      bad=1
+    fi
+  done
+  [ "${bad}" -eq 0 ]
+}
+
+# When LICENSE or NOTICE points at a bundled third-party license -- grails-core writes these as
+# "See licenses/LICENSE-MIT.txt for the full license terms." -- that file has to travel in the
+# same archive. Neither file carries such a reference today, so this passes trivially; it is
+# here so the first bundled dependency cannot ship with a dangling pointer, which is the one
+# licensing defect that looks fine in every listing.
+require_referenced_licenses() { # <label> <text> <root prefix> <listing>
+  local label="$1" text="$2" prefix="$3" listing="$4" ref missing=0
+  while IFS= read -r ref; do
+    [ -z "${ref}" ] && continue
+    if ! grep -qxF -- "${prefix}${ref}" <<< "${listing}"; then
+      echo "❌ ${label}: references '${ref}' but '${prefix}${ref}' is not in the archive" >&2
+      missing=1
+    fi
+  done <<< "$(grep -oE 'See [^[:space:]]+ for the full license terms' <<< "${text}" | awk '{print $2}' || true)"
+  [ "${missing}" -eq 0 ]
+}
+
+# Checks the LICENSE and NOTICE at the root of one archive: right file, right contents, and
+# every license they reference packaged alongside them.
+#
+# Each sub-check is run for its own exit status and the failures are counted, rather than
+# leaning on `set -e` to abort partway through. Two reasons: every problem in the pair gets
+# reported in one run instead of one per re-run, and errexit does NOT propagate into a
+# function body when the function is called from a condition or the right-hand side of `&&`,
+# so a caller written that way would turn all of this into a no-op that always passes.
+verify_root_license_files() { # <zip file> <label> <root prefix>
+  local zip="$1" label="$2" prefix="$3" listing license notice failures=0
+  listing="$(unzip -Z1 "${zip}")"
+  license="$(entry_text "${zip}" "${prefix}LICENSE")"
+  notice="$(entry_text "${zip}" "${prefix}NOTICE")"
+  verify_license_text "${label}" "${license}" || failures=$((failures + 1))
+  verify_notice_text "${label}" "${notice}" || failures=$((failures + 1))
+  require_referenced_licenses "${label} LICENSE" "${license}" "${prefix}" "${listing}" ||
+    failures=$((failures + 1))
+  require_referenced_licenses "${label} NOTICE" "${notice}" "${prefix}" "${listing}" ||
+    failures=$((failures + 1))
+  if [ "${failures}" -ne 0 ]; then
+    echo "❌ ${label}: ${failures} of the LICENSE/NOTICE checks above failed" >&2
+    return 1
+  fi
+  echo "✅ ${label}: LICENSE and NOTICE at the archive root carry the expected contents"
+}
+
 verify_archive "${SRC_ZIP}"
 echo "==> Checking source distribution contents"
 # Build and license instructions must be present so the source release is self-contained,
 # and gradle-bootstrap must be there because the wrapper jar is deliberately absent.
+#
+# Anchor every pattern to the distribution root. An unanchored '/LICENSE$' is satisfied by a
+# LICENSE anywhere in the tree -- a vendored one several directories down, say -- which is
+# exactly the arrangement ASF policy forbids, so the loose pattern passes on the release that
+# most needs to fail.
 require_entries "${SRC_ZIP}" "source distribution" \
-  '/LICENSE$' \
-  '/NOTICE$' \
-  '/README\.md$' \
-  '/INSTALL$' \
-  '/RELEASE\.md$' \
-  '/\.sdkmanrc$' \
-  '/gradle-bootstrap/build\.gradle$'
+  "^${SRC_EXTRACTED}/LICENSE\$" \
+  "^${SRC_EXTRACTED}/NOTICE\$" \
+  "^${SRC_EXTRACTED}/README\.md\$" \
+  "^${SRC_EXTRACTED}/INSTALL\$" \
+  "^${SRC_EXTRACTED}/RELEASE\.md\$" \
+  "^${SRC_EXTRACTED}/\.sdkmanrc\$" \
+  "^${SRC_EXTRACTED}/gradle-bootstrap/build\.gradle\$"
 # ASF source releases must not ship compiled binaries. No jar of any kind belongs here: the
 # Gradle Wrapper jar is stripped by the release workflow, and the third-party test fixture jars
 # are resolved from Maven at test time rather than committed, so a jar appearing in the source
@@ -161,6 +262,7 @@ forbid_entries "${SRC_ZIP}" "source distribution" \
   '/\.asf\.yaml$' \
   '/IMPROVEMENT-PLAN\.md$'
 echo "✅ source distribution contents verified"
+verify_root_license_files "${SRC_ZIP}" "source distribution" "${SRC_EXTRACTED}/"
 
 verify_archive "${BIN_ZIP}"
 echo "==> Checking binary distribution contents"
@@ -199,6 +301,28 @@ require_entries "${JAR_TMP}/$(basename "${PLUGIN_JAR}")" "binary distribution" \
   '^META-INF/NOTICE$' \
   '^META-INF/plugin\.xml$'
 echo "✅ binary distribution contents verified (${PLUGIN_JAR})"
+verify_root_license_files "${BIN_ZIP}" "binary distribution" "${PLUGIN_DIR}/"
+
+# Both archives, and the plugin jar's META-INF, are packaged from the one LICENSE and the one
+# NOTICE at the repository root (see processResources and PrepareSandboxTask in the
+# intellij-plugin convention plugin). Comparing them to each other turns that into something
+# verifiable from the staged artifacts alone: the release cannot go out with the binary
+# carrying a stale copy of a LICENSE that was updated for the source release, or vice versa.
+echo "==> Checking LICENSE and NOTICE agree across the archives"
+license_mismatch=0
+for name in LICENSE NOTICE; do
+  src_text="$(entry_text "${SRC_ZIP}" "${SRC_EXTRACTED}/${name}")"
+  if [ "$(entry_text "${BIN_ZIP}" "${PLUGIN_DIR}/${name}")" != "${src_text}" ]; then
+    echo "❌ ${name} at the root of ${BIN_ZIP} differs from the one in ${SRC_ZIP}" >&2
+    license_mismatch=1
+  fi
+  if [ "$(unzip -p "${JAR_TMP}/$(basename "${PLUGIN_JAR}")" "META-INF/${name}")" != "${src_text}" ]; then
+    echo "❌ META-INF/${name} in ${PLUGIN_JAR} differs from the ${name} in ${SRC_ZIP}" >&2
+    license_mismatch=1
+  fi
+done
+[ "${license_mismatch}" -eq 0 ]
+echo "✅ LICENSE and NOTICE are identical in the source zip, the binary zip, and the plugin jar"
 
 # Extract the source distribution next to the archives, the way grails-core's
 # verify-source-distribution.sh does: the later steps (the RAT audit in verify.sh and the
