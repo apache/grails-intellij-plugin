@@ -42,7 +42,7 @@ permissions:
 env:
   SVN_FOLDER: intellij
   SVN_PROJECT: grails
-  TAG: ${{ github.event.inputs.release_tag }}
+  RAW_TAG: ${{ github.event.inputs.release_tag }}
 jobs:
   abort:
     name: "Abort Release"
@@ -51,10 +51,31 @@ jobs:
       - name: "🛑 Require explicit confirmation"
         if: ${{ github.event.inputs.confirm != 'true' }}
         run: |
-          echo "::error::Re-run with the confirmation box checked to abort ${TAG}."
+          echo "::error::Re-run with the confirmation box checked to abort ${RAW_TAG}."
           exit 1
-      - name: "📝 Establish release version"
-        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+      - name: "📝 Establish release tag and version"
+        # workflow_dispatch inputs are free text. A stray leading or trailing space
+        # makes every lookup below miss its target, so the abort "succeeds" having
+        # deleted nothing. Normalise once here; every later step uses TAG/VERSION.
+        run: |
+          set -euo pipefail
+          tag="$(printf '%s' "${RAW_TAG}" | tr -d '[:space:]')"
+          if [ -z "${tag}" ]; then
+            echo "::error::release_tag is empty once whitespace is trimmed"
+            exit 1
+          fi
+          if ! printf '%s' "${tag}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "::error::release_tag '${tag}' is not a release tag (expected e.g. v262.0.0)"
+            exit 1
+          fi
+          if [ "${tag}" != "${RAW_TAG}" ]; then
+            echo "::warning::Trimmed whitespace from release_tag; using '${tag}'"
+          fi
+          {
+            echo "TAG=${tag}"
+            echo "VERSION=${tag#v}"
+          } >> "$GITHUB_ENV"
+          echo "✅ Aborting ${tag} (version ${tag#v})"
       - name: "🛠️ Install tools"
         run: sudo apt-get install -y subversion subversion-tools
       - name: "🔎 Refuse to abort an already-released version"
@@ -123,8 +144,41 @@ jobs:
             echo "No GitHub Release found for tag ${TAG} — skipping release deletion"
           fi
 
-          echo "Deleting git tag ${TAG}"
-          gh api -X DELETE "/repos/${REPO}/git/refs/tags/${TAG}" || echo "Tag ${TAG} already absent"
+          if gh api -H 'Accept: application/vnd.github+json' \
+                    "/repos/${REPO}/git/ref/tags/${TAG}" > /dev/null 2>&1; then
+            echo "Deleting git tag ${TAG}"
+            gh api -X DELETE "/repos/${REPO}/git/refs/tags/${TAG}"
+            echo "✅ Deleted tag ${TAG}"
+          else
+            echo "No git tag ${TAG} — skipping tag deletion"
+          fi
+      - name: "🔍 Verify the abort removed everything"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SVN_USERNAME: ${{ secrets.SVC_DIST_GRAILS_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVC_DIST_GRAILS_PASSWORD }}
+        # Every removal above is a no-op when its target is missing, so a typo used to
+        # produce a green run that deleted nothing. Assert the end state instead.
+        run: |
+          set -euo pipefail
+          failed=0
+          DEV="https://dist.apache.org/repos/dist/dev/${SVN_PROJECT}/${SVN_FOLDER}/${VERSION}"
+          if svn ls --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
+                    --depth=empty "${DEV}" > /dev/null 2>&1; then
+            echo "::error::Staged artifacts are still present at ${DEV}"
+            failed=1
+          fi
+          if gh api "/repos/${REPO}/releases/tags/${TAG}" > /dev/null 2>&1; then
+            echo "::error::The GitHub Release for ${TAG} still exists"
+            failed=1
+          fi
+          if gh api "/repos/${REPO}/git/ref/tags/${TAG}" > /dev/null 2>&1; then
+            echo "::error::The git tag ${TAG} still exists"
+            failed=1
+          fi
+          [ "${failed}" -eq 0 ] || exit 1
+          echo "✅ ${TAG} is fully aborted: no staged artifacts, no GitHub Release, no tag"
       - name: "📧 MANUAL - Cancel the vote thread"
         run: |
           echo "::group::Manual Follow-up"
