@@ -177,8 +177,11 @@ etc/bin/verify.sh v262.0.0 /tmp/grails-ij-verify
 That script chains the four steps below and prints the manual checks it cannot perform.
 Add `--skip-reproducible` to stop before the slow rebuild step.
 
-`verify.sh` starts with a preflight that fails fast when `java`, `gpg`, `curl`, `unzip` or
-`gradle` is missing, rather than discovering it part-way through a long run.
+`verify.sh` starts with a preflight that fails fast when `java`, `gpg`, `gpg-agent`,
+`curl`, `unzip` or `gradle` is missing, rather than discovering it part-way through a long
+run. `gpg-agent` is checked separately from `gpg` because GnuPG 2.x shells out to the agent
+even to import a key into a throwaway keyring, and Debian's `gpg` package only *recommends*
+it — without it every signature check fails with `failed to start agent`.
 
 Because the rebuild comparison is sensitive to host-OS differences, prefer running it in
 the container described in
@@ -231,7 +234,12 @@ being released:
 ./gradlew rat
 ```
 
-`verify.sh` extracts the source distribution, bootstraps its wrapper, and runs `rat` there.
+`verify.sh` extracts the source distribution and runs `rat` on it with the Gradle from
+`.sdkmanrc`, deliberately *before* bootstrapping the wrapper: `gradle bootstrap` writes a
+wrapper into `gradle-bootstrap/` and the project root, and auditing afterwards flags a
+generated `gradle-wrapper.properties` that the distribution never contained. The audit has
+to see the archive as staged. (Those generated paths are RAT-excluded as well, so a
+bootstrapped checkout still audits cleanly.)
 
 ### 6.4 Rebuild from source and compare to the staged binary
 
@@ -240,8 +248,31 @@ etc/bin/verify-reproducible.sh v262.0.0 /tmp/grails-ij-verify
 ```
 
 This is the check that proves the published binary was built from the voted-on source. It
-extracts the source distribution, bootstraps the Gradle Wrapper, rebuilds `buildPlugin`,
-and compares the result against the staged binary.
+bootstraps the Gradle Wrapper in the source distribution that
+[section 6.2](#62-verify-checksums-signatures-and-archive-contents) extracted, rebuilds
+`buildPlugin`, and compares the result against the staged binary.
+
+The layout mirrors grails-core: the work happens inside the extracted source distribution,
+and the evidence lands in *its* `etc/bin/results`, which is the same path the results
+occupy in a checkout — so it can be copied straight back:
+
+```
+<download-location>/grails-intellij-plugin/etc/bin/results/
+  first.txt        "<sha256>  <path>" for every file in the staged binary
+  second.txt       the same for the rebuilt binary
+  firstArtifact/   the staged plugin tree
+  secondArtifact/  the rebuilt plugin tree
+  diff.txt         the paths that differ (empty when reproducible)
+```
+
+`first`/`second` rather than `staged`/`rebuilt` keeps the names identical to
+[`test-reproducible-build.sh`](etc/bin/test-reproducible-build.sh) and to grails-core, where
+`first` is always the reference artifact and `second` the local rebuild.
+
+When a jar differs, the script opens it and reports which entries inside it differ — and for
+`META-INF/MANIFEST.MF`, which attributes. A jar whose classes are identical and whose
+manifest carries a different embedded build value is a completely different finding from one
+whose bytecode changed, and `Binary files ... differ` does not distinguish them.
 
 > **The two ZIP files will never have the same SHA.** The staged binary is signed for the
 > JetBrains Marketplace after the build, and a local rebuild is unsigned. What must match
@@ -444,6 +475,14 @@ environment — see
 - **`SOURCE_DATE_EPOCH`** — most tools honour it for embedded dates. Archive entries do
   not depend on it here (timestamps are pinned to a constant), but the test script sets it
   from the last git commit so anything that *does* read it agrees between the two builds.
+- **Embedded build-environment values** — the IntelliJ Platform Gradle Plugin's
+  `generateManifest` task writes the build host into every jar's `MANIFEST.MF`, and
+  `Build-OS` is the kernel release string plus architecture (`Linux 6.17.0-1022-azure amd64`
+  on the CI runner, `Mac OS X 15.6 aarch64` on a laptop). One attribute nobody can match is
+  enough to make every jar differ while all bytecode is identical, so the reproducible
+  convention plugin pins it. Any future plugin or task that stamps the environment into an
+  artifact needs the same treatment. `Build-JVM` is deliberately left alone — `.sdkmanrc`
+  pins the exact JDK, so a mismatch there is a real warning rather than noise.
 - **JDK version** — a different JDK can change bytecode. Always build with the JDK pinned
   in `.sdkmanrc`; the Docker image installs exactly that version. This is also why the
   build deliberately sets no Gradle toolchain: the pinned JDK is the contract.
@@ -517,7 +556,7 @@ If artifacts differ and you want to inspect them on the host, copy the evidence 
 container into the mounted checkout, as grails-core does:
 
 ```bash
-rsync -av ~/grails-verify/reproducible/ ~/project/etc/bin/results/reproducible/
+rsync -av ~/grails-verify/grails-intellij-plugin/etc/bin/results/ ~/project/etc/bin/results/
 ```
 
 The default `CMD` is a keep-alive loop, again matching grails-core, so the container can be

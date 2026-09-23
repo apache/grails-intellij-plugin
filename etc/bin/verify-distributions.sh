@@ -46,6 +46,9 @@ VERSION="${RELEASE_TAG#v}"
 DIST_NAME="apache-grails-intellij-plugin"
 SRC_ZIP="${DIST_NAME}-${VERSION}-src.zip"
 BIN_ZIP="${DIST_NAME}-${VERSION}-bin.zip"
+# The directory the source zip unpacks to; the release workflow zips the checkout directory
+# itself, so the top-level entry is the repository name rather than the distribution name.
+SRC_EXTRACTED="grails-intellij-plugin"
 
 cd "${DOWNLOAD_LOCATION}"
 
@@ -87,6 +90,18 @@ verify_archive() { # <zip file>
   echo "✅ signature verified"
 }
 
+# Match a pattern against a listing WITHOUT a pipe. `printf ... | grep -q` looks equivalent
+# but is not: grep -q exits at the first match, the writer is killed with SIGPIPE while the
+# rest of the listing is still queued, and `set -o pipefail` then reports the pipeline as
+# failed (141) even though the pattern matched. The failure depends on where in the listing
+# the match falls -- entries near the top fail, entries near the bottom pass -- so it shows
+# up as a required file being "missing" from an archive that plainly contains it, and,
+# worse, as a forbidden file being silently accepted. A herestring has no pipe and no
+# writer to kill.
+listing_has() { # <listing> <pattern>
+  grep -qE "$2" <<< "$1"
+}
+
 # Fails if any required path is absent from the archive listing.
 require_entries() { # <zip file> <label> <entry>...
   local zip="$1" label="$2"
@@ -94,7 +109,7 @@ require_entries() { # <zip file> <label> <entry>...
   local listing entry missing=0
   listing="$(unzip -Z1 "${zip}")"
   for entry in "$@"; do
-    if ! printf '%s\n' "${listing}" | grep -qE "${entry}"; then
+    if ! listing_has "${listing}" "${entry}"; then
       echo "❌ ${label}: required entry matching '${entry}' is missing from ${zip}" >&2
       missing=1
     fi
@@ -109,7 +124,7 @@ forbid_entries() { # <zip file> <label> <entry>...
   local listing entry found=0
   listing="$(unzip -Z1 "${zip}")"
   for entry in "$@"; do
-    if printf '%s\n' "${listing}" | grep -qE "${entry}"; then
+    if listing_has "${listing}" "${entry}"; then
       echo "❌ ${label}: forbidden entry matching '${entry}' is present in ${zip}" >&2
       found=1
     fi
@@ -162,7 +177,10 @@ require_entries "${BIN_ZIP}" "binary distribution" \
 # Identify that jar by name rather than by position: <plugin-dir>/lib/<plugin-dir>-<version>.jar.
 # lib/ also holds the compiler and lib-tier jars, and picking the first entry would silently
 # start inspecting one of those if the naming ever sorted differently.
-PLUGIN_DIR="$(unzip -Z1 "${BIN_ZIP}" | sed -n 's|^\([^/]*\)/.*|\1|p' | sort -u | head -n 1)"
+# Take the first line by expansion rather than `| head -n 1`, which can SIGPIPE the writer
+# ahead of it and trip pipefail the same way listing_has explains.
+PLUGIN_DIRS="$(unzip -Z1 "${BIN_ZIP}" | sed -n 's|^\([^/]*\)/.*|\1|p' | sort -u)"
+PLUGIN_DIR="${PLUGIN_DIRS%%$'\n'*}"
 PLUGIN_JAR_MATCHES="$(unzip -Z1 "${BIN_ZIP}" |
   grep -E "^${PLUGIN_DIR}/lib/${PLUGIN_DIR}-[^/]+\.jar$" || true)"
 PLUGIN_JAR_COUNT="$(printf '%s' "${PLUGIN_JAR_MATCHES}" | grep -c . || true)"
@@ -181,6 +199,21 @@ require_entries "${JAR_TMP}/$(basename "${PLUGIN_JAR}")" "binary distribution" \
   '^META-INF/NOTICE$' \
   '^META-INF/plugin\.xml$'
 echo "✅ binary distribution contents verified (${PLUGIN_JAR})"
+
+# Extract the source distribution next to the archives, the way grails-core's
+# verify-source-distribution.sh does: the later steps (the RAT audit in verify.sh and the
+# rebuild in verify-reproducible.sh) all work inside that one extracted tree, and its
+# etc/bin/results is where the evidence ends up -- the same path it would occupy in a
+# checkout, so it can be rsync'd straight back into the project.
+echo ""
+echo "==> Extracting the source distribution for the later verification steps"
+rm -rf "${SRC_EXTRACTED}"
+unzip -q "${SRC_ZIP}"
+if [ ! -d "${SRC_EXTRACTED}" ]; then
+  echo "❌ ${SRC_ZIP} did not extract to ${SRC_EXTRACTED}" >&2
+  exit 1
+fi
+echo "✅ extracted to ${SRC_EXTRACTED}"
 
 echo ""
 echo "✅ All distribution checks passed for ${RELEASE_TAG}"

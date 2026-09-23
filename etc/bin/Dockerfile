@@ -36,9 +36,15 @@
 FROM bellsoft/liberica-openjdk-debian:25.0.3
 
 USER root
+# gnupg, not just gpg: the gpg package only *Recommends* gnupg, and --no-install-recommends
+# would leave the image without /usr/bin/gpg-agent. GnuPG 2.x needs the agent even to import
+# a key into a throwaway --homedir, which is exactly what verify-distributions.sh does, so
+# without this every signature check dies with "failed to start agent". grails-core installs
+# without --no-install-recommends and picks the agent up implicitly; naming it keeps that
+# from being an accident here.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        ca-certificates curl unzip coreutils libdigest-sha-perl gpg vim nano sudo psmisc \
+        ca-certificates curl unzip coreutils libdigest-sha-perl gnupg vim nano sudo psmisc \
         locales rsync git \
     && rm -rf /var/lib/apt/lists/*
 

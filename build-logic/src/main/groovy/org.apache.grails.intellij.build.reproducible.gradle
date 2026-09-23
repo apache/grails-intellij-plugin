@@ -31,3 +31,28 @@ tasks.withType(AbstractArchiveTask).configureEach {
     filePermissions { unix('0644') }
     dirPermissions { unix('0755') }
 }
+
+// The IntelliJ Platform Gradle Plugin's generateManifest task stamps the build host into
+// every jar's MANIFEST.MF, and `Build-OS` is the kernel release string plus architecture
+// (e.g. "Linux 6.17.0-1022-azure amd64" on the CI runner, "Mac OS X 15.6 aarch64" on a
+// committer's laptop). That single attribute can never agree between two machines, so
+// every jar in the plugin differs even when all bytecode and resources are identical --
+// which is exactly what a PMC member rebuilding a release candidate sees. Pin it.
+//
+// Build-JVM is deliberately left alone: .sdkmanrc pins the exact JDK, so it is a constant
+// by policy and a mismatch there is a genuine warning that the wrong JDK was used.
+//
+// The task is trivial, so it re-runs rather than restoring a pre-normalization manifest
+// from the build cache or an up-to-date check.
+def normalizedBuildOs = 'normalized for reproducible builds'
+tasks.matching { it.name == 'generateManifest' }.configureEach { manifestTask ->
+    manifestTask.outputs.upToDateWhen { false }
+    manifestTask.outputs.cacheIf { false }
+    manifestTask.doLast {
+        def file = manifestTask.generatedManifest.get().asFile
+        def lines = file.readLines().collect { line ->
+            line.startsWith('Build-OS:') ? "Build-OS: ${normalizedBuildOs}" : line
+        }
+        file.text = lines.join('\n') + '\n'
+    }
+}

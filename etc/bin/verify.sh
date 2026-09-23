@@ -82,7 +82,9 @@ echo "############################################################"
 # is a green result that verified less than it claims to have.
 preflight() {
   local missing=0 tool
-  for tool in java gpg curl unzip gradle; do
+  # gpg-agent is listed separately from gpg: GnuPG 2.x shells out to it even for an
+  # --import into a throwaway homedir, and Debian's gpg package only recommends it.
+  for tool in java gpg gpg-agent curl unzip gradle; do
     if ! command -v "${tool}" > /dev/null 2>&1; then
       echo "❌ Required tool not found on \$PATH: ${tool}"
       missing=1
@@ -90,9 +92,11 @@ preflight() {
   done
   if [ "${missing}" -ne 0 ]; then
     echo "❌ Preflight checks failed. Resolve the issues above before running verification."
-    echo "   Locally: install the versions pinned in .sdkmanrc (\`sdk env install\`)."
-    echo "   In the container from etc/bin/Dockerfile: everything above is preinstalled,"
-    echo "   so a failure here means PATH was rebuilt by a login shell -- see RELEASE.md."
+    echo "   java/gradle: install the versions pinned in .sdkmanrc (\`sdk env install\`)."
+    echo "   gpg/gpg-agent: from your package manager -- Debian installs the agent with the"
+    echo "   gnupg package, not the smaller gpg package; macOS has it in \`brew install gnupg\`."
+    echo "   In the container from etc/bin/Dockerfile everything above is preinstalled, so a"
+    echo "   failure there means PATH was rebuilt by a login shell -- see RELEASE.md."
     exit 1
   fi
 }
@@ -115,14 +119,21 @@ echo "### 2/4 Verifying checksums, signatures, and archive contents"
 echo ""
 echo "### 3/4 Running the Apache RAT license audit on the source distribution"
 # Audit the source distribution itself, not the local checkout: the release is the source
-# archive, so that is what has to pass the license audit.
-RAT_DIR="${DOWNLOAD_LOCATION}/rat"
-rm -rf "${RAT_DIR}"
-mkdir -p "${RAT_DIR}"
-unzip -q "${DOWNLOAD_LOCATION}/apache-grails-intellij-plugin-${VERSION}-src.zip" -d "${RAT_DIR}"
-RAT_SRC="$(find "${RAT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
-(cd "${RAT_SRC}/gradle-bootstrap" && gradle bootstrap)
-(cd "${RAT_SRC}" && ./gradlew rat --no-daemon)
+# archive, so that is what has to pass the license audit. The tree is the one
+# verify-distributions.sh extracted -- a single extraction shared by every later step, as
+# in grails-core, rather than a second private copy per script.
+RAT_SRC="${DOWNLOAD_LOCATION}/grails-intellij-plugin"
+if [ ! -d "${RAT_SRC}" ]; then
+  echo "❌ ${RAT_SRC} not found — verify-distributions.sh extracts it; run it first" >&2
+  exit 1
+fi
+# Audit the archive exactly as staged, with the Gradle on PATH, and do NOT bootstrap the
+# wrapper first: `gradle bootstrap` runs the `wrapper` task inside gradle-bootstrap/ and
+# copies the result to the root, so it leaves behind a gradle-wrapper.properties that was
+# never in the distribution. Auditing after that step reports a file the release does not
+# contain. The bootstrap path is not skipped overall -- verify-reproducible.sh bootstraps
+# this same tree and rebuilds from it in step 4.
+(cd "${RAT_SRC}" && gradle rat --no-daemon)
 echo "✅ RAT audit passed"
 
 echo ""

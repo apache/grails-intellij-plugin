@@ -48,6 +48,14 @@ tasks.named('rat') { task ->
             'gradlew*',
             'gradle/wrapper/**',
             '**/.gradle/**',
+            // the same wrapper as generated inside gradle-bootstrap by its `bootstrap` task,
+            // which runs `wrapper` there and copies the result to the root. Generated and
+            // git-ignored (.gitignore lines for gradle-bootstrap/gradlew*, gradle-bootstrap/gradle),
+            // so it is never part of the source distribution -- but anyone who bootstraps a
+            // checkout, or audits an extracted source release after bootstrapping it, has these
+            // files on disk and the root-anchored patterns above do not reach them.
+            'gradle-bootstrap/gradlew*',
+            'gradle-bootstrap/gradle/wrapper/**',
             // github/ASF infra configuration, not shipped in the source distro
             '.github/**',
             '.asf.yaml',
