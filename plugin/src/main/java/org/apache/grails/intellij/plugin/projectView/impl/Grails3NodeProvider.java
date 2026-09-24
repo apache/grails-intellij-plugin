@@ -23,10 +23,14 @@ import com.intellij.ide.projectView.ViewSettings;
 import com.intellij.ide.projectView.impl.nodes.PsiFileNode;
 import com.intellij.ide.projectView.impl.nodes.PsiFileSystemItemFilter;
 import com.intellij.ide.util.treeView.AbstractTreeNode;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiDirectory;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiFileSystemItem;
+import com.intellij.psi.PsiManager;
+import com.intellij.util.PlatformIcons;
 import org.jetbrains.annotations.NotNull;
+import org.apache.grails.intellij.plugin.GroovyMvcIcons;
 import org.apache.grails.intellij.plugin.projectView.GrailsPluginsNode;
 import org.apache.grails.intellij.plugin.projectView.NodeWeights;
 import org.apache.grails.intellij.plugin.projectView.api.GrailsViewNodeProvider;
@@ -36,12 +40,21 @@ import org.apache.grails.intellij.plugin.util.version.Version;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class Grails3NodeProvider implements GrailsViewNodeProvider {
 
   private static final List<String> SPECIAL_FILES = List.of("build.gradle", "settings.gradle", "gradle.properties");
   private static final List<String> SPECIAL_DIRS = List.of("src/main/scripts", "src/main/webapp");
+
+  /**
+   * Test source roots that live under {@code src/}. Covers both the camelCase names used by the Grails
+   * Gradle plugins up to 6.x and the kebab-case names introduced in Grails 7.
+   */
+  private static final Set<String> TEST_SOURCE_DIRS = Set.of(
+    "test", "integrationTest", "integration-test", "functionalTest", "functional-test", "browserTest", "browser-test");
 
   @Override
   public @NotNull Collection<AbstractTreeNode<?>> createNodes(@NotNull GrailsApplication application,
@@ -63,8 +76,17 @@ public class Grails3NodeProvider implements GrailsViewNodeProvider {
 
     PsiDirectory src = GrailsViewItems.findPsiDirectory(application, "src");
     if (src != null) {
-      PsiFileSystemItemFilter filter = item -> !specialDirs.contains(item) && GrailsViewItems.shouldShowItem(item);
+      List<PsiDirectory> testDirs = findTestSourceDirectories(src);
+      Set<PsiDirectory> hidden = new HashSet<>(testDirs);
+      PsiFileSystemItemFilter filter =
+        item -> !specialDirs.contains(item) && !hidden.contains(item) && GrailsViewItems.shouldShowItem(item);
       result.add(new GrailsPsiDirectoryNode(src, settings, NodeWeights.SRC_FOLDERS, filter));
+      for (PsiDirectory testDir : testDirs) {
+        boolean specialised = !"test".equals(testDir.getName());
+        result.add(new GrailsPsiDirectoryNode(testDir, settings,
+                                              specialised ? GroovyMvcIcons.Grails_test : PlatformIcons.TEST_SOURCE_FOLDER,
+                                              NodeWeights.TESTS_FOLDER, null));
+      }
     }
 
     for (String path : SPECIAL_FILES) {
@@ -75,6 +97,19 @@ public class Grails3NodeProvider implements GrailsViewNodeProvider {
     }
 
     result.add(new GrailsPluginsNode(application.getProject(), settings));
+    return result;
+  }
+
+  /** Direct children of the {@code src} directory that look like test source roots. */
+  private static @NotNull List<PsiDirectory> findTestSourceDirectories(@NotNull PsiDirectory src) {
+    List<PsiDirectory> result = new ArrayList<>();
+    VirtualFile[] children = src.getVirtualFile().getChildren();
+    for (VirtualFile child : children) {
+      if (child.isDirectory() && TEST_SOURCE_DIRS.contains(child.getName())) {
+        PsiDirectory directory = PsiManager.getInstance(src.getProject()).findDirectory(child);
+        if (directory != null) result.add(directory);
+      }
+    }
     return result;
   }
 }

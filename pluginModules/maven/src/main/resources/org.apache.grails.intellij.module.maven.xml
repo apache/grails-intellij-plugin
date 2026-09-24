@@ -16,16 +16,23 @@
   specific language governing permissions and limitations
   under the License.
 -->
+<!--
+  Optional content module: skipped when org.jetbrains.idea.maven is absent (e.g. Community
+  Edition). The extension registrations live here, in the module descriptor, because the
+  module classes are loaded by the module's own classloader: registering them from the main
+  plugin's config-file would load them with the main plugin classloader, which cannot see
+  the content-module jar and fails with ClassNotFoundException.
+-->
 <idea-plugin>
 
   <dependencies>
     <plugin id="org.jetbrains.idea.maven"/>
   </dependencies>
 
-  <extensions defaultExtensionNs="org">
-    <intellij.grails.commandExecutor implementation="org.apache.grails.intellij.module.maven.MavenCommandExecutor" order="FIRST"/>
-    <intellij.grails.applicationProvider implementation="org.apache.grails.intellij.module.maven.GrailsMavenApplicationProvider" order="first"/>
-    <intellij.grails.viewNodeProvider implementation="org.apache.grails.intellij.module.maven.MavenNodeProvider"/>
+  <extensions defaultExtensionNs="org.intellij.grails">
+    <commandExecutor implementation="org.apache.grails.intellij.module.maven.MavenCommandExecutor" order="FIRST"/>
+    <applicationProvider implementation="org.apache.grails.intellij.module.maven.GrailsMavenApplicationProvider" order="first"/>
+    <viewNodeProvider implementation="org.apache.grails.intellij.module.maven.MavenNodeProvider"/>
   </extensions>
 
   <extensions defaultExtensionNs="org.jetbrains.idea.maven.importing">
@@ -35,4 +42,5 @@
   <extensions defaultExtensionNs="com.intellij">
     <programRunner implementation="org.apache.grails.intellij.module.maven.GrailsMavenDebuggerRunner" order="before grailsDebuggerRunner"/>
   </extensions>
+
 </idea-plugin>

@@ -3,6 +3,9 @@
 .classpath
 .project
 .settings/
+# working planning documents (PRD, task list, dependency manifest) kept out of the repository
+.tasks/
+/tasks/
 /build-logic/bin/
 /plugin/bin/
 /libs/*/bin/

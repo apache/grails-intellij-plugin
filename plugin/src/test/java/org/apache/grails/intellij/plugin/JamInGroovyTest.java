@@ -25,8 +25,13 @@ import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.fixtures.DefaultLightProjectDescriptor;
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase;
 import org.jetbrains.annotations.NotNull;
+import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
 import org.junit.Assert;
+import org.junit.experimental.categories.Category;
 
+// resolves a Spring @ContextConfiguration resource reference; Spring annotation resolution
+// in Groovy is provided by the Ultimate Spring plugin
+@Category(UltimateOnlyTest.class)
 public class JamInGroovyTest extends LightJavaCodeInsightFixtureTestCase {
   private static final LightProjectDescriptor SPRING_PROJECT =
     new DefaultLightProjectDescriptor().withRepositoryLibrary("org.springframework:spring-beans:4.3.21.RELEASE"

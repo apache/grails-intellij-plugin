@@ -24,6 +24,7 @@ import org.jetbrains.annotations.NonNls;
 public final class GrailsIntegrationUtil {
   private static final boolean myJsSupportEnabled = classExists("com.intellij.lang.javascript.psi.JSElement");
   private static final boolean myCssSupportEnabled = classExists("com.intellij.psi.css.CssElement");
+  private static final boolean myGraphSupportEnabled = classExists("com.intellij.openapi.graph.builder.GraphBuilder");
 
   private GrailsIntegrationUtil() {
   }
@@ -44,6 +45,10 @@ public final class GrailsIntegrationUtil {
 
   public static boolean isCssSupportEnabled() {
     return myCssSupportEnabled;
+  }
+
+  public static boolean isGraphSupportEnabled() {
+    return myGraphSupportEnabled;
   }
 
 }

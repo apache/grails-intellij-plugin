@@ -17,6 +17,7 @@
  * under the License.
  */
 
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 
@@ -69,6 +70,27 @@ intellijPlatform {
                 }
             } else {
                 recommended()
+            }
+
+            // Community Edition verification is opt-in via -PplatformEdition=IC so the default
+            // verifyPlugin run (Ultimate, just above) never downloads a Community distribution.
+            if (providers.gradleProperty('platformEdition').getOrElse('IU') == 'IC') {
+                // useInstaller=false: the standalone IC distribution is no longer published for
+                // 2025.3+ (no IC channel in JetBrains' updates.xml), so the installer-URL resolver
+                // throws "Couldn't resolve IntellijIdeaCommunity download URL for version: '2026.2'".
+                // The `com.jetbrains.intellij.idea:ideaIC` Maven artifact still exists on the
+                // cache-redirector intellij-repository, which is what this flag resolves instead.
+                create(IntelliJPlatformType.IntellijIdeaCommunity, providers.gradleProperty('platformVersion')) { icConfig ->
+                    icConfig.useInstaller.set(false)
+                }
+                // IC doesn't bundle the Ultimate plugins (JavaScript, CSS, Spring, JavaEE,
+                // Hibernate) that this plugin uses as optional dependencies.  Their absence
+                // makes every guarded reference "unresolved" and every <depends optional="true">
+                // report as MISSING_DEPENDENCIES — both are expected consequences of the
+                // optional-deps design, not real cross-edition hazards.  Gate the IC verifier
+                // on INVALID_PLUGIN only; the full failureLevel above applies to the IU run
+                // where all optional deps are present.
+                failureLevel = [VerifyPluginTask.FailureLevel.INVALID_PLUGIN]
             }
         }
     }

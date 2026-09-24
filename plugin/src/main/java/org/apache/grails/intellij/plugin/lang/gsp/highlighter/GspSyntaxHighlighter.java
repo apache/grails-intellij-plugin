@@ -18,7 +18,6 @@
  */
 package org.apache.grails.intellij.plugin.lang.gsp.highlighter;
 
-import com.intellij.javaee.el.impl.ELHighlighter;
 import com.intellij.lexer.Lexer;
 import com.intellij.openapi.editor.JspHighlighterColors;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
@@ -28,10 +27,18 @@ import com.intellij.psi.tree.TokenSet;
 import org.jetbrains.annotations.NotNull;
 import org.apache.grails.intellij.plugin.lang.gsp.lexer.GspFlexLexer;
 import org.apache.grails.intellij.plugin.lang.gsp.lexer.GspTokenTypesEx;
+import org.apache.grails.intellij.plugin.util.UltimatePluginGuard;
 import org.jetbrains.plugins.groovy.highlighter.GroovySyntaxHighlighter;
 
 public final class GspSyntaxHighlighter extends SyntaxHighlighterBase implements GspTokenTypesEx {
   private final GspDirectiveHighlighter myDirectiveHighlighter = new GspDirectiveHighlighter();
+
+  /**
+   * EL expression highlighting comes from the Ultimate-only EL plugin. Resolved reflectively so the
+   * class is never loaded on Community Edition, where the null fallback silently drops the styling.
+   */
+  private static final TextAttributesKey EL_BOUNDS =
+    UltimatePluginGuard.staticFieldValue("com.intellij.javaee.el.impl.ELHighlighter", "EL_BOUNDS", (TextAttributesKey)null);
 
   @Override
   public @NotNull Lexer getHighlightingLexer() {
@@ -56,7 +63,7 @@ public final class GspSyntaxHighlighter extends SyntaxHighlighterBase implements
   @Override
   public TextAttributesKey @NotNull [] getTokenHighlights(IElementType tokenType) {
     if (tGSP_SEPARATORS_NOT_DIRECT.contains(tokenType)) {
-      return pack(ELHighlighter.EL_BOUNDS);
+      return EL_BOUNDS != null ? pack(EL_BOUNDS) : TextAttributesKey.EMPTY_ARRAY;
     }
     if (GspTokenTypesEx.GSP_COMMENTS.contains(tokenType)) {
       return pack(GroovySyntaxHighlighter.BLOCK_COMMENT);

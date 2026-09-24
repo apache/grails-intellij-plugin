@@ -26,10 +26,17 @@ import com.intellij.xml.XmlAttributeDescriptor;
 import com.intellij.xml.XmlElementDescriptor;
 import org.apache.grails.intellij.plugin.lang.gsp.psi.gsp.impl.gtag.GspTagDescriptorService;
 import org.apache.grails.intellij.lib.testFramework.GrailsTestCase;
+import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
+import org.junit.experimental.categories.Category;
 
 import java.util.Set;
 import java.util.TreeSet;
 
+/**
+ * Asserts the GSP tag cache against the JSP TLD descriptor (com.intellij.jsp is Ultimate-only):
+ * excluded from the Community Edition test run.
+ */
+@Category(UltimateOnlyTest.class)
 public class GspHtmlAttributesTest extends GrailsTestCase {
   @Override
   protected boolean useGrails14() {

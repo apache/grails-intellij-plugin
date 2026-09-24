@@ -47,15 +47,31 @@ public final class GrailsViewItems {
 
   public static final Map<String, SpecialFolder> SPECIAL_GRAILS_APP_FOLDERS = specialFolders();
 
+  /** Subfolders of {@code grails-app/assets} shown as dedicated top-level nodes. */
+  public static final Map<String, SpecialFolder> SPECIAL_ASSET_FOLDERS = assetFolders();
+
+  /** Name of the {@code grails-app} directory whose subfolders are shown as dedicated nodes. */
+  public static final String ASSETS_DIR = "assets";
+
   private GrailsViewItems() {
   }
 
   private static Map<String, SpecialFolder> specialFolders() {
-    // LinkedHashMap because the project view renders these in declaration order.
+    // Rendering order is decided by NodeWeights through GrailsNodeComparator; the LinkedHashMap
+    // just keeps iteration stable for readability and for the contains()/dedup lookups.
     Map<String, SpecialFolder> result = new LinkedHashMap<>();
     result.put("conf", new SpecialFolder(AllIcons.Nodes.ConfigFolder, NodeWeights.CONFIG_FOLDER, "Configuration"));
     result.put("views", new SpecialFolder(GroovyMvcIcons.Gsp_logo, NodeWeights.VIEWS_FOLDER, "Views"));
     result.put("init", new SpecialFolder(AllIcons.Nodes.ConfigFolder, NodeWeights.CONFIG_FOLDER - 1, "Initialization"));
+    result.put("i18n", new SpecialFolder(AllIcons.FileTypes.Properties, NodeWeights.TRANSLATIONS_FOLDER, "Translations"));
+    return Map.copyOf(result);
+  }
+
+  private static Map<String, SpecialFolder> assetFolders() {
+    Map<String, SpecialFolder> result = new LinkedHashMap<>();
+    result.put(ASSETS_DIR + "/stylesheets", new SpecialFolder(AllIcons.FileTypes.Css, NodeWeights.STYLESHEETS_FOLDER, "Stylesheets"));
+    result.put(ASSETS_DIR + "/images", new SpecialFolder(AllIcons.FileTypes.Image, NodeWeights.IMAGES_FOLDER, "Images"));
+    result.put(ASSETS_DIR + "/javascripts", new SpecialFolder(AllIcons.FileTypes.JavaScript, NodeWeights.JAVASCRIPTS_FOLDER, "JavaScripts"));
     return Map.copyOf(result);
   }
 
@@ -80,5 +96,10 @@ public final class GrailsViewItems {
   public static @Nullable PsiDirectory findAppPsiDirectory(@NotNull GrailsApplication application, @NotNull String name) {
     VirtualFile file = application.getAppRoot().findFileByRelativePath(name);
     return file != null ? PsiManager.getInstance(application.getProject()).findDirectory(file) : null;
+  }
+
+  /** True if the given child directory name is one of the asset subfolders rendered as a dedicated node. */
+  public static boolean isAssetSubfolder(@Nullable String name) {
+    return name != null && SPECIAL_ASSET_FOLDERS.containsKey(ASSETS_DIR + "/" + name);
   }
 }

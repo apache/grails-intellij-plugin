@@ -27,9 +27,13 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.groovy.GroovyProjectDescriptors;
 import junit.framework.TestCase;
 import org.apache.grails.intellij.plugin.fileType.GspFileType;
+import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
+import org.junit.experimental.categories.Category;
 
 import java.util.List;
 
+// CSS PSI classes (com.intellij.psi.css.*) are shipped by the Ultimate CSS plugin only.
+@Category(UltimateOnlyTest.class)
 public class GspCssTest extends LightJavaCodeInsightFixtureTestCase {
   @Override
   protected @NotNull LightProjectDescriptor getProjectDescriptor() {

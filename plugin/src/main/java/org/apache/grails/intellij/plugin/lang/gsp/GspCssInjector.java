@@ -30,6 +30,7 @@ import org.jetbrains.annotations.NotNull;
 import org.apache.grails.intellij.plugin.lang.gsp.psi.gsp.api.GspTag;
 import org.apache.grails.intellij.plugin.lang.gsp.psi.gsp.api.gtag.GspAttribute;
 import org.apache.grails.intellij.plugin.util.GrailsPsiUtil;
+import org.apache.grails.intellij.plugin.addins.GrailsIntegrationUtil;
 
 import java.util.Collections;
 import java.util.List;
@@ -37,6 +38,7 @@ import java.util.List;
 final class GspCssInjector implements MultiHostInjector {
   @Override
   public void getLanguagesToInject(@NotNull MultiHostRegistrar registrar, @NotNull PsiElement context) {
+    if (!GrailsIntegrationUtil.isCssSupportEnabled()) return;
     GspAttribute attribute = (GspAttribute)context;
     String attrName = attribute.getName();
     if (!"style".equals(attrName)) return;

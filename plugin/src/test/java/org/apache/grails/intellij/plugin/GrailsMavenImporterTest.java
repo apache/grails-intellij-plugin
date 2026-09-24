@@ -26,12 +26,19 @@ import com.intellij.openapi.module.Module;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.apache.grails.intellij.plugin.config.GrailsFramework;
+import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Maven importing with web-facet assertions (com.intellij.javaee.web is Ultimate-only): excluded
+ * from the Community Edition test run.
+ */
+@Category(UltimateOnlyTest.class)
 public class GrailsMavenImporterTest extends MavenMultiVersionImportingTestCase {
 
   private void createGrailsStdFolders() {

@@ -24,7 +24,9 @@ import com.intellij.openapi.vfs.VirtualFile;
 import junit.framework.TestCase;
 import org.jetbrains.plugins.gradle.importing.GradleImportingTestCase;
 import org.apache.grails.intellij.plugin.config.GrailsFramework;
+import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runners.Parameterized;
 
 import java.io.IOException;
@@ -32,6 +34,9 @@ import java.util.Arrays;
 import java.util.Collection;
 
 // requires locally installed Java 8 & 11
+// Community-only classification: its base class comes from the Gradle plugin's test framework,
+// which the plain-JUnit4 Community sandbox does not ship, and the run needs a real JDK 8/9.
+@Category(UltimateOnlyTest.class)
 public class GradleGrailsImportingTest extends GradleImportingTestCase {
   @Parameterized.Parameter(1) public String grailsVersion;
 

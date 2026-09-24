@@ -2,8 +2,10 @@
 
 IntelliJ IDEA plugin for the [Apache Grails](https://grails.apache.org/) framework:
 GSP language support (parsing, highlighting, completion, refactoring), Grails project
-structure and navigation, run configurations, taglib/domain-class support, and
-integrations for i18n, coverage, Hibernate, Maven, and language injection.
+structure and navigation (including dedicated Translations and front-end asset
+nodes — Stylesheets, Images, JavaScripts — in the Grails view), run configurations,
+taglib/domain-class support, and integrations for i18n, coverage, Hibernate, Maven,
+and language injection.
 
 This codebase was originally developed by JetBrains s.r.o. and donated to the Apache
 Software Foundation under a software grant. It was imported from the `grails` directory of

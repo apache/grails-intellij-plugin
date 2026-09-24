@@ -52,6 +52,7 @@ import org.apache.grails.intellij.plugin.lang.gsp.psi.gsp.impl.GspXmlTagBaseImpl
 import org.apache.grails.intellij.plugin.lang.gsp.resolve.taglib.GspTagLibUtil;
 import org.apache.grails.intellij.plugin.lang.gsp.resolve.taglib.TagLibNamespaceDescriptor;
 import org.apache.grails.intellij.plugin.util.GrailsUtils;
+import org.apache.grails.intellij.plugin.util.UltimatePluginGuard;
 
 import java.util.HashMap;
 import java.util.List;
@@ -183,11 +184,27 @@ public class GspXmlRootTagImpl extends GspXmlTagBaseImpl implements GspXmlRootTa
       }
 
       PsiFile containingFile = tag.getContainingFile();
-      if (containingFile instanceof GspFile) {
+      if (containingFile instanceof GspFile gspFile) {
+        collectTldNamespaces(tag, project, gspFile);
+      }
+
+      myPrefix2Namespace.put(GspTmplNamespaceDescriptor.NAMESPACE_TMPL, GspTmplNamespaceDescriptor.NAMESPACE_TMPL);
+      myUri2Descriptor.put(GspTmplNamespaceDescriptor.NAMESPACE_TMPL, new GspTmplNamespaceDescriptor(tag));
+
+      myPrefix2Namespace.put(GspLinkNamespaceDescriptor.NAMESPACE_LINK, GspLinkNamespaceDescriptor.NAMESPACE_LINK);
+      myUri2Descriptor.put(GspLinkNamespaceDescriptor.NAMESPACE_LINK, GspLinkNamespaceDescriptor.INSTANCE);
+    }
+
+    /**
+     * Resolves {@code <%@ taglib uri="..." %>} directives to their JSP TLD files. Everything JSP-related is
+     * expected to be absent on Community Edition, hence the plugin guard.
+     */
+    private void collectTldNamespaces(@NotNull GspXmlRootTagImpl tag, @NotNull Project project, @NotNull GspFile containingFile) {
+      UltimatePluginGuard.runIfPluginAvailable(UltimatePluginGuard.JSP_PLUGIN, () -> {
         final Module module = ModuleUtilCore.findModuleForPsiElement(tag);
         final JspManager jspManager = JspManager.getInstance(project);
 
-        for (GspDirective directive : ((GspFile)containingFile).getDirectiveTags(GspDirectiveKind.TAGLIB, false)) {
+        for (GspDirective directive : containingFile.getDirectiveTags(GspDirectiveKind.TAGLIB, false)) {
           final String prefix = directive.getAttributeValue("prefix");
           if (StringUtil.isEmpty(prefix) || "g".equals(prefix)) continue;
 
@@ -201,13 +218,7 @@ public class GspXmlRootTagImpl extends GspXmlTagBaseImpl implements GspXmlRootTa
             myUri2Descriptor.put(uri, nsDescriptor);
           }
         }
-      }
-
-      myPrefix2Namespace.put(GspTmplNamespaceDescriptor.NAMESPACE_TMPL, GspTmplNamespaceDescriptor.NAMESPACE_TMPL);
-      myUri2Descriptor.put(GspTmplNamespaceDescriptor.NAMESPACE_TMPL, new GspTmplNamespaceDescriptor(tag));
-
-      myPrefix2Namespace.put(GspLinkNamespaceDescriptor.NAMESPACE_LINK, GspLinkNamespaceDescriptor.NAMESPACE_LINK);
-      myUri2Descriptor.put(GspLinkNamespaceDescriptor.NAMESPACE_LINK, GspLinkNamespaceDescriptor.INSTANCE);
+      });
     }
 
     public @Nullable XmlNSDescriptor getNSDescriptor(@NotNull String uri) {

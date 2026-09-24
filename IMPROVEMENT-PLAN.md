@@ -98,9 +98,13 @@ that Grails 3+ actually uses.
 3. Grails **6.x** (legacy baseline, for the legacy plugin's regression record).
 
 Walk this checklist per app and record works / broken / missing:
-- [ ] Project recognized as Grails; `grails-app/*` project view pane renders
+- [x] Project recognized as Grails; `grails-app/*` project view pane renders
       controllers/domain/services/taglib/views/conf/i18n/**init**/**utils**/assets
-      groups (init/ and utils/ are conventions the plugin may predate).
+      groups (init/ and utils/ are conventions the plugin may predate). Since the
+      Translations & Assets work item, `grails-app/i18n` renders as a **Translations**
+      node and `grails-app/assets/{stylesheets,images,javascripts}` as dedicated
+      **Stylesheets** / **Images** / **JavaScripts** nodes, with Services above
+      Controllers.
 - [ ] `Application.groovy` in `grails-app/init/` (extends
       `grails.boot.config.GrailsAutoConfiguration`, runs via `GrailsApp.run`) is
       recognized as the run entry point.
@@ -356,6 +360,12 @@ the construction step of the new plugin, immediately after the compliance fork:
         spock, buildTestData only if still ecosystem-relevant — asset-pipeline yes,
         spock yes),
       - Grails 1.x/2.x testdata and the tests that exercise deleted paths.
+- [x] ~~Legacy Spring Support integration (the `plugin/…/spring/` package)~~ — removed in
+      262.1.0 as Grails-2-era dead weight (details in Phase 4): 11 of 14 classes
+      referenced `com.intellij.spring.*`, which is invisible to the installed plugin's
+      classloader on 2026.2; the two self-contained `beans {}` DSL helpers stayed and are
+      now loaded unconditionally. The Grails-3-era `GradleGrailsImportingTest` fixture
+      (Grails 3.3.1 / Gradle 4.6) is likewise outside the 7+ line's scope.
 - [ ] Re-run the full test suite + `verifyPlugin`; the survivor test set defines the
       new plugin's guarded behavior.
 - [ ] Legacy repo: no code changes beyond the Phase 1 maintenance policy; add a
@@ -373,11 +383,15 @@ invisible to IntelliJ Community users. Using the Phase 0.3 reference counts:
 - [ ] Restructure `plugin.xml` so the core loads on Community: GSP language + editing,
       artefact recognition/navigation, GORM completion, run configs, project view,
       forge wizard.
-- [ ] Move to `<depends optional="true" config-file=…>` modules: Spring bean
-      integration (`com.intellij.spring`), JPA/persistence + the `hibernate/`
+- [ ] Move to `<depends optional="true" config-file=…>` modules: JPA/persistence + the `hibernate/`
       submodule (`com.intellij.persistence`, `com.intellij.javaee.jpa`), database
       integration (`com.intellij.database`), JSP-adjacent GSP features
       (`com.intellij.jsp`), JS/CSS injection (already optional).
+      The Spring Support integration (`com.intellij.spring`) is deliberately dropped as of 2026.2:
+      its classes live in Spring's base module, which the installed plugin's classloader cannot
+      see, producing NoClassDefFoundError noise. The `beans {}` DSL support
+      (`GrailsResourcesGroovyMemberContributor`) is kept and loaded unconditionally, as it does not
+      depend on the Spring plugin.
 - [ ] The existing module layout (`pluginModules/hibernate/`, `pluginModules/langInjection/`,
       `pluginModules/i18n/`, …) is
       most of the needed seam — the work is breaking compile-time references from

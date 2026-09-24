@@ -20,12 +20,14 @@ package org.apache.grails.intellij.plugin;
 
 
 import org.apache.grails.intellij.lib.testFramework.GrailsTestCase;
+import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
 import com.intellij.codeInsight.daemon.impl.analysis.HtmlUnknownTargetInspection;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.PsiTestUtil;
 import org.jetbrains.plugins.groovy.codeInspection.assignment.GroovyAssignabilityCheckInspection;
 import org.jetbrains.plugins.groovy.codeInspection.untypedUnresolvedAccess.GrUnresolvedAccessInspection;
+import org.junit.experimental.categories.Category;
 
 import static org.apache.grails.intellij.lib.testFramework.GrailsTestUtil.getTestRootPath;
 
@@ -73,6 +75,8 @@ public class GrailsHighlightingTest extends GrailsTestCase {
     myFixture.testHighlighting(true, false, false, file);
   }
 
+  // JSP tag validation for TLD-declared tags needs the Ultimate JSP plugin
+  @Category(UltimateOnlyTest.class)
   public void testJspTagInGsp() throws Throwable {
     myFixture.copyFileToProject("../fmt.tld", "WEB-INF/tld/fmt.tld");
     doTest();

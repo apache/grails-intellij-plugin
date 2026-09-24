@@ -22,9 +22,11 @@ package org.apache.grails.intellij.plugin.gsp;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.codeStyle.CommonCodeStyleSettings;
 import com.intellij.psi.formatter.xml.HtmlCodeStyleSettings;
+import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
 import org.apache.grails.intellij.plugin.fileType.GspFileType;
 import org.jetbrains.plugins.groovy.lang.GroovyFormatterTestCase;
 import org.jetbrains.plugins.groovy.util.TestUtils;
+import org.junit.experimental.categories.Category;
 
 import java.util.List;
 
@@ -59,6 +61,8 @@ public class GspFormatterTest extends GroovyFormatterTestCase {
   public void testGsp$gsp3() { doTest(); }
   public void testGsp$gsp8() { doTest(); }
   public void testGsp$gsp9() { doTest(); }
+  // golden captured with JavaScript plugin active; embedded JS formatting differs on Community
+  @Category(UltimateOnlyTest.class)
   public void testGsp$EA29587() { doTest(); }
   public void _testHtml$error$giga_werle() { doTest(); }
   public void testHtml$error$nik1() { doTest(); }
@@ -71,14 +75,20 @@ public class GspFormatterTest extends GroovyFormatterTestCase {
   public void testHtml$inner$inner2() { doTest(); }
   public void testHtml$inner$inner3() { doTest(); }
   public void testHtml$megabug$GRVY_1046() { doTest(); }
+  // golden captured with JavaScript plugin active; embedded JS formatting differs on Community
+  @Category(UltimateOnlyTest.class)
   public void testHtml$megabug$megap2() { doTest(); }
   public void testHtml$megabug$mmm3() { doTest(); }
   public void testHtml$megabug$peter() { doTest(); }
   public void testHtml$megabug$peter2() { doTest(); }
+  // golden captured with JavaScript plugin active; embedded JS formatting differs on Community
+  @Category(UltimateOnlyTest.class)
   public void testHtml$megabug$peter3() {
     getHtmlSettings().HTML_DO_NOT_ALIGN_CHILDREN_OF_MIN_LINES = 1000;
     doTest();
   }
+  // golden captured with JavaScript plugin active; embedded JS formatting differs on Community
+  @Category(UltimateOnlyTest.class)
   public void testHtml$megabug$bigTest() {
     getHtmlSettings().HTML_DO_NOT_ALIGN_CHILDREN_OF_MIN_LINES = 1000;
     doTest();

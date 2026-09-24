@@ -20,6 +20,8 @@
 package org.apache.grails.intellij.plugin.parser;
 
 import com.intellij.lang.html.HTMLLanguage;
+import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
+import org.junit.experimental.categories.Category;
 
 import static org.apache.grails.intellij.lib.testFramework.GrailsTestUtil.getTestRootPath;
 
@@ -29,9 +31,15 @@ public class GspHtmlParserTest extends GspParsingTestCase {
   public void testCommon() { doTest(); }
   public void testHtml1() { doTest(); }
   public void testInject1() { doTest(); }
+  // PSI dump golden embeds JavaScript/CSS content; dump differs without the Ultimate JS/CSS plugins
+  @Category(UltimateOnlyTest.class)
   public void testMmm2() { doTest(); }
+  // PSI dump golden embeds JavaScript/CSS content; dump differs without the Ultimate JS/CSS plugins
+  @Category(UltimateOnlyTest.class)
   public void testMmm5() { doTest(); }
   public void testPeter1() { doTest(); }
+  // PSI dump golden embeds JavaScript/CSS content; dump differs without the Ultimate JS/CSS plugins
+  @Category(UltimateOnlyTest.class)
   public void testPeter2() { doTest(); }
   public void testRange_parse() { doTest(); }
   public void testWerle() { doTest(); }

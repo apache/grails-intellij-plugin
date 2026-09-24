@@ -21,7 +21,9 @@ package org.apache.grails.intellij.plugin.gsp;
 
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase;
 import org.apache.grails.intellij.plugin.fileType.GspFileType;
+import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
 import org.junit.Assert;
+import org.junit.experimental.categories.Category;
 
 public class GspLanguageInjectionTest extends LightJavaCodeInsightFixtureTestCase {
   public void testInjectGroovyUrl1() {
@@ -66,12 +68,16 @@ public class GspLanguageInjectionTest extends LightJavaCodeInsightFixtureTestCas
     myFixture.testHighlighting(true, false, true);
   }
 
+  // embedded-javascript completion needs the JavaScript plugin, absent from Community
+  @Category(UltimateOnlyTest.class)
   public void testInjectJavascript1() {
     myFixture.configureByText(GspFileType.GSP_FILE_TYPE, """
       <g:remoteLink onComplete="<caret>" />""");
     Assert.assertTrue(myFixture.completeBasic().length > 0);
   }
 
+  // embedded-javascript completion needs the JavaScript plugin, absent from Community
+  @Category(UltimateOnlyTest.class)
   public void testInjectJavascript2() {
     myFixture.configureByText(GspFileType.GSP_FILE_TYPE, """
       <g:remoteLink before="<caret>" />""");
@@ -87,6 +93,8 @@ public class GspLanguageInjectionTest extends LightJavaCodeInsightFixtureTestCas
     Assert.assertTrue(myFixture.completeBasic().length > 0);
   }
 
+  // embedded-javascript completion needs the JavaScript plugin, absent from Community
+  @Category(UltimateOnlyTest.class)
   public void testInjectJavascript4() {
     myFixture.configureByText(GspFileType.GSP_FILE_TYPE, """
       <r:script>

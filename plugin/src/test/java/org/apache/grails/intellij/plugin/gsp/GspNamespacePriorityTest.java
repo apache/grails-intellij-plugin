@@ -24,7 +24,9 @@ import com.intellij.psi.PsiElement;
 import com.intellij.testFramework.UsefulTestCase;
 import org.apache.grails.intellij.plugin.lang.gsp.psi.gsp.api.GspFile;
 import org.apache.grails.intellij.lib.testFramework.GrailsTestCase;
+import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
 import org.junit.Assert;
+import org.junit.experimental.categories.Category;
 
 public class GspNamespacePriorityTest extends GrailsTestCase {
   public void testTmplFirst() {
@@ -48,6 +50,8 @@ public class GspNamespacePriorityTest extends GrailsTestCase {
     UsefulTestCase.assertInstanceOf(element, GspFile.class);
   }
 
+  // taglib completion order after a <%@ taglib %> declaration differs without the Ultimate JSP plugin
+  @Category(UltimateOnlyTest.class)
   public void testTagLibBeforeCustomTagsFirst() {
     addTaglib("""
                 class MyTagLib {

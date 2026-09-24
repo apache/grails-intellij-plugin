@@ -16,31 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.grails.intellij.lib.testFramework;
 
-package org.apache.grails.intellij.plugin.spring;
-
-import com.intellij.psi.PsiClass;
-import com.intellij.psi.PsiTarget;
-import com.intellij.spring.model.jam.stereotype.CustomSpringComponent;
-import com.intellij.spring.model.jam.stereotype.CustomSpringComponentPsiTarget;
-import org.jetbrains.annotations.NotNull;
-
-public class GrailsCustomSpringComponent extends CustomSpringComponent {
-
-  private final String myBeanName;
-
-  public GrailsCustomSpringComponent(@NotNull PsiClass psiClass, @NotNull String beanName) {
-    super(psiClass);
-    myBeanName = beanName;
-  }
-
-  @Override
-  public String getBeanName() {
-    return myBeanName;
-  }
-
-  @Override
-  public PsiTarget getPsiTarget() {
-    return new CustomSpringComponentPsiTarget(this);
-  }
+/**
+ * JUnit 4 category marker for tests that can only load and run when at least one Ultimate-only
+ * plugin is installed on the test IDE sandbox (Spring, JSP, Java EE, persistence...). The Community
+ * Edition test task ({@code :plugin:testIdeCe}) excludes this category wholesale, since the class
+ * files themselves import classes the Community classpath simply does not have.
+ */
+public interface UltimateOnlyTest {
 }

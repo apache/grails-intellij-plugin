@@ -46,8 +46,10 @@ import com.intellij.testFramework.fixtures.JavaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
 import junit.framework.TestCase;
 import org.apache.grails.intellij.plugin.config.GrailsFramework;
+import org.apache.grails.intellij.plugin.structure.GrailsApplication;
 import org.apache.grails.intellij.plugin.structure.GrailsApplicationManager;
 import org.apache.grails.intellij.plugin.structure.GrailsApplicationProvider;
+import org.apache.grails.intellij.plugin.structure.impl.Grails2Application;
 import org.apache.grails.intellij.plugin.mvc.MvcModuleStructureSynchronizer;
 import org.apache.grails.intellij.plugin.mvc.MvcModuleStructureUtil;
 
@@ -61,6 +63,9 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.Future;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 @SuppressWarnings("GrMethodMayBeStatic")
 public class GrailsProjectStructureTest extends UsefulTestCase {
@@ -479,6 +484,28 @@ public class GrailsProjectStructureTest extends UsefulTestCase {
                     defStructure("customPlugins/plugin1") + "\n" +
                     "module:plugin2-inplacePlugin [" + getModuleName() + "-grailsPlugins, Root2-grailsPlugins]\n " +
                     defStructure("customPlugins/plugin2"));
+  }
+
+  public void testCreateGrailsApplicationSurvivesFailingProvider() throws IOException {
+    final VirtualFile root = myFixture.getTempDirFixture().findOrCreateDir("plainRoot");
+    final GrailsApplication expected = new Grails2Application(root, myModule);
+
+    GrailsApplicationProvider.APPLICATION_PROVIDER.getPoint()
+      .registerExtension(new GrailsApplicationProvider() {
+        @Override
+        public @Nullable GrailsApplication createApplication(@NotNull Project project, @NotNull VirtualFile root) {
+          throw new IllegalStateException("intentionally broken provider");
+        }
+      }, myFixture.getTestRootDisposable());
+    GrailsApplicationProvider.APPLICATION_PROVIDER.getPoint()
+      .registerExtension(new GrailsApplicationProvider() {
+        @Override
+        public @Nullable GrailsApplication createApplication(@NotNull Project project, @NotNull VirtualFile root) {
+          return expected;
+        }
+      }, myFixture.getTestRootDisposable());
+
+    assertEquals(expected, GrailsApplicationProvider.createGrailsApplication(getProject(), root));
   }
 
   private JavaCodeInsightTestFixture myFixture;

@@ -30,12 +30,16 @@ jacoco {
     toolVersion = providers.gradleProperty('jacocoVersion').getOrElse('0.8.15')
 }
 
-tasks.withType(Test).configureEach {
-    finalizedBy tasks.withType(JacocoReport)
+tasks.withType(Test).configureEach { task ->
+    // The Community Edition test task is registered behind -PplatformEdition=IC and lives on its
+    // own IdeaIC sandbox; it must not finalize the Ultimate coverage reports, which would drag the
+    // IdeaIC download into a routine `./gradlew test`.
+    if (task.name == 'testIdeCe') return
+    task.finalizedBy tasks.withType(JacocoReport)
 }
 
 tasks.withType(JacocoReport).configureEach {
-    dependsOn tasks.withType(Test)
+    dependsOn tasks.withType(Test).matching { it.name != 'testIdeCe' }
     reports {
         xml.required = true
         html.required = true

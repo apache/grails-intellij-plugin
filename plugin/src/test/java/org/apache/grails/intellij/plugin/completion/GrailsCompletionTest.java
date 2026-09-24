@@ -31,7 +31,9 @@ import groovy.lang.IntRange;
 import junit.framework.TestCase;
 import org.jetbrains.plugins.groovy.dsl.GroovyDslFileIndex;
 import org.apache.grails.intellij.lib.testFramework.GrailsTestCase;
+import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
 import org.junit.Ignore;
+import org.junit.experimental.categories.Category;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -97,6 +99,8 @@ public class GrailsCompletionTest extends GrailsTestCase {
     myFixture.testCompletionTyping(getTestName(false) + ".gsp", "", getTestName(false) + "_after.gsp");
   }
 
+  // completion merges HTML event attributes from the Ultimate web/JSP descriptor; Community-only list is shorter
+  @Category(UltimateOnlyTest.class)
   public void testAttributeNameFinishWithEq() {
     myFixture.configureByFile(getTestName(false) + ".gsp");
     TestCase.assertTrue(myFixture.completeBasic().length > 4);
@@ -120,6 +124,8 @@ public class GrailsCompletionTest extends GrailsTestCase {
     TestCase.assertEquals("xxx", items[0].getLookupString());
   }
 
+  // JSP taglib completion (TLD descriptor) needs the Ultimate JSP plugin
+  @Category(UltimateOnlyTest.class)
   public void testJspTagCompletion() {
     myFixture.copyFileToProject("../fmt.tld", "WEB-INF/tld/fmt.tld");
     myFixture.testCompletion(getTestName(false) + ".gsp", getTestName(false) + "_after.gsp");

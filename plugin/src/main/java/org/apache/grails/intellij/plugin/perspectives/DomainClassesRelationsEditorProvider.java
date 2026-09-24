@@ -28,6 +28,7 @@ import com.intellij.psi.PsiManager;
 import com.intellij.util.xml.ui.PerspectiveFileEditor;
 import com.intellij.util.xml.ui.PerspectiveFileEditorProvider;
 import org.jetbrains.annotations.NotNull;
+import org.apache.grails.intellij.plugin.addins.GrailsIntegrationUtil;
 import org.apache.grails.intellij.plugin.references.domain.GormUtils;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyFile;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
@@ -35,6 +36,7 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefini
 final class DomainClassesRelationsEditorProvider extends PerspectiveFileEditorProvider {
   @Override
   public boolean accept(@NotNull Project project, @NotNull VirtualFile file) {
+    if (!GrailsIntegrationUtil.isGraphSupportEnabled()) return false;
     if (Registry.is("grails.advanced.mode")) {
       return false;
     }

@@ -105,7 +105,7 @@ is a pure aggregator — it owns only RAT and coverage aggregation, no sources.
 
 | Path | Gradle project | Description |
 |------|----------------|-------------|
-| `plugin/` | `:plugin` | Main plugin: GSP language, Grails project support, run configs |
+| `plugin/` | `:plugin` | Main plugin: GSP language, Grails project support, run configs. The Grails 3+ view pane renders `grails-app/i18n` as a **Translations** node and `grails-app/assets/{stylesheets,images,javascripts}` as dedicated **Stylesheets** / **Images** / **JavaScripts** nodes (Services above Controllers). |
 | `pluginModules/{copyright,coverage,hibernate,i18n,jsp,langInjection,maven}/` | `:pluginModules-*` | Optional IntelliJ content modules (`pluginModule` deps) |
 | `libs/gradle-tooling/` | `:libs-gradle-tooling` | Gradle tooling API model builders |
 | `libs/grails-rt/` | `:libs-grails-rt` | Runtime injected into user apps (Java 8) |

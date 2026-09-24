@@ -24,6 +24,7 @@ import com.intellij.ide.projectView.ViewSettings;
 import com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode;
 import com.intellij.ide.util.treeView.AbstractTreeNode;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiDirectory;
 import com.intellij.psi.PsiFile;
@@ -96,7 +97,12 @@ public class OtherGrailsAppSourcesNode extends GrailsPsiDirectoryNode {
     for (VirtualFile dir : otherDirs) {
       PsiDirectory directory = manager.findDirectory(dir);
       if (directory != null) {
-        result.add(new PsiDirectoryNode(project, directory, getSettings()));
+        if (GrailsViewItems.ASSETS_DIR.equals(dir.getName())) {
+          result.add(new PsiDirectoryNode(project, directory, getSettings(),
+                                          item -> !GrailsViewItems.isAssetSubfolder(item.getName())));
+        } else {
+          result.add(new PsiDirectoryNode(project, directory, getSettings()));
+        }
       }
     }
     return result;
@@ -106,7 +112,30 @@ public class OtherGrailsAppSourcesNode extends GrailsPsiDirectoryNode {
   public boolean contains(@NotNull VirtualFile file) {
     if (!super.contains(file)) return false;
     PsiFile psiFile = PsiManager.getInstance(Objects.requireNonNull(getProject())).findFile(file);
-    return psiFile != null && GrailsViewItems.shouldShowItem(psiFile);
+    return psiFile != null && GrailsViewItems.shouldShowItem(psiFile) && !isUnderHiddenChildDirectory(file);
+  }
+
+  /**
+   * Direct children of this node's directory that are not rendered here: the special folders
+   * (views, conf, init, i18n) shown as dedicated top-level nodes and the asset subfolders
+   * (stylesheets/images/javascripts) hidden by the {@code assets} node filter. Files under them
+   * must not be claimed here either, or project-view reveal would try to expand this node's
+   * filtered-out children instead of the dedicated node.
+   */
+  private boolean isUnderHiddenChildDirectory(@NotNull VirtualFile file) {
+    VirtualFile appRoot = Objects.requireNonNull(getValue()).getVirtualFile();
+    for (VirtualFile child : appRoot.getChildren()) {
+      if (GrailsViewItems.SPECIAL_GRAILS_APP_FOLDERS.containsKey(child.getName())) {
+        if (VfsUtilCore.isAncestor(child, file, false)) return true;
+      } else if (GrailsViewItems.ASSETS_DIR.equals(child.getName())) {
+        for (VirtualFile subfolder : child.getChildren()) {
+          if (GrailsViewItems.isAssetSubfolder(subfolder.getName()) && VfsUtilCore.isAncestor(subfolder, file, false)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 
   @Override

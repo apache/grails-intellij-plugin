@@ -25,7 +25,14 @@ import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.UsefulTestCase;
 import junit.framework.TestCase;
 import org.apache.grails.intellij.lib.testFramework.HddGrailsTestCase;
+import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
+import org.junit.experimental.categories.Category;
 
+/**
+ * Hibernate facet integration (com.intellij.hibernate is Ultimate-only): excluded from the
+ * Community Edition test run.
+ */
+@Category(UltimateOnlyTest.class)
 public class GormPersistentFacetTest extends HddGrailsTestCase {
   @Override
   protected void setUp() throws Exception {

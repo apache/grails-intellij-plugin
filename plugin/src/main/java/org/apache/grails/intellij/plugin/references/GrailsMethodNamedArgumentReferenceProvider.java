@@ -39,7 +39,6 @@ import org.apache.grails.intellij.plugin.references.domain.criteria.CriteriaProp
 import org.apache.grails.intellij.plugin.references.domain.detachedCriteria.DetachedCriteriaReferenceProvider;
 import org.apache.grails.intellij.plugin.references.tagSupport.GspTagSupportGspReferenceProvider;
 import org.apache.grails.intellij.plugin.references.tagSupport.TagAttributeReferenceProvider;
-import org.apache.grails.intellij.plugin.spring.GrailsSpringMethodReferenceProvider;
 import org.jetbrains.plugins.groovy.lang.psi.api.GroovyResolveResult;
 import org.jetbrains.plugins.groovy.lang.psi.api.auxiliary.GrListOrMap;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrArgumentList;
@@ -71,26 +70,27 @@ public final class GrailsMethodNamedArgumentReferenceProvider extends PsiReferen
     GrailsMethodNamedArgumentReferenceProvider res = instance;
     if (res == null) {
       res = new GrailsMethodNamedArgumentReferenceProvider();
-
-      new GrailsResourcesReferenceProvider().register(res);
-      new GormNamedArgumentReferenceProvider().register(res);
-      new DetachedCriteriaReferenceProvider().register(res);
-      new CriteriaPropertyReferenceProvider().register(res);
-      new GrailsSpringMethodReferenceProvider().register(res);
-      new GrailsPluginWebHelpReferenceProvider().register(res);
-
-      Condition<PsiMethod> condition = new Contributor.LightMethodCondition(TagLibNamespaceDescriptor.GSP_TAG_METHOD_MARKER);
-
-      for (TagAttributeReferenceProvider provider : GspTagSupportGspReferenceProvider.PROVIDERS) {
-        res.register(provider.getAttributeName(), provider, condition, provider.getTagNames());
-      }
-
-      res.register(0, WebFlowStateNameReferenceProvider.class, new Contributor.ClassNameCondition("org.codehaus.groovy.grails.webflow.engine.builder.TransitionTo"), "to");
-
+      registerContributors(res);
       instance = res;
     }
 
     return res;
+  }
+
+  private static void registerContributors(@NotNull GrailsMethodNamedArgumentReferenceProvider res) {
+    new GrailsResourcesReferenceProvider().register(res);
+    new GormNamedArgumentReferenceProvider().register(res);
+    new DetachedCriteriaReferenceProvider().register(res);
+    new CriteriaPropertyReferenceProvider().register(res);
+    new GrailsPluginWebHelpReferenceProvider().register(res);
+
+    Condition<PsiMethod> condition = new Contributor.LightMethodCondition(TagLibNamespaceDescriptor.GSP_TAG_METHOD_MARKER);
+
+    for (TagAttributeReferenceProvider provider : GspTagSupportGspReferenceProvider.PROVIDERS) {
+      res.register(provider.getAttributeName(), provider, condition, provider.getTagNames());
+    }
+
+    res.register(0, WebFlowStateNameReferenceProvider.class, new Contributor.ClassNameCondition("org.codehaus.groovy.grails.webflow.engine.builder.TransitionTo"), "to");
   }
 
   public void register(@NotNull Object attrNameOrParameterIndex,

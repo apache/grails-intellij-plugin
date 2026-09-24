@@ -22,6 +22,8 @@ package org.apache.grails.intellij.plugin.gsp;
 import com.intellij.psi.PsiFile;
 import junit.framework.TestCase;
 import org.jetbrains.plugins.groovy.lang.GroovyFormatterTestCase;
+import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
+import org.junit.experimental.categories.Category;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -53,5 +55,7 @@ public class GspJsFormatterTest extends GroovyFormatterTestCase {
 
   public void testT1() throws IOException { doTest(); }
 
+  // formats the embedded javascript PSI block; the JavaScript plugin is absent from Community
+  @Category(UltimateOnlyTest.class)
   public void testT2() throws IOException { doTest(); }
 }

@@ -24,9 +24,13 @@ public final class NodeWeights {
   private NodeWeights() {}
 
   public static final int DOMAIN_CLASSES_FOLDER = 20;
+  public static final int SERVICES_FOLDER = 25;
   public static final int CONTROLLERS_FOLDER = 30;
+  public static final int IMAGES_FOLDER = 32;
+  public static final int JAVASCRIPTS_FOLDER = 33;
+  public static final int STYLESHEETS_FOLDER = 34;
   public static final int VIEWS_FOLDER = 40;
-  public static final int SERVICES_FOLDER = 50;
+  public static final int TRANSLATIONS_FOLDER = 45;
   public static final int CONFIG_FOLDER = 60;
   public static final int OTHER_GRAILS_APP_FOLDER = 64;
   public static final int WEB_APP_FOLDER = 65;

@@ -24,7 +24,13 @@ import com.intellij.psi.PsiFile;
 import org.jetbrains.plugins.groovy.codeInspection.assignment.GroovyAssignabilityCheckInspection;
 import org.apache.grails.intellij.lib.testFramework.Grails14TestCase;
 import org.apache.grails.intellij.lib.testFramework.GrailsTestCase;
+import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
+import org.junit.experimental.categories.Category;
 
+/**
+ * Bean DSL resolution in {@code resources.groovy} (and in {@code doWithSpring} closures of Grails
+ * plugin classes). The DSL support is independent of the Spring Support plugin.
+ */
 public class GrailsSpringDSLTest extends Grails14TestCase {
   public void testResolveResourcesGroovy() {
     addSimpleGroovyFile("class Foo1 { String name; def xxx }");
@@ -66,7 +72,12 @@ public class GrailsSpringDSLTest extends Grails14TestCase {
     GrailsTestCase.checkResolve(pluginFile, "unresolvedRef", "unresolvedRef2");
   }
 
-  // todo failing, missing deps?!
+  /**
+   * Bean-name "usage highlighting" is provided by the Spring Support plugin's own reference search
+   * over {@code resources.groovy} (present in the Ultimate test sandbox), not by the kept DSL
+   * contributor, so this stays Ultimate-only.
+   */
+  @Category(UltimateOnlyTest.class)
   public void testHighlightUsages() {
     addSimpleGroovyFile("class Foo1 { String name }");
 

@@ -17,6 +17,7 @@
  * under the License.
  */
 import org.jetbrains.intellij.platform.gradle.Constants
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 // Deliberately no allprojects/subprojects block: every project applies its own convention
@@ -38,7 +39,6 @@ dependencies {
         bundledPlugin 'com.intellij.javaee.web'
         bundledPlugin 'org.intellij.groovy'
         bundledPlugin 'com.intellij.database'
-        bundledPlugin 'com.intellij.spring'
         bundledPlugin 'com.intellij.gradle' // split out of org.jetbrains.plugins.gradle in 2026.2
         bundledPlugin 'org.jetbrains.plugins.gradle'
         bundledPlugin 'com.intellij.modules.ultimate'
@@ -188,6 +188,85 @@ def fixtureJarTasks = fixtureLibraries.collect { String directory, Map<String, S
             if (!missing.isEmpty()) {
                 throw new GradleException(
                         "Test fixture jars missing from $destination after sync: ${missing.join(', ')}")
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Community Edition targets (see tasks/prd-community-edition-support.md)
+//
+// The plugin ZIP is built once against Ultimate and stays a single artifact; Community Edition is
+// supported at runtime through optional <depends config-file> entries, runtime guards for the few
+// Ultimate classes that would otherwise be loaded from an unconditional code path, and these named
+// testing targets. Nobody downloads a Community distribution at configuration time -- the Azure
+// Pipelines nightly (tasks/CI.md SM6) invokes columns explicitly.
+// ---------------------------------------------------------------------------------------------
+intellijPlatformTesting {
+    // Registered only behind -PplatformEdition=IC. The IC checks belong to the opt-in Community
+    // targets, not to the default build: keeping them conditional keeps `./gradlew test`,
+    // `verifyPlugin` and `./gradlew runIde` from ever touching an IdeaIC download or the
+    // jacoco-report graph.
+    if (providers.gradleProperty('platformEdition').getOrElse('IU') == 'IC') {
+
+        // Community Edition tests. The same compiled test set runs on an IdeaIC sandbox, minus the
+        // tests that can only load when the Ultimate plugins they import are present.
+        testIde {
+            testIdeCe {
+                type.set(IntelliJPlatformType.IntellijIdeaCommunity)
+                version.set(providers.gradleProperty('platformVersion'))
+                // See intellij-plugin.gradle pluginVerification.ides: the standalone IC distribution
+                // is no longer published for 2025.3+, so resolve the published ideaIC Maven artifact.
+                useInstaller.set(false)
+                // The Maven and externalSystem integration test frameworks let the heavy importer
+                // tests (GrailsMavenImporterTest, GradleGrailsImportingTest) at least load on the
+                // Community sandbox; both are nevertheless excluded from execution below.
+                testFramework(TestFrameworkType.Plugin.Maven.INSTANCE)
+                testFramework(TestFrameworkType.Plugin.ExternalSystem.INSTANCE)
+                plugins {
+                    bundledPlugins(
+                            'org.intellij.groovy',
+                            'com.intellij.properties',
+                            'com.intellij.gradle',
+                            'org.jetbrains.plugins.gradle',
+                            'com.intellij.copyright', // GspCopyrightUpdaterTest
+                            'HtmlTools',              // GSP HTML completion fixtures
+                    )
+                }
+                task {
+                    // Fixture startup on the CE sandbox loads more classes than the 2g worker
+                    // default before running out of heap midway through the suite.
+                    maxHeapSize = '4g'
+                    // Ultimate-only tests are tagged with this JUnit category (see
+                    // libs/testFramework/org/apache/grails/intellij/lib/testFramework/UltimateOnlyTest.java)
+                    // and their imports would fail class loading on a sandbox without the Ultimate
+                    // plugins, so the Community run excludes them wholesale. The Community IDE itself
+                    // bundles no css-plugin and no JavaScript plugin in 2026.2+, which also affects
+                    // which bundledPlugins entries above are legal: keep the list to what the
+                    // ideaIC-2026.2 distribution actually contains (verified from its plugins/ dir).
+                    useJUnit {
+                        excludeCategories 'org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest'
+                    }
+                }
+            }
+        }
+
+        // A Community Edition sandbox for manual smoke checks (/c/g or the DevKit "Run" entry).
+        runIde {
+            runIdeCe {
+                type.set(IntelliJPlatformType.IntellijIdeaCommunity)
+                version.set(providers.gradleProperty('platformVersion'))
+                useInstaller.set(false)
+                plugins {
+                    bundledPlugins(
+                            'org.intellij.groovy',
+                            'com.intellij.properties',
+                            'com.intellij.css',
+                            'JavaScript',
+                            'com.intellij.gradle',
+                            'org.jetbrains.plugins.gradle',
+                    )
+                }
             }
         }
     }

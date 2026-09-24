@@ -22,8 +22,12 @@ package org.apache.grails.intellij.plugin.reference.taglib;
 import com.intellij.psi.PsiFile;
 import junit.framework.TestCase;
 import org.apache.grails.intellij.lib.testFramework.GrailsTestCase;
+import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
+import org.junit.experimental.categories.Category;
 
 public class GrailsTagLibNamedArgumentsTest extends GrailsTestCase {
+  // completion merges HTML event attributes (e.g. ondblclick) from the Ultimate web/JSP descriptor
+  @Category(UltimateOnlyTest.class)
   public void testCompletion() {
     PsiFile file = addController("""
                                    class CccController {
@@ -36,6 +40,8 @@ public class GrailsTagLibNamedArgumentsTest extends GrailsTestCase {
     checkCompletion(file, "controller", "uri", "url", "ondblclick");
   }
 
+  // named-argument reference resolution for taglib calls needs the Ultimate web/JSP descriptor merge
+  @Category(UltimateOnlyTest.class)
   public void testResolve() {
     configureByController("""
                             class CccController {

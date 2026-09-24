@@ -22,8 +22,12 @@ package org.apache.grails.intellij.plugin.gsp;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import org.apache.grails.intellij.lib.testFramework.GrailsTestCase;
+import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
 import org.junit.Assert;
+import org.junit.experimental.categories.Category;
 
+// embedded-javascript completion/resolution needs the JavaScript plugin, absent from Community.
+@Category(UltimateOnlyTest.class)
 public class GspJavascriptTest extends GrailsTestCase {
   public void testCompletionInGspTag() {
     PsiFile file = addView("a.gsp", """

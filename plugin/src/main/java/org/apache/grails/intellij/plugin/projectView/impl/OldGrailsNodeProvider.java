@@ -22,7 +22,6 @@ package org.apache.grails.intellij.plugin.projectView.impl;
 import com.intellij.ide.projectView.ViewSettings;
 import com.intellij.ide.projectView.impl.nodes.PsiFileNode;
 import com.intellij.ide.util.treeView.AbstractTreeNode;
-import com.intellij.javaee.JavaeeIcons;
 import com.intellij.lang.Language;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.project.Project;
@@ -40,6 +39,7 @@ import org.apache.grails.intellij.plugin.projectView.nodes.GrailsPsiDirectoryNod
 import org.apache.grails.intellij.plugin.projectView.nodes.OldGrailsPluginsNode;
 import org.apache.grails.intellij.plugin.structure.GrailsApplication;
 import org.apache.grails.intellij.plugin.structure.OldGrailsApplication;
+import org.apache.grails.intellij.plugin.util.UltimatePluginGuard;
 
 import javax.swing.Icon;
 import java.util.ArrayList;
@@ -67,7 +67,10 @@ public class OldGrailsNodeProvider implements GrailsViewNodeProvider {
 
     PsiDirectory webApp = GrailsViewItems.findPsiDirectory(oldApplication, "web-app");
     if (webApp != null) {
-      result.add(new GrailsPsiDirectoryNode(webApp, settings, JavaeeIcons.WEB_FOLDER_CLOSED,
+      result.add(new GrailsPsiDirectoryNode(webApp, settings,
+                                            UltimatePluginGuard.staticFieldValue("com.intellij.javaee.JavaeeIcons",
+                                                                                 "WEB_FOLDER_CLOSED",
+                                                                                 PlatformIcons.SOURCE_FOLDERS_ICON),
                                             NodeWeights.WEB_APP_FOLDER, "web-app"));
     }
 

@@ -26,7 +26,9 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.apache.grails.intellij.lib.testFramework.GrailsTestCase;
+import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
+import org.junit.experimental.categories.Category;
 
 import java.util.List;
 
@@ -40,6 +42,8 @@ public class GormHqlInjectionTest extends GrailsTestCase {
 
   private static final String HQL_LANGUAGE_ID = "HQL";
 
+  // the HQL language is only registered by the Ultimate Hibernate plugin
+  @Category(UltimateOnlyTest.class)
   public void testExecuteQueryIsInjected() {
     addDomain("class Book { String title }");
     PsiFile file = configureByDomain("""
@@ -52,6 +56,8 @@ public class GormHqlInjectionTest extends GrailsTestCase {
     assertInjectedLanguage(file, "from Book b where b.title = 'x'", HQL_LANGUAGE_ID);
   }
 
+  // the HQL language is only registered by the Ultimate Hibernate plugin
+  @Category(UltimateOnlyTest.class)
   public void testFindIsInjected() {
     addDomain("class Book { String title }");
     PsiFile file = configureByDomain("""
@@ -64,6 +70,8 @@ public class GormHqlInjectionTest extends GrailsTestCase {
     assertInjectedLanguage(file, "from Book b where b.title = ?", HQL_LANGUAGE_ID);
   }
 
+  // the HQL language is only registered by the Ultimate Hibernate plugin
+  @Category(UltimateOnlyTest.class)
   public void testUnqualifiedCallInsideDomainIsInjected() {
     PsiFile file = configureByDomain("""
                                        class Book {
