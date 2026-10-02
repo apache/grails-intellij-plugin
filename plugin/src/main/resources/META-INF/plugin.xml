@@ -128,6 +128,7 @@
     <membersContributor implementation="org.apache.grails.intellij.plugin.references.domain.namedQuery.NamedCriteriaProxyMembersContributor"/>
     <membersContributor implementation="org.apache.grails.intellij.plugin.pluginSupport.resources.GrailsResourcesClosureMethodContributor"/>
     <membersContributor implementation="org.apache.grails.intellij.plugin.spring.GrailsResourcesGroovyMemberContributor"/>
+    <membersContributor implementation="org.apache.grails.intellij.plugin.spring.GrailsBeansDslMemberContributor"/>
     <membersContributor implementation="org.apache.grails.intellij.plugin.references.domain.detachedCriteria.DetachedCriteriaClosureMemberProvider"/>
     <membersContributor implementation="org.apache.grails.intellij.plugin.references.domain.detachedCriteria.DetachedCriteriaMemberProvider"/>
     <membersContributor implementation="org.apache.grails.intellij.plugin.references.controller.HttpRequestMemberContributor"/>

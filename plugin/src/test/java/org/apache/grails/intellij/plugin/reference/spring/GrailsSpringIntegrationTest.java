@@ -172,6 +172,40 @@ public class GrailsSpringIntegrationTest extends HddGrailsTestCase {
   }
 
   /**
+   * Beans declared through the Grails 8 beans DSL are Spring beans, injectable by name like any other.
+   */
+  public void testBeansDslBeanInjection() {
+    myFixture.addClass("package grails.compiler.beans; public @interface GrailsBeans {}");
+    myFixture.addClass("package grails.boot.config; public class GrailsAutoConfiguration {}");
+    addSimpleGroovyFile("class Greeter { def greet() {} }");
+    addSimpleGroovyFile("class Formatter { def format() {} }");
+    addSimpleGroovyFile("class Shouter { def shout() {} }");
+    addSimpleGroovyFile("""
+                          class Application extends grails.boot.config.GrailsAutoConfiguration {
+                            def beans = {
+                              bean('greeter', Greeter)
+                              bean(Formatter).primary()
+                              group('loud').conditionalOnProperty('app.loud') {
+                                bean(Shouter)
+                              }
+                            }
+                          }
+                          """);
+
+    PsiFile controllerFile = addController("""
+                                             class CccController {
+                                               def greeter
+                                               def formatter
+                                               def shouter
+                                               {
+                                                 greeter.greet() + formatter.format() + shouter.shout() + greeter.format()
+                                               }
+                                             }
+                                             """);
+    HddGrailsTestCase.checkResolve(controllerFile, "format");
+  }
+
+  /**
    * Contributing references to the literal makes IntelliLang resolve the enclosing call to look for an injected
    * language, which in turn asks for the type of the {@code myService} argument. That reaches
    * {@link org.apache.grails.intellij.module.spring.InjectedSpringBeanProvider}, where the platform forbids expensive

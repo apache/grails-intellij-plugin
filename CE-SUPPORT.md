@@ -68,6 +68,10 @@ release.
 - Run configurations, the Grails console and the Grails Forge project wizard
 - The `beans {}` DSL in `resources.groovy` and `doWithSpring` closures
   (`GrailsResourcesGroovyMemberContributor` does not depend on the Spring plugin)
+- The Grails 8 compile-time beans DSL (`@GrailsBeans`, and the implicit `beans` property of plugin
+  descriptors, the `Application` class and unit tests): declarations, qualifier chains and shared
+  `field`/`method` members (`GrailsBeansDslMemberContributor`). Registering the declared beans in the
+  Spring model is part of the `spring` module
 - Gradle and Maven importing, coverage, copyright, i18n, language injection
 
 ## What does not work in Community Edition

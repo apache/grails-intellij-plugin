@@ -45,6 +45,7 @@ import com.intellij.spring.model.jam.stereotype.CustomSpringComponent;
 import com.intellij.util.ArrayUtil;
 import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.containers.MultiMap;
+import org.apache.grails.intellij.plugin.spring.GrailsBeansDsl;
 import org.apache.grails.intellij.plugin.spring.GrailsResourceBeanExtractor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -157,6 +158,11 @@ public final class GrailsSpringBeanDiscoverer extends CustomModuleComponentsDisc
     PsiManager psiManager = PsiManager.getInstance(module.getProject());
 
     addBeanFromResourceGroovy(result, existBeans, psiManager, structure.getAppRoot());
+
+    // Add beans declared through the Grails 8 beans DSL (application class, plugin descriptors, @GrailsBeans classes)
+    for (PsiClass host : GrailsBeansDsl.findBeansHosts(module)) {
+      convertBeans(result, existBeans, GrailsBeansDsl.getBeanDescriptors(host));
+    }
 
     Module commonPluginsModule = GrailsFramework.findCommonPluginsModule(module);
     if (commonPluginsModule != null) {
