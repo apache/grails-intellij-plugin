@@ -2,7 +2,9 @@
 
 IntelliJ IDEA plugin for the [Apache Grails](https://grails.apache.org/) framework:
 GSP language support (parsing, highlighting, completion, refactoring), Grails project
-structure and navigation, run configurations, taglib/domain-class support, and
+structure and navigation — with dedicated **Stylesheets**, **Images**, **JavaScripts**,
+**Migrations**, **Translations** and **Utils** nodes and separated Grails 7 test source roots — run
+configurations, taglib/domain-class support, and
 integrations for i18n, coverage, Hibernate, Maven, and language injection.
 
 The plugin runs on IntelliJ IDEA Ultimate and, with a reduced feature set, on IntelliJ IDEA

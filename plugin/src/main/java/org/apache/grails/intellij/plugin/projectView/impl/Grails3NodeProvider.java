@@ -23,10 +23,16 @@ import com.intellij.ide.projectView.ViewSettings;
 import com.intellij.ide.projectView.impl.nodes.PsiFileNode;
 import com.intellij.ide.projectView.impl.nodes.PsiFileSystemItemFilter;
 import com.intellij.ide.util.treeView.AbstractTreeNode;
+import com.intellij.openapi.vfs.VfsUtilCore;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiDirectory;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiFileSystemItem;
+import com.intellij.psi.PsiManager;
+import com.intellij.util.PlatformIcons;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.apache.grails.intellij.plugin.GroovyMvcIcons;
 import org.apache.grails.intellij.plugin.projectView.GrailsPluginsNode;
 import org.apache.grails.intellij.plugin.projectView.NodeWeights;
 import org.apache.grails.intellij.plugin.projectView.api.GrailsViewNodeProvider;
@@ -36,12 +42,21 @@ import org.apache.grails.intellij.plugin.util.version.Version;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import javax.swing.Icon;
 
 public class Grails3NodeProvider implements GrailsViewNodeProvider {
 
   private static final List<String> SPECIAL_FILES = List.of("build.gradle", "settings.gradle", "gradle.properties");
   private static final List<String> SPECIAL_DIRS = List.of("src/main/scripts", "src/main/webapp");
+
+  /**
+   * Grails 7 kebab-case test source roots under {@code src/}. The Grails 6 camelCase roots
+   * ({@code integrationTest}, {@code functionalTest}) deliberately stay inside the {@code src} node.
+   */
+  private static final Set<String> TEST_SOURCE_DIRS = Set.of("test", "integration-test", "functional-test");
 
   @Override
   public @NotNull Collection<AbstractTreeNode<?>> createNodes(@NotNull GrailsApplication application,
@@ -63,8 +78,21 @@ public class Grails3NodeProvider implements GrailsViewNodeProvider {
 
     PsiDirectory src = GrailsViewItems.findPsiDirectory(application, "src");
     if (src != null) {
-      PsiFileSystemItemFilter filter = item -> !specialDirs.contains(item) && GrailsViewItems.shouldShowItem(item);
+      List<PsiDirectory> testDirs = findTestSourceDirectories(src);
+      // Directories that get their own node, so src can refuse to claim them. PsiDirectoryNode.contains()
+      // only applies a node's filter to the file and its immediate parent, so hiding the directories from
+      // src is not enough: src would still claim their contents, and Reveal in Project View would expand
+      // src and dead-end. isAncestor(dir, dir, false) is true, so one check covers the directories too.
+      Set<VirtualFile> lifted = liftedDirectories(specialDirs, testDirs);
+      PsiFileSystemItemFilter filter = item -> !isUnder(lifted, item.getVirtualFile())
+        && GrailsViewItems.shouldShowItem(item);
       result.add(new GrailsPsiDirectoryNode(src, settings, NodeWeights.SRC_FOLDERS, filter));
+
+      for (PsiDirectory testDir : testDirs) {
+        Icon icon = "test".equals(testDir.getName()) ? PlatformIcons.TEST_SOURCE_FOLDER : GroovyMvcIcons.Grails_test;
+        result.add(new GrailsPsiDirectoryNode(testDir, settings, icon, NodeWeights.TESTS_FOLDER, null,
+                                             GrailsViewItems::shouldShowItem));
+      }
     }
 
     for (String path : SPECIAL_FILES) {
@@ -76,5 +104,34 @@ public class Grails3NodeProvider implements GrailsViewNodeProvider {
 
     result.add(new GrailsPluginsNode(application.getProject(), settings));
     return result;
+  }
+
+  /** Direct children of the {@code src} directory that are Grails 7 test source roots. */
+  private static @NotNull List<PsiDirectory> findTestSourceDirectories(@NotNull PsiDirectory src) {
+    List<PsiDirectory> result = new ArrayList<>();
+    for (VirtualFile child : src.getVirtualFile().getChildren()) {
+      if (child.isDirectory() && TEST_SOURCE_DIRS.contains(child.getName())) {
+        PsiDirectory directory = PsiManager.getInstance(src.getProject()).findDirectory(child);
+        if (directory != null) result.add(directory);
+      }
+    }
+    return result;
+  }
+
+  /** The directories that are rendered as their own node, so {@code src} can refuse to claim them. */
+  private static @NotNull Set<VirtualFile> liftedDirectories(@NotNull List<PsiDirectory> specialDirs,
+                                                             @NotNull List<PsiDirectory> testDirs) {
+    Set<VirtualFile> result = new HashSet<>();
+    for (PsiDirectory directory : specialDirs) result.add(directory.getVirtualFile());
+    for (PsiDirectory directory : testDirs) result.add(directory.getVirtualFile());
+    return result;
+  }
+
+  private static boolean isUnder(@NotNull Set<VirtualFile> directories, @Nullable VirtualFile file) {
+    if (file == null) return false;
+    for (VirtualFile directory : directories) {
+      if (VfsUtilCore.isAncestor(directory, file, false)) return true;
+    }
+    return false;
   }
 }

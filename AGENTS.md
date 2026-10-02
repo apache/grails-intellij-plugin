@@ -118,7 +118,7 @@ is a pure aggregator — it owns only RAT and coverage aggregation, no sources.
 
 | Path | Gradle project | Description |
 |------|----------------|-------------|
-| `plugin/` | `:plugin` | Main plugin: GSP language, Grails project support, run configs. Compiles against the Community Edition API only |
+| `plugin/` | `:plugin` | Main plugin: GSP language, Grails project support, run configs. Compiles against the Community Edition API only. Its Grails 3+ pane surfaces dedicated **Stylesheets**/**Images**/**JavaScripts**, **Migrations**, **Translations**, **Utils** and separated Grails 7 test-root nodes |
 | `pluginModules/{copyright,coverage,database,hibernate,i18n,javaee,jsp,langInjection,maven,spring}/` | `:pluginModules-*` | Optional IntelliJ content modules (`pluginModule` deps). `spring`, `javaee`, `database` and `hibernate` hold the Ultimate-only integrations and are skipped on Community Edition |
 | `libs/gradle-tooling/` | `:libs-gradle-tooling` | Gradle tooling API model builders |
 | `libs/grails-rt/` | `:libs-grails-rt` | Runtime injected into user apps (Java 8) |

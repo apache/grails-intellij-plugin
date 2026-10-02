@@ -98,9 +98,14 @@ that Grails 3+ actually uses.
 3. Grails **6.x** (legacy baseline, for the legacy plugin's regression record).
 
 Walk this checklist per app and record works / broken / missing:
-- [ ] Project recognized as Grails; `grails-app/*` project view pane renders
-      controllers/domain/services/taglib/views/conf/i18n/**init**/**utils**/assets
-      groups (init/ and utils/ are conventions the plugin may predate).
+- [x] Project recognized as Grails; `grails-app/*` project view pane renders
+      controllers/domain/services/taglib/views/conf/i18n/**init**/**utils**/migrations/assets
+      groups.
+      Shipped: `i18n` renders as **Translations**, `assets/{stylesheets,images,javascripts}` as
+      **Stylesheets**/**Images**/**JavaScripts**, `utils` as **Utils**, and `migrations` as
+      **Migrations**. Directory order is **Images, JavaScripts, Stylesheets, Views, Migrations,
+      Translations, Utils, Initialization, Configuration, Other sources**.
+      Which of these directories a generated app actually has is recorded in 2.2.
 - [ ] `Application.groovy` in `grails-app/init/` (extends
       `grails.boot.config.GrailsAutoConfiguration`, runs via `GrailsApp.run`) is
       recognized as the run entry point.
@@ -195,6 +200,16 @@ Detection must work from Gradle dependency data (the plugin already has a
       init,utils,assets}` plus `src/main/groovy`, `src/test/groovy`,
       `src/integration-test/groovy` (registered by `TestPhasesGradlePlugin`) and
       `src/functional-test/groovy` (functional/Geb phase) source sets.
+      **Ground truth (grails-core `8.0.x`, checked 2026-10-01):** the generated web skeleton is
+      `grails-app/{assets,conf,controllers,domain,services,taglib,utils,views}` — so `utils` **is**
+      generated (and holds user `*Codec` classes) while `init/` is **not**; both are worth
+      recognising, `utils` because every new app has it and `init/` because the Application class
+      lands there. `grails-app/migrations` is real and **is** surfaced, but comes from the
+      database-migration plugin rather than the skeleton. **Known gap:** only the default location
+      is honoured — `grails.plugin.databasemigration.changelogLocation` (and its per-datasource
+      variant) can move it, including to an absolute path, and nothing in the plugin reads that
+      setting. Honouring it needs the YAML config work in 2.5 first; until then a moved migrations
+      directory silently falls back to **Other sources**.
 - [ ] `grails-app/conf`: `application.yml` (primary), `application.groovy`,
       `runtime.groovy`, `logback-spring.xml`, `spring/resources.groovy` (bean DSL —
       keep existing support, verify against Boot 3/4 world).
