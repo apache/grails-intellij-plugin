@@ -130,6 +130,7 @@
     <membersContributor implementation="org.apache.grails.intellij.plugin.spring.GrailsResourcesGroovyMemberContributor"/>
     <membersContributor implementation="org.apache.grails.intellij.plugin.references.domain.detachedCriteria.DetachedCriteriaClosureMemberProvider"/>
     <membersContributor implementation="org.apache.grails.intellij.plugin.references.domain.detachedCriteria.DetachedCriteriaMemberProvider"/>
+    <membersContributor implementation="org.apache.grails.intellij.plugin.references.domain.detachedCriteria.WhereQueryClosureMemberContributor"/>
     <membersContributor implementation="org.apache.grails.intellij.plugin.references.controller.HttpRequestMemberContributor"/>
     <membersContributor implementation="org.apache.grails.intellij.plugin.references.controller.HttpResponseMemberContributor"/>
     <astTransformationSupport implementation="org.apache.grails.intellij.plugin.lang.Grails3TraitInjectorContributor"/>
