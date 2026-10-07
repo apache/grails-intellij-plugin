@@ -100,7 +100,10 @@ public abstract class GrailsNodeProviderTestSupport extends GrailsTestCase {
   /**
    * Reads a node the way the renderer does: {@code updateImpl} then {@code postprocess}. The second call
    * matters, because {@code PsiDirectoryNode} writes the directory name into the presentation during
-   * {@code updateImpl} and {@code GrailsPsiDirectoryNode} only replaces it afterwards.
+   * {@code updateImpl} — as coloured fragments when the directory is a module content root, and otherwise
+   * via {@code setPresentableText}, taking the qualified name from
+   * {@code ProjectViewDirectoryHelper.getNodeName} — and {@code GrailsPsiDirectoryNode} only replaces it
+   * afterwards.
    */
   protected static @NotNull PresentationData rendered(@NotNull GrailsPsiDirectoryNode node) {
     // update() runs updateImpl and then postprocess, which is the sequence the renderer sees; getPresentation()

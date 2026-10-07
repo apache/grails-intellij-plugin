@@ -47,10 +47,16 @@ public class GrailsPsiDirectoryNodeTest extends GrailsTestCase {
   }
 
   /**
-   * Gradle's per-source-set modules make test directories module content roots. Only content roots
-   * receive the platform's coloured fragments, which take precedence over {@code presentableText}.
-   * Register the directory accordingly and verify that the platform adds fragments before our title
-   * replaces them, reproducing the case where a test root failed to render as {@code Tests:unit}.
+   * Gradle's per-source-set modules make test directories module content roots, and only content roots
+   * receive the platform's coloured fragments, which take precedence over {@code presentableText}. Every
+   * other directory is labelled by {@code setPresentableText} from
+   * {@code ProjectViewDirectoryHelper.getNodeName} and gets no fragments, which is why a nested directory
+   * like {@code grails-app/i18n} has nothing for this hook to replace.
+   *
+   * <p>So the directory is registered as a content entry: that is what makes the platform write its
+   * fragments first, reproducing the case where a test root failed to render as {@code Tests:unit}. The
+   * assertions below cover both halves — that the platform's own fragments are present beforehand, and
+   * that the title replaces them.
    */
   public void testTitleReplacesTheModuleContentRootFragments() {
     PsiDirectory directory = findDirectoryCreatedBy("src/test/ExampleSpec.groovy");
