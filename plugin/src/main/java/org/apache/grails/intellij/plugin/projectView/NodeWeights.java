@@ -45,6 +45,7 @@ public final class NodeWeights {
   public static final int WEB_APP_FOLDER = 65;
   public static final int SRC_FOLDERS = 70;
   public static final int TESTS_FOLDER = 80;
+  public static final int CUSTOM_FOLDER = 85;
   public static final int TAGLIB_FOLDER = 90;
   public static final int FOLDER = 100;
 }

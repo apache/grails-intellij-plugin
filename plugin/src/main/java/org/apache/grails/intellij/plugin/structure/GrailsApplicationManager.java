@@ -30,6 +30,7 @@ import com.intellij.openapi.project.ProjectUtil;
 import com.intellij.openapi.roots.ProjectFileIndex;
 import com.intellij.openapi.util.ModificationTracker;
 import com.intellij.openapi.util.SimpleModificationTracker;
+import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -102,12 +103,32 @@ public final class GrailsApplicationManager implements ModificationTracker, Disp
   public @Nullable GrailsApplication findApplication(@Nullable VirtualFile file) {
     if (file == null || !hasApplications()) return null;
     final VirtualFile projectDir = getProjectDir();
-    for (VirtualFile currentFile = myFileIndex.getContentRootForFile(file); currentFile != null; currentFile = currentFile.getParent()) {
+    for (VirtualFile currentFile = startOfWalk(file, projectDir); currentFile != null; currentFile = currentFile.getParent()) {
       final GrailsApplication application = getApplicationByRoot(currentFile);
       if (application != null) return application;
       if (currentFile.equals(projectDir)) break;
     }
     return null;
+  }
+
+  /**
+   * Where the upward walk in {@link #findApplication(VirtualFile)} starts: the file's content root,
+   * as before, or the file itself when it has none.
+   * <p>
+   * An excluded file has no content root — Gradle marks {@code build/} and {@code .gradle/} excluded
+   * on import — so starting at the content root left those directories resolving to no application
+   * at all, and a caller asking about a folder that plainly sits under an application root was told
+   * there is none. Starting at the file is what lets it walk up to the root it lives under.
+   * <p>
+   * A file outside the project still gets no walk: it starts at the file only when the project
+   * directory is an ancestor, so an absolute path from elsewhere keeps resolving to null rather
+   * than picking up whatever application happens to be nearest.
+   */
+  private @Nullable VirtualFile startOfWalk(@NotNull VirtualFile file, @Nullable VirtualFile projectDir) {
+    VirtualFile contentRoot = myFileIndex.getContentRootForFile(file);
+    if (contentRoot != null) return contentRoot;
+    if (projectDir == null) return null;
+    return VfsUtilCore.isAncestor(projectDir, file, false) ? file : null;
   }
 
   /** The directory the project configuration lives under: the upper bound of the walk above. */

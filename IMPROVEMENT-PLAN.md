@@ -342,6 +342,93 @@ Controller, Domain, Service, TagLib, UrlMappings (fixed name, lives in
       data-service usage) so modern support has regression coverage — today's suite
       guards the legacy era.
 
+### 2.8 External directory browsing in Grails View custom folders
+
+The Grails View pane lets users configure custom folder locations (global
+defaults with a per-project override) that appear as nodes below the test
+nodes. Up to six are rendered by default; the limit is a setting on
+*Languages & Frameworks ▸ Grails*. Currently a custom folder path is relative
+and is resolved against the Grails application root: a directory outside the
+Grails application (e.g. `/home/user/Documents`) cannot be browsed, and an
+absolute path is read as relative, resolves to nothing and renders as a
+placeholder rather than disappearing.
+
+This feature would let users point a custom folder location at **any filesystem
+path**, including directories outside the project:
+
+- [ ] Relax the custom-folder path resolution to accept arbitrary absolute
+      paths, not just application-relative directories
+- [ ] Filesystem-backed tree node for custom folders outside the project VFS,
+      or integration with the platform's `VirtualFileManager` for external paths
+- [ ] UI affordance: the custom-folder path input should accept manually typed
+      paths (not just directory choosers restricted to project content)
+- [ ] Consider read-only vs. read-write access for external files (editing may
+      conflict with the platform's file-watcher and VFS assumptions)
+
+**Limitation:** Until this feature is implemented, custom folder locations in
+the Grails View can only reference directories inside the Grails application —
+the configured path is relative and is resolved against the application root, so
+a directory inside the project but outside the application (for instance a
+sibling module in a multi-project build) cannot be browsed either. Hidden
+dot-directories are *not* a further limitation: the platform's default *Ignored
+Files and Folders* list holds specific named entries and glob suffixes (`.git`,
+`*.pyc`, `*~`) rather than any rule covering dot-directories, so `.github`
+resolves and its contents render. The ignore list is never consulted for the custom
+folder node itself, so the node survives an ignore entry the user adds themselves.
+Such an entry does not hide the folder's contents, because the platform matches each
+child under its own name and an entry for `.github` does not match `workflows` or
+`ci.yml`; and it does not stop *Reveal* for a file inside the folder, because
+`contains()` reads the file being revealed and that file is not itself ignored. The one
+thing it does stop is *Reveal* selecting the folder node itself, whose own `contains()`
+then answers false. The earlier wording here claimed they were filtered;
+that was checked rather than assumed and is false, and the checkbox asking for
+"hidden directory support" was dropped on that basis — there is nothing to support.
+Pinned by
+`GrailsCustomFoldersPaneTest#testHiddenDotDirectoryRendersAsAnExpandableFolderNode`
+(which asserts `.github` is not ignored while `.git` is) and
+`#testAbsolutePathOutsideTheApplicationRendersAsPlaceholder`. There is no
+built-in way to browse arbitrary external directories in IntelliJ IDEA's
+Project View. The available workarounds are:
+
+- **Navigate → File** (`Ctrl+Shift+N`) — open individual files by path or
+  name without adding anything to the project. No tree browsing.
+- **Built-in Terminal** (`Alt+F12`) — full filesystem access via `cd`, `ls`,
+  etc.
+- **File → New → Module from Existing Sources** — only works if the directory
+  is a project with a build file (e.g. a Gradle or Maven project). It cannot
+  create a module from a random directory of files.
+
+Drag-and-drop into the Project View offers to **copy** the folder into the
+project rather than link it.
+
+### 2.9 Controlling the order of Grails View custom folders
+
+The Grails View pane renders custom folder nodes sorted **alphabetically by folder
+name**, and there is no way to change that order. A user whose working folders are
+`zz-scripts/`, `aa-docs/` and `mm-notes/` gets them in exactly that order whether
+they want it or not, because *Add as Custom Folder* appends to the configuration
+but the provider re-sorts on every build.
+
+This feature would let the user decide the order the custom folders are rendered
+in:
+
+- [ ] Store an explicit position alongside each folder path, or give each folder a
+      weight the user can edit, or let the user drag-to-reorder the rows on the
+      settings page
+- [ ] Keep the alphabetical sort as the default for folders with no explicit
+      position, so existing configuration renders unchanged
+- [ ] Reflect a reorder in the live preview on the settings page without an Apply
+- [ ] Make *Add as Custom Folder* append to the end of the list rather than
+      wherever the alphabetical sort happens to place the new folder
+- [ ] Reflect a reorder in the tree without a project reload, the way the folder
+      list itself already does
+
+**Limitation:** This is a follow-up only; nothing here is implemented. Until it is,
+custom folders always render alphabetically and the order is not configurable — the
+settings page lists the folders in configuration order and the provider sorts
+alphabetically on every build. The only lever available today is to name the folders
+so that the alphabetical sort lands on the order wanted.
+
 ---
 
 ## Phase 3 — Creating the new plugin (fork + prune + rename)

@@ -76,6 +76,7 @@ public class NodeWeightsTest {
     expected.put("WEB_APP_FOLDER", 65);
     expected.put("SRC_FOLDERS", 70);
     expected.put("TESTS_FOLDER", 80);
+    expected.put("CUSTOM_FOLDER", 85);
     expected.put("TAGLIB_FOLDER", 90);
     expected.put("FOLDER", 100);
 

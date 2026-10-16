@@ -22,11 +22,13 @@ package org.apache.grails.intellij.plugin.projectView.impl;
 import com.intellij.ide.projectView.ViewSettings;
 import com.intellij.ide.util.treeView.AbstractTreeNode;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiDirectory;
 import com.intellij.psi.PsiManager;
 import org.jetbrains.annotations.NotNull;
 import org.apache.grails.intellij.plugin.artefact.api.ArtefactHandlers;
 import org.apache.grails.intellij.plugin.artefact.api.GrailsDisplayableArtefactHandler;
+import org.apache.grails.intellij.plugin.config.GrailsConstants;
 import org.apache.grails.intellij.plugin.projectView.api.GrailsViewNodeProvider;
 import org.apache.grails.intellij.plugin.projectView.nodes.GrailsArtefactHandlerNode;
 import org.apache.grails.intellij.plugin.projectView.nodes.GrailsPsiDirectoryNode;
@@ -60,9 +62,12 @@ public final class GrailsAppNodeProvider implements GrailsViewNodeProvider {
       addSpecialFolderNode(application, settings, project, result, entry);
     }
 
-    PsiDirectory appRoot = PsiManager.getInstance(project).findDirectory(application.getAppRoot());
-    if (appRoot != null) {
-      result.add(new OtherGrailsAppSourcesNode(appRoot, settings));
+    VirtualFile appRootVirtualFile = application.getRoot().findChild(GrailsConstants.APP_DIRECTORY);
+    if (appRootVirtualFile != null) {
+      PsiDirectory appRoot = PsiManager.getInstance(project).findDirectory(appRootVirtualFile);
+      if (appRoot != null) {
+        result.add(new OtherGrailsAppSourcesNode(appRoot, settings));
+      }
     }
 
     return result;

@@ -8,6 +8,22 @@ integrations for i18n, coverage, Hibernate, Maven, and language injection.
 The Grails project view pane gives `grails-app/` dedicated **Stylesheets**, **Images**,
 **JavaScripts**, **Migrations**, **Translations** and **Utils** nodes, and lifts the test
 source roots out of `src` as **Tests:unit**, **Tests:integration** and **Tests:functional**.
+Users can configure custom folders — global defaults with a per-project override —
+that appear as nodes below the test nodes in the Grails view. Custom folders reference
+directories within the Grails application: a configured path is relative and is resolved
+against the Grails application root, so there is no built-in way to browse an external
+directory in the Grails view. Six folders render at a time by default; the limit is a
+setting on *Languages & Frameworks ▸ Grails*, where it can be raised or lowered.
+Hidden directories such as `.github` render as folder nodes, because the ignore list
+is never consulted for a custom folder node itself. Their contents show too: the
+default *Ignored Files and Folders* list matches named entries and glob suffixes
+such as `.git` rather than dot-directories as a class. Adding `.github` to that list
+yourself leaves the node where it is and leaves its contents visible — the platform
+matches each child under its own name, so an entry for `.github` does not match
+`workflows` or `ci.yml` — and a file inside the folder is still reachable, because
+the *Reveal* check reads the file being revealed. The one thing it does stop is
+*Reveal in Project View* selecting the `.github` node itself, whose own `contains()`
+then answers false.
 
 The plugin runs on IntelliJ IDEA Ultimate and, with a reduced feature set, on IntelliJ IDEA
 Community Edition 2026.2+ (see [CE-SUPPORT.md](CE-SUPPORT.md)).

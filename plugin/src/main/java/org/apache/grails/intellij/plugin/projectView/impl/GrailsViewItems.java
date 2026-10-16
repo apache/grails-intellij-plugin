@@ -32,6 +32,7 @@ import org.jetbrains.annotations.Nullable;
 import org.apache.grails.intellij.plugin.GroovyMvcIcons;
 import org.apache.grails.intellij.plugin.artefact.api.GrailsDisplayableArtefactHandler;
 import org.apache.grails.intellij.plugin.artefact.impl.GrailsArtefacts;
+import org.apache.grails.intellij.plugin.config.GrailsConstants;
 import org.apache.grails.intellij.plugin.projectView.NodeWeights;
 import org.apache.grails.intellij.plugin.structure.GrailsApplication;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyFile;
@@ -96,9 +97,15 @@ public final class GrailsViewItems {
     return file != null ? PsiManager.getInstance(application.getProject()).findDirectory(file) : null;
   }
 
-  /** Resolves relative to {@code grails-app} rather than the application root. */
+  /**
+   * Resolves relative to {@code grails-app} rather than the application root. A missing
+   * {@code grails-app} resolves to null instead of throwing: the directory can disappear while the
+   * application object is still alive, and callers render a node only when the result is non-null.
+   */
   public static @Nullable PsiDirectory findAppPsiDirectory(@NotNull GrailsApplication application, @NotNull String name) {
-    VirtualFile file = application.getAppRoot().findFileByRelativePath(name);
+    VirtualFile appRoot = application.getRoot().findChild(GrailsConstants.APP_DIRECTORY);
+    if (appRoot == null) return null;
+    VirtualFile file = appRoot.findFileByRelativePath(name);
     return file != null ? PsiManager.getInstance(application.getProject()).findDirectory(file) : null;
   }
 
