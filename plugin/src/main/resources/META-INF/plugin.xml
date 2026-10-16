@@ -185,11 +185,25 @@
     <astTransformationSupport implementation="org.apache.grails.intellij.plugin.feature.linkable.LinkableTransformationSupport"/>
     <namedArgumentProvider implementation="org.apache.grails.intellij.plugin.feature.linkable.LinkableNamedArgumentsProvider"/>
 
+    <!--grails.plugin.scaffolding.annotation.Scaffold: the class extends RestfulController<Domain> / GormService<Domain>-->
+    <astTransformationSupport implementation="org.apache.grails.intellij.plugin.feature.scaffold.ScaffoldTransformationSupport"/>
+
     <delegatesToProvider
         implementation="org.apache.grails.intellij.plugin.references.domain.detachedCriteria.DetachedCriteriaDelegatesToProvider"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">
+    <!--What @Scaffold adds to a controller or service, since none of it is in the source-->
+    <codeInsight.declarativeInlayProvider language="Groovy"
+                                          implementationClass="org.apache.grails.intellij.plugin.feature.scaffold.ScaffoldInlayHintsProvider"
+                                          isEnabledByDefault="true"
+                                          group="OTHER_GROUP"
+                                          providerId="grails.scaffold.members"
+                                          bundle="messages.GrailsBundle"
+                                          nameKey="inlay.scaffold.name"
+                                          descriptionKey="inlay.scaffold.description"/>
+    <lang.structureViewExtension implementation="org.apache.grails.intellij.plugin.feature.scaffold.ScaffoldStructureViewExtension"/>
+
     <registryKey key="grails.advanced.mode" defaultValue="false"
                  description="Use to enable advanced mode for the domain class relations editor."/>
     <registryKey key="grails.simple.debug" defaultValue="false"

@@ -148,7 +148,10 @@ public class GrailsCompletionTest extends GrailsTestCase {
 
   public void testModifiersInGspGroovyDeclaration() {
     final List<String> data = myFixture.getCompletionVariants(getTestName(false) + ".gsp");
-    TestCase.assertTrue(data.toString(), data.containsAll(Arrays.asList("final", "public", "protected", "private", "static", "int")));
+    TestCase.assertTrue(data.toString(), data.containsAll(Arrays.asList("final", "public", "protected", "private", "static")));
+    // the primitive type keywords come from GrailsCompletionContributor.BUILT_IN_TYPES, not from the Groovy plugin
+    TestCase.assertTrue(data.toString(), data.containsAll(
+      Arrays.asList("boolean", "byte", "char", "short", "int", "float", "long", "double", "void")));
   }
 
   public void testConstrainsPropertyInDomainClass() {

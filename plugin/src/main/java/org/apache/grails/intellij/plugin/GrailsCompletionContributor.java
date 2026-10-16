@@ -69,6 +69,14 @@ public final class GrailsCompletionContributor extends CompletionContributor {
   private static final PsiElementPattern.Capture<PsiElement> grReferencePattern =
     PlatformPatterns.psiElement().withParent(GrReferenceExpression.class);
 
+  /**
+   * Primitive type keywords offered at the start of a statement in a GSP {@code <%! %>} declaration block.
+   * Kept here because {@code GroovyCompletionData.BUILT_IN_TYPES} became private in 2026.3 (IDEA-390518).
+   */
+  private static final String[] BUILT_IN_TYPES = {
+    "boolean", "byte", "char", "short", "int", "float", "long", "double", "void"
+  };
+
   public GrailsCompletionContributor() {
     extend(CompletionType.BASIC, grReferencePattern, new GormDynamicFinderCompletionProvider());
     extend(CompletionType.BASIC, grReferencePattern, new DomainStaticMemberCompletionProvider());
@@ -92,7 +100,7 @@ public final class GrailsCompletionContributor extends CompletionContributor {
           try (FastGroovyCompletionConsumer consumer = new FastGroovyCompletionConsumer(result)) {
             GroovyCompletionData.addKeywords(consumer, true, PsiModifier.STATIC, PsiModifier.FINAL);
             GroovyCompletionData.addModifiers(parameters.getPosition(), consumer);
-            GroovyCompletionData.addKeywords(consumer, true, GroovyCompletionData.BUILT_IN_TYPES);
+            GroovyCompletionData.addKeywords(consumer, true, BUILT_IN_TYPES);
           }
         }
       }
