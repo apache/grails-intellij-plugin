@@ -395,7 +395,7 @@ public abstract class GrailsTestCase extends LightJavaCodeInsightFixtureTestCase
       packageName = matcher.group(1);
     }
 
-    matcher = Pattern.compile("\\bclass\\s+([\\w\\$\\.]*[\\w\\$])\\s*(?:\\{|extends\\b|implements\\b)", Pattern.DOTALL).matcher(classText);
+    matcher = Pattern.compile("\\b(?:class|interface|trait)\\s+([\\w\\$\\.]*[\\w\\$])\\s*(?:\\{|extends\\b|implements\\b)", Pattern.DOTALL).matcher(classText);
 
     if (!matcher.find()) return null;
 

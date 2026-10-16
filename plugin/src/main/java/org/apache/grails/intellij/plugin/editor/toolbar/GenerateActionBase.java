@@ -31,7 +31,7 @@ import org.apache.grails.intellij.plugin.actions.GrailsActionUtil;
 import org.apache.grails.intellij.plugin.runner.GrailsCommandExecutor;
 import org.apache.grails.intellij.plugin.runner.GrailsCommandExecutorUtil;
 import org.apache.grails.intellij.plugin.util.GrailsArtifact;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
 import org.apache.grails.intellij.plugin.mvc.MvcCommand;
 
 import javax.swing.Icon;
@@ -69,7 +69,7 @@ public abstract class GenerateActionBase extends AnAction {
   public void actionPerformed(@NotNull AnActionEvent e) {
     ArtefactData data = GrailsActionUtil.getArtefactData(e.getDataContext());
     if (data == null) return;
-    GrClassDefinition domainClass = findDomainClass(data);
+    GrTypeDefinition domainClass = findDomainClass(data);
     if (domainClass == null) return;
     String domainClassName = domainClass.getQualifiedName();
     if (domainClassName == null) return;
@@ -94,12 +94,12 @@ public abstract class GenerateActionBase extends AnAction {
   public void onDone(@NotNull ArtefactData data) {
   }
 
-  static @Nullable GrClassDefinition findDomainClass(@NotNull ArtefactData data) {
+  static @Nullable GrTypeDefinition findDomainClass(@NotNull ArtefactData data) {
     return single(GrailsArtifact.DOMAIN.getInstances(data.getModule(), data.getPackageName(), data.getArtefactName()));
   }
 
   /** Kotlin's {@code singleOrNull()}: the element only when there is exactly one. */
-  static @Nullable GrClassDefinition single(@NotNull Collection<GrClassDefinition> classes) {
+  static @Nullable GrTypeDefinition single(@NotNull Collection<GrTypeDefinition> classes) {
     return classes.size() == 1 ? classes.iterator().next() : null;
   }
 }

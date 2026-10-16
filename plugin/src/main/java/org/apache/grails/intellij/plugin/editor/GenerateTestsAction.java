@@ -36,7 +36,7 @@ import org.apache.grails.intellij.plugin.structure.GrailsApplication;
 import org.apache.grails.intellij.plugin.tests.GrailsTestUtils;
 import org.apache.grails.intellij.plugin.util.GrailsArtifact;
 import org.apache.grails.intellij.plugin.util.GrailsUtils;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
 import org.apache.grails.intellij.plugin.mvc.MvcCommand;
 
 import java.util.Collection;
@@ -108,7 +108,7 @@ public class GenerateTestsAction extends AnAction {
   }
 
   private @Nullable PsiClass getTestedClass(@NotNull Module module) {
-    Collection<GrClassDefinition> instances = myArtifactType.getInstances(module, myArtifactName);
+    Collection<GrTypeDefinition> instances = myArtifactType.getInstances(module, myArtifactName);
     if (instances.isEmpty()) return null;
 
     return instances.iterator().next();

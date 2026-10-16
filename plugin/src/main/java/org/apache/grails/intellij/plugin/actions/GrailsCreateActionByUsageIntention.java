@@ -48,7 +48,7 @@ import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElementFactory;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariableDeclaration;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrCodeBlock;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.members.GrAccessorMethod;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.members.GrMembersDeclaration;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.members.GrMethod;
@@ -69,7 +69,7 @@ public final class GrailsCreateActionByUsageIntention implements IntentionAction
     return getText();
   }
 
-  public static @Nullable Pair<GrClassDefinition, String> getData(Editor editor, PsiFile file) {
+  public static @Nullable Pair<GrTypeDefinition, String> getData(Editor editor, PsiFile file) {
     if (!(file instanceof GroovyFileBase || file instanceof GspFile)) return null;
 
     PsiReference ref = file.findReferenceAt(editor.getCaretModel().getOffset());
@@ -93,7 +93,7 @@ public final class GrailsCreateActionByUsageIntention implements IntentionAction
     Module module = ModuleUtilCore.findModuleForPsiElement(file);
     if (module == null) return null;
 
-    Collection<GrClassDefinition> instances = GrailsArtifact.CONTROLLER.getInstances(module, controllerName);
+    Collection<GrTypeDefinition> instances = GrailsArtifact.CONTROLLER.getInstances(module, controllerName);
     if (instances.isEmpty()) return null;
 
     String actionName = ((ActionReference)ref).getValue();
@@ -104,14 +104,14 @@ public final class GrailsCreateActionByUsageIntention implements IntentionAction
 
   @Override
   public boolean isAvailable(@NotNull Project project, Editor editor, PsiFile psiFile) {
-    Pair<GrClassDefinition, String> pair = getData(editor, psiFile);
+    Pair<GrTypeDefinition, String> pair = getData(editor, psiFile);
 
     return pair != null;
   }
 
   @Override
   public void invoke(@NotNull Project project, Editor editor, PsiFile psiFile) throws IncorrectOperationException {
-    Pair<GrClassDefinition, String> pair = getData(editor, psiFile);
+    Pair<GrTypeDefinition, String> pair = getData(editor, psiFile);
     if (pair == null) return;
 
     Module module = ModuleUtilCore.findModuleForPsiElement(psiFile);

@@ -61,7 +61,7 @@ import org.apache.grails.intellij.plugin.util.version.Version;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrField;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
 import org.jetbrains.plugins.groovy.lang.resolve.ResolveUtil;
 import org.apache.grails.intellij.plugin.mvc.MvcModuleStructureSynchronizer;
 
@@ -130,11 +130,11 @@ public final class GspTagLibUtil {
     // custom prefixes appear when getTagLibClasses() recomputes on the DumbService tracker.
     if (DumbService.isDumb(module.getProject())) return res;
 
-    final Collection<GrClassDefinition> taglibs = new LinkedHashSet<>();
+    final Collection<GrTypeDefinition> taglibs = new LinkedHashSet<>();
     taglibs.addAll(GrailsArtifact.TAGLIB.getInstances(module).values());
     taglibs.addAll(searchTaglibsInClassPath(module));
 
-    for (GrClassDefinition classDefinition : taglibs) {
+    for (GrTypeDefinition classDefinition : taglibs) {
       String prefix = getPrefixByTagLibClass(classDefinition);
 
       TagLibNamespaceDescriptor descr = res.get(prefix);
@@ -170,7 +170,7 @@ public final class GspTagLibUtil {
     return res;
   }
 
-  private static @NotNull Collection<GrClassDefinition> searchTaglibsInClassPath(final @NotNull Module module) {
+  private static @NotNull Collection<GrTypeDefinition> searchTaglibsInClassPath(final @NotNull Module module) {
     final Project project = module.getProject();
     return CachedValuesManager.getManager(project).getCachedValue(module, () -> CachedValueProvider.Result.create(
       doSearchTaglibsInClassPath(module),
@@ -180,7 +180,7 @@ public final class GspTagLibUtil {
     ));
   }
 
-  private static @NotNull Collection<GrClassDefinition> doSearchTaglibsInClassPath(final @NotNull Module module) {
+  private static @NotNull Collection<GrTypeDefinition> doSearchTaglibsInClassPath(final @NotNull Module module) {
     final Project project = module.getProject();
 
     // Scanning class names needs the stub index, which throws IndexNotReadyException in dumb mode.
@@ -199,14 +199,14 @@ public final class GspTagLibUtil {
     });
 
     final PsiShortNamesCache namesCache = PsiShortNamesCache.getInstance(project);
-    final Collection<GrClassDefinition> taglibs = new LinkedHashSet<>();
+    final Collection<GrTypeDefinition> taglibs = new LinkedHashSet<>();
     for (String name : taglibNames) {
       final PsiClass[] classes = namesCache.getClassesByName(name, scope);
       for (PsiClass clazz : classes) {
         if (!(clazz instanceof PsiCompiledElement)) continue;
         final PsiElement mirror = clazz.getNavigationElement();
-        if (!(mirror instanceof GrClassDefinition)) continue;
-        taglibs.add((GrClassDefinition)mirror);
+        if (!(mirror instanceof GrTypeDefinition)) continue;
+        taglibs.add((GrTypeDefinition)mirror);
       }
     }
     return taglibs;
@@ -273,7 +273,7 @@ public final class GspTagLibUtil {
     return FQN_2_TAG.get(className);
   }
 
-  public static @NotNull String getPrefixByTagLibClass(GrClassDefinition clazz) {
+  public static @NotNull String getPrefixByTagLibClass(GrTypeDefinition clazz) {
     PsiField field = clazz.findCodeFieldByName(NAMESPACE_FIELD, true);
     GrField grField = null;
     if (field instanceof GrField) {

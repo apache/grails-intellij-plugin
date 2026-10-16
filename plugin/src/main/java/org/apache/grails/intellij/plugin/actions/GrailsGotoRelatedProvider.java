@@ -40,7 +40,7 @@ import org.apache.grails.intellij.plugin.lang.gsp.GspFileViewProvider;
 import org.apache.grails.intellij.plugin.util.GrailsArtifact;
 import org.apache.grails.intellij.plugin.util.GrailsUtils;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyFile;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
 import org.jetbrains.plugins.groovy.util.GroovyUtils;
 
 import javax.swing.Icon;
@@ -80,8 +80,8 @@ public final class GrailsGotoRelatedProvider extends GotoRelatedProvider {
             addAllRelatedView(artifactClass, res);
           }
           else if (artifact == GrailsArtifact.DOMAIN) {
-            final Collection<GrClassDefinition> controllers = addAll(module, name, GrailsArtifact.CONTROLLER, res);
-            for (GrClassDefinition controller : controllers) {
+            final Collection<GrTypeDefinition> controllers = addAll(module, name, GrailsArtifact.CONTROLLER, res);
+            for (GrTypeDefinition controller : controllers) {
               addAllRelatedView(controller, res);
             }
           }
@@ -102,7 +102,7 @@ public final class GrailsGotoRelatedProvider extends GotoRelatedProvider {
     String name = GrailsUtils.getControllerNameByGsp(gspFile);
     if (name != null) {
       addAll(module, name, GrailsArtifact.DOMAIN, res);
-      Collection<GrClassDefinition> controllers = addAll(module, name, GrailsArtifact.CONTROLLER, res);
+      Collection<GrTypeDefinition> controllers = addAll(module, name, GrailsArtifact.CONTROLLER, res);
       PsiMethod action = GrailsUtils.getControllerActions(name, module).get(gspFile.getNameWithoutExtension());
       if (action != null) {
         res.add(new GotoRelatedItem(GrailsUtils.toField(action), GrailsBundle.message("library.name")) {
@@ -112,7 +112,7 @@ public final class GrailsGotoRelatedProvider extends GotoRelatedProvider {
           }
         });
       }
-      for (GrClassDefinition controller : controllers) {
+      for (GrTypeDefinition controller : controllers) {
         addAllRelatedView(controller, res);
       }
     }
@@ -135,9 +135,9 @@ public final class GrailsGotoRelatedProvider extends GotoRelatedProvider {
     }
   }
 
-  private static Collection<GrClassDefinition> addAll(Module module, String name, GrailsArtifact artifact, List<GotoRelatedItem> res) {
-    Collection<GrClassDefinition> instances = artifact.getInstances(module, name);
-    for (GrClassDefinition aClass : instances) {
+  private static Collection<GrTypeDefinition> addAll(Module module, String name, GrailsArtifact artifact, List<GotoRelatedItem> res) {
+    Collection<GrTypeDefinition> instances = artifact.getInstances(module, name);
+    for (GrTypeDefinition aClass : instances) {
       res.add(new GotoRelatedItem(aClass, GrailsBundle.message("library.name")));
     }
     return instances;

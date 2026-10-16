@@ -57,7 +57,6 @@ import org.apache.grails.intellij.plugin.structure.GrailsApplication;
 import org.apache.grails.intellij.plugin.structure.GrailsApplicationManager;
 import org.apache.grails.intellij.plugin.util.GrailsArtifact;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyFile;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
 import org.jetbrains.plugins.groovy.util.GroovyUtils;
 
@@ -126,7 +125,7 @@ public final class GrailsSpringBeanDiscoverer extends CustomModuleComponentsDisc
     if (structure == null) return Collections.emptyList();
 
     // Add services
-    for (GrClassDefinition classDefinition : GrailsArtifact.SERVICE.getInstances(module).values()) {
+    for (GrTypeDefinition classDefinition : GrailsArtifact.SERVICE.getInstances(module).values()) {
       result.add(new CustomSpringComponent(classDefinition));
     }
 

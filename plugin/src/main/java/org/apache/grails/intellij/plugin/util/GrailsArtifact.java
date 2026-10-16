@@ -59,6 +59,7 @@ import org.apache.grails.intellij.plugin.config.GrailsStructure;
 import org.apache.grails.intellij.plugin.structure.GrailsApplication;
 import org.apache.grails.intellij.plugin.structure.GrailsApplicationManager;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrInterfaceDefinition;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
 import org.apache.grails.intellij.plugin.mvc.MvcModuleStructureSynchronizer;
 import org.jetbrains.plugins.groovy.util.GroovyUtils;
@@ -80,7 +81,18 @@ public enum GrailsArtifact {
   DOMAIN(NotNullLazyValue.createValue(() -> AllIcons.Nodes.DataTables), "", "domain"),
   CONTROLLER(NotNullLazyValue.createValue(() -> AllIcons.Nodes.Controller), "Controller", "controllers"),
   TAGLIB(NotNullLazyValue.createValue(() -> GroovyMvcIcons.Taglib), "TagLib", "taglib"),
-  SERVICE(NotNullLazyValue.createValue(() -> AllIcons.FileTypes.Config), "Service", "services"),
+  SERVICE(NotNullLazyValue.createValue(() -> AllIcons.FileTypes.Config), "Service", "services") {
+    /**
+     * A GORM data service ({@code @Service(Domain) interface FooService}) is an interface whose
+     * implementation GORM generates at compile time. The annotation is not checked, since it may not
+     * resolve: any interface named {@code *Service} under {@code grails-app/services} is a service
+     * artefact.
+     */
+    @Override
+    public boolean isArtefactDefinition(@Nullable PsiClass psiClass) {
+      return super.isArtefactDefinition(psiClass) || psiClass instanceof GrInterfaceDefinition;
+    }
+  },
   JOB(null, "Job", "jobs"),
   CODEC(null, "Codec", "utils"),
   FILTER(null, "Filters", "conf"),
@@ -199,14 +211,25 @@ public enum GrailsArtifact {
     return className != null && endWithSuffix(className);
   }
 
+  /**
+   * Whether {@code psiClass} is the kind of Groovy type definition this artefact can be declared
+   * as. Artefacts are classes, except that a service may also be an interface (a GORM data
+   * service). Every lookup - {@link #getType}, {@link #isInstance(PsiClass)} and the instance
+   * caches behind {@link #getInstances} - goes through this check, so an artefact kind that admits
+   * another definition kind is recognised everywhere at once.
+   */
+  public boolean isArtefactDefinition(@Nullable PsiClass psiClass) {
+    return psiClass instanceof GrClassDefinition;
+  }
+
   public @Nullable VirtualFile getGrailsApp(@Nullable PsiClass psiClass) {
-    if (!(psiClass instanceof GrClassDefinition)) return null;
+    if (!isArtefactDefinition(psiClass)) return null;
     if (!isNameEndWithSuffix(psiClass) || PsiTreeUtil.getParentOfType(psiClass, PsiClass.class) != null) return null;
     return getGrailsApp(psiClass.getContainingFile().getOriginalFile().getVirtualFile(), psiClass.getProject());
   }
 
   public static @Nullable GrailsArtifact getType(@Nullable PsiClass psiClass) {
-    if (!(psiClass instanceof GrClassDefinition)) return null;
+    if (!(psiClass instanceof GrTypeDefinition)) return null;
 
     PsiFile psiFile = psiClass.getContainingFile().getOriginalFile();
     VirtualFile virtualFile = psiFile.getVirtualFile();
@@ -225,7 +248,7 @@ public enum GrailsArtifact {
     if (className == null) return null;
 
     for (GrailsArtifact candidate : artifacts) {
-      if (candidate.endWithSuffix(className)) return candidate;
+      if (candidate.endWithSuffix(className) && candidate.isArtefactDefinition(psiClass)) return candidate;
     }
 
     return null;
@@ -264,12 +287,12 @@ public enum GrailsArtifact {
     return getCache(module).getVirtualFileMap();
   }
 
-  public @NotNull Collection<GrClassDefinition> getInstances(@NotNull Module module, @Nullable String artefactName) {
+  public @NotNull Collection<GrTypeDefinition> getInstances(@NotNull Module module, @Nullable String artefactName) {
     if (artefactName == null) return Collections.emptyList();
     return getInstances(module, null, artefactName);
   }
 
-  public @NotNull Collection<GrClassDefinition> getInstances(@NotNull Module module, @Nullable String packageName, @NotNull String artefactName) {
+  public @NotNull Collection<GrTypeDefinition> getInstances(@NotNull Module module, @Nullable String packageName, @NotNull String artefactName) {
     GrailsArtifactCache cache = getCache(module);
     return packageName == null
            ? cache.getClasses(artefactName)
@@ -289,10 +312,10 @@ public enum GrailsArtifact {
    * unreachable from the toolbar. Every caller must share this policy, so navigation from an
    * artefact does not depend on which action is used.
    */
-  public @NotNull Collection<GrClassDefinition> getInstancesPreferringPackage(@NotNull Module module,
+  public @NotNull Collection<GrTypeDefinition> getInstancesPreferringPackage(@NotNull Module module,
                                                                              @Nullable String packageName,
                                                                              @NotNull String artefactName) {
-    Collection<GrClassDefinition> samePackage = getInstances(module, packageName, artefactName);
+    Collection<GrTypeDefinition> samePackage = getInstances(module, packageName, artefactName);
     return samePackage.isEmpty() ? getInstances(module, artefactName) : samePackage;
   }
 
@@ -303,7 +326,7 @@ public enum GrailsArtifact {
 
       MvcModuleStructureSynchronizer synchronizer = MvcModuleStructureSynchronizer.getInstance(project);
       return CachedValueProvider.Result.create(
-        new GrailsArtifactCache(map, project),
+        new GrailsArtifactCache(this, map, project),
         synchronizer.getFileAndRootsModificationTracker(),
         GrailsApplicationManager.getInstance(project),
         // calculateInstances() degrades in dumb mode; expire that result when indexing ends.
@@ -312,7 +335,7 @@ public enum GrailsArtifact {
     }, false);
   }
 
-  public @NotNull MultiMap<String, GrClassDefinition> getInstances(final @NotNull Module module) {
+  public @NotNull MultiMap<String, GrTypeDefinition> getInstances(final @NotNull Module module) {
     return getCache(module).getClassesMap();
   }
 
@@ -467,12 +490,14 @@ public enum GrailsArtifact {
 }
 
 class GrailsArtifactCache {
+  private final GrailsArtifact myArtifact;
   private final MultiMap<String, VirtualFile> myVirtualFileMap;
   private final PsiManager myManager;
   private long myModificationStamp = -1;
-  private volatile MultiMap<String, GrClassDefinition> myClassMap;
+  private volatile MultiMap<String, GrTypeDefinition> myClassMap;
 
-  GrailsArtifactCache(MultiMap<String, VirtualFile> virtualFileMap, Project project) {
+  GrailsArtifactCache(GrailsArtifact artifact, MultiMap<String, VirtualFile> virtualFileMap, Project project) {
+    myArtifact = artifact;
     myVirtualFileMap = virtualFileMap;
     myManager = PsiManager.getInstance(project);
   }
@@ -481,19 +506,14 @@ class GrailsArtifactCache {
     return myVirtualFileMap;
   }
 
-  private @Nullable GrClassDefinition getClassDefinition(@Nullable VirtualFile file) {
+  private @Nullable GrTypeDefinition getClassDefinition(@Nullable VirtualFile file) {
     GrTypeDefinition typeDefinition = GroovyUtils.getPublicClass(file, myManager);
-
-    if (typeDefinition instanceof GrClassDefinition) {
-      return (GrClassDefinition)typeDefinition;
-    }
-
-    return null;
+    return myArtifact.isArtefactDefinition(typeDefinition) ? typeDefinition : null;
   }
 
-  public @NotNull List<GrClassDefinition> getClasses(@NotNull String artifactName) {
+  public @NotNull List<GrTypeDefinition> getClasses(@NotNull String artifactName) {
     if (myModificationStamp == myManager.getModificationTracker().getModificationCount()) {
-      return (List<GrClassDefinition>)myClassMap.get(artifactName);
+      return (List<GrTypeDefinition>)myClassMap.get(artifactName);
     }
 
     List<VirtualFile> vfList = (List<VirtualFile>)myVirtualFileMap.get(artifactName);
@@ -504,11 +524,11 @@ class GrailsArtifactCache {
     return getClasses(vfList);
   }
 
-  private @NotNull List<GrClassDefinition> getClasses(@NotNull List<VirtualFile> vfList) {
+  private @NotNull List<GrTypeDefinition> getClasses(@NotNull List<VirtualFile> vfList) {
     int size = vfList.size();
 
     if (size == 1) {
-      GrClassDefinition classDefinition = getClassDefinition(vfList.get(0));
+      GrTypeDefinition classDefinition = getClassDefinition(vfList.get(0));
       if (classDefinition == null) return Collections.emptyList();
 
       return Collections.singletonList(classDefinition);
@@ -516,7 +536,7 @@ class GrailsArtifactCache {
 
     // The same artefact can be discovered through more than one path (e.g. a source directory and a
     // grails-plugin.xml descriptor), so dedupe files to avoid duplicate navigate targets.
-    List<GrClassDefinition> list = new ArrayList<>(size);
+    List<GrTypeDefinition> list = new ArrayList<>(size);
 
     for (VirtualFile virtualFile : new LinkedHashSet<>(vfList)) {
       ContainerUtil.addIfNotNull(list, getClassDefinition(virtualFile));
@@ -525,16 +545,16 @@ class GrailsArtifactCache {
     return list;
   }
 
-  public MultiMap<String, GrClassDefinition> getClassesMap() {
+  public MultiMap<String, GrTypeDefinition> getClassesMap() {
     long modificationStamp = myManager.getModificationTracker().getModificationCount();
     if (myModificationStamp == modificationStamp) {
       return myClassMap;
     }
 
-    MultiMap<String, GrClassDefinition> res = new MultiMap<>();
+    MultiMap<String, GrTypeDefinition> res = new MultiMap<>();
 
     for (Map.Entry<String, Collection<VirtualFile>> entry : myVirtualFileMap.entrySet()) {
-      List<GrClassDefinition> classes = getClasses((List<VirtualFile>)entry.getValue());
+      List<GrTypeDefinition> classes = getClasses((List<VirtualFile>)entry.getValue());
       if (!classes.isEmpty()) {
         res.put(entry.getKey(), classes);
       }

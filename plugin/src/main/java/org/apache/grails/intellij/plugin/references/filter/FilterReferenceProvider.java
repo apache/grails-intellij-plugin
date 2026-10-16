@@ -38,7 +38,7 @@ import org.jetbrains.plugins.groovy.lang.psi.api.auxiliary.GrListOrMap;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrArgumentLabel;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrArgumentList;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
 import org.jetbrains.plugins.groovy.lang.psi.api.util.GrNamedArgumentsOwner;
 import org.jetbrains.plugins.groovy.lang.psi.impl.statements.expressions.literals.GrLiteralImpl;
 import org.jetbrains.plugins.groovy.lang.resolve.GroovyStringLiteralManipulator;
@@ -152,13 +152,13 @@ public class FilterReferenceProvider extends PsiReferenceProvider {
       Module module = ModuleUtilCore.findModuleForPsiElement(element);
       if (module == null) return Collections.emptyMap();
 
-      MultiMap<String,GrClassDefinition> multiMap = GrailsArtifact.CONTROLLER.getInstances(module);
+      MultiMap<String,GrTypeDefinition> multiMap = GrailsArtifact.CONTROLLER.getInstances(module);
 
       if (controllerNames.isEmpty()) {
         return GrailsUtils.getControllerActions(multiMap.values(), module);
       }
 
-      List<GrClassDefinition> controllers = new ArrayList<>();
+      List<GrTypeDefinition> controllers = new ArrayList<>();
 
       for (String controllerName : controllerNames) {
         controllers.addAll(multiMap.get(controllerName));

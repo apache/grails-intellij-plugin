@@ -27,7 +27,7 @@ import org.jetbrains.annotations.Nullable;
 import org.apache.grails.intellij.plugin.GrailsBundle;
 import org.apache.grails.intellij.plugin.actions.ArtefactData;
 import org.apache.grails.intellij.plugin.util.GrailsArtifact;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
 
 import javax.swing.Icon;
 import java.util.Collection;
@@ -50,7 +50,7 @@ public abstract class GrailsGoToArtefactActionBase extends GrailsToolbarTargetAc
   }
 
   @Override
-  public @NotNull Collection<GrClassDefinition> getNavigateTargets(@NotNull ArtefactData artefactData) {
+  public @NotNull Collection<GrTypeDefinition> getNavigateTargets(@NotNull ArtefactData artefactData) {
     return myArtefactType.getInstancesPreferringPackage(artefactData.getModule(),
                                                         artefactData.getPackageName(),
                                                         artefactData.getArtefactName());

@@ -34,7 +34,7 @@ import org.jetbrains.annotations.Nullable;
 import org.apache.grails.intellij.plugin.util.GrailsArtifact;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrField;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
 import org.jetbrains.plugins.groovy.lang.psi.impl.statements.expressions.literals.GrLiteralImpl;
 
 import java.util.HashSet;
@@ -65,11 +65,11 @@ public final class GrailsNamespaceReference extends PsiReferenceBase<PsiElement>
     Module module = ModuleUtilCore.findModuleForPsiElement(getElement());
     if (module == null) return ResolveResult.EMPTY_ARRAY;
 
-    MultiMap<String,GrClassDefinition> instances = GrailsArtifact.CONTROLLER.getInstances(module);
+    MultiMap<String,GrTypeDefinition> instances = GrailsArtifact.CONTROLLER.getInstances(module);
 
     Set<String> res = new HashSet<>();
 
-    for (GrClassDefinition controllerDefinition : instances.values()) {
+    for (GrTypeDefinition controllerDefinition : instances.values()) {
       if (controllerDefinition == myIgnoredController) continue;
 
       PsiField namespaceField = controllerDefinition.findCodeFieldByName("namespace", true);

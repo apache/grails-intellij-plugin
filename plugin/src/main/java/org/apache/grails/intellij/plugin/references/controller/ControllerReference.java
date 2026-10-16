@@ -36,7 +36,6 @@ import com.intellij.util.IncorrectOperationException;
 import com.intellij.util.containers.MultiMap;
 import org.jetbrains.annotations.NotNull;
 import org.apache.grails.intellij.plugin.util.GrailsArtifact;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
 
 import java.util.Collection;
@@ -61,14 +60,14 @@ public class ControllerReference extends PsiPolyVariantReferenceBase<PsiElement>
     if (module == null) return ResolveResult.EMPTY_ARRAY;
 
     String name = StringUtil.decapitalize(StringUtil.trimEnd(value, "Controller"));
-    Collection<GrClassDefinition> controllers = GrailsArtifact.CONTROLLER.getInstances(module, name);
+    Collection<GrTypeDefinition> controllers = GrailsArtifact.CONTROLLER.getInstances(module, name);
 
     if (controllers.isEmpty()) return ResolveResult.EMPTY_ARRAY;
 
     ResolveResult[] res = new ResolveResult[controllers.size()];
 
     int i = 0;
-    for (GrClassDefinition classDefinition : controllers) {
+    for (GrTypeDefinition classDefinition : controllers) {
       res[i++] = new PsiElementResolveResult(classDefinition);
     }
 
@@ -80,12 +79,12 @@ public class ControllerReference extends PsiPolyVariantReferenceBase<PsiElement>
     Module module = ModuleUtilCore.findModuleForPsiElement(getElement());
     if (module == null) return ArrayUtilRt.EMPTY_OBJECT_ARRAY;
 
-    MultiMap<String, GrClassDefinition> controllers = GrailsArtifact.CONTROLLER.getInstances(module);
+    MultiMap<String, GrTypeDefinition> controllers = GrailsArtifact.CONTROLLER.getInstances(module);
 
     LookupElement[] res = new LookupElement[controllers.size()];
 
     int i = 0;
-    for (Map.Entry<String, Collection<GrClassDefinition>> entry : controllers.entrySet()) {
+    for (Map.Entry<String, Collection<GrTypeDefinition>> entry : controllers.entrySet()) {
       GrTypeDefinition controllerClass = entry.getValue().iterator().next();
       res[i++] = LookupElementBuilder.create(controllerClass, entry.getKey()).withIcon(AllIcons.Nodes.Controller);
     }

@@ -50,7 +50,7 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrRefere
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrString;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrStringInjection;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.params.GrParameterList;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
 import org.jetbrains.plugins.groovy.lang.psi.impl.statements.expressions.literals.GrStringContentImpl;
 import org.jetbrains.plugins.groovy.lang.psi.impl.statements.expressions.literals.GrStringImpl;
 import org.jetbrains.plugins.groovy.lang.psi.util.PsiUtil;
@@ -77,7 +77,7 @@ public final class UrlMappingUtil {
   private static Map<String, NamedUrlMapping> calculateNamedUrlMappings(@NotNull Module module) {
     Map<String, NamedUrlMapping> res = new HashMap<>();
 
-    for (GrClassDefinition classDefinition : GrailsArtifact.URLMAPPINGS.getInstances(module).values()) {
+    for (GrTypeDefinition classDefinition : GrailsArtifact.URLMAPPINGS.getInstances(module).values()) {
       addMapping(res, classDefinition);
     }
 

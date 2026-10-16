@@ -24,7 +24,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.apache.grails.intellij.plugin.actions.ArtefactData;
 import org.apache.grails.intellij.plugin.util.GrailsArtifact;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
 
 public abstract class GenerateControllerActionBase extends GenerateActionBase {
 
@@ -40,11 +40,11 @@ public abstract class GenerateControllerActionBase extends GenerateActionBase {
 
   @Override
   public void onDone(@NotNull ArtefactData data) {
-    GrClassDefinition controller = findController(data);
+    GrTypeDefinition controller = findController(data);
     if (controller != null) controller.navigate(true);
   }
 
-  private static @Nullable GrClassDefinition findController(@NotNull ArtefactData data) {
+  private static @Nullable GrTypeDefinition findController(@NotNull ArtefactData data) {
     return single(GrailsArtifact.CONTROLLER.getInstances(data.getModule(), data.getPackageName(), data.getArtefactName()));
   }
 }

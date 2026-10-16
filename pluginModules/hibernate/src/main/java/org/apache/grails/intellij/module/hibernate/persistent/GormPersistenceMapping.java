@@ -34,7 +34,7 @@ import com.intellij.util.xml.GenericValue;
 import com.intellij.util.xml.ReadOnlyGenericValue;
 import org.jetbrains.annotations.NotNull;
 import org.apache.grails.intellij.plugin.util.GrailsArtifact;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -77,7 +77,7 @@ public class GormPersistenceMapping extends CommonModelElement.ModuleBase implem
   public @NotNull List<? extends PersistentEntity> getPersistentEntities() {
     List<PersistentEntity> res = new ArrayList<>();
 
-    for (GrClassDefinition domainClass : GrailsArtifact.DOMAIN.getInstances(myModule).values()) {
+    for (GrTypeDefinition domainClass : GrailsArtifact.DOMAIN.getInstances(myModule).values()) {
       PersistentEntity e = new GormEntity(myModule, domainClass);
       res.add(e);
     }

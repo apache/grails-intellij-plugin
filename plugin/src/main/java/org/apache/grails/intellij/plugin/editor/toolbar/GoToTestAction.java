@@ -32,7 +32,7 @@ import org.apache.grails.intellij.plugin.editor.GenerateTestsAction;
 import org.apache.grails.intellij.plugin.editor.GrailsEditorToolbar;
 import org.apache.grails.intellij.plugin.tests.GrailsTestUtils;
 import org.apache.grails.intellij.plugin.util.GrailsArtifact;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -57,7 +57,7 @@ public class GoToTestAction extends GrailsToolbarVfileAction {
     for (GrailsArtifact artefactType : GrailsEditorToolbar.DECORATED_ARTEFACT_TYPES) {
       // Same package-preferring lookup the Go To <artefact> actions use, so the tests of a sibling
       // artefact kept in another package stay reachable.
-      for (GrClassDefinition artifact : artefactType.getInstancesPreferringPackage(artefactData.getModule(),
+      for (GrTypeDefinition artifact : artefactType.getInstancesPreferringPackage(artefactData.getModule(),
                                                                                   artefactData.getPackageName(),
                                                                                   artefactData.getArtefactName())) {
         for (PsiClass testClass : GrailsTestUtils.getTestsForArtifact(artifact, true)) {
