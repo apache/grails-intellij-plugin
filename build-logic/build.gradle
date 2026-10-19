@@ -36,7 +36,7 @@ dependencies {
     implementation 'org.jetbrains.intellij.platform:intellij-platform-gradle-plugin:2.19.0'
     implementation 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.20'
     implementation 'org.nosphere.apache.rat:org.nosphere.apache.rat.gradle.plugin:0.11.0'
-    implementation 'org.sonatype.gradle.plugins:scan-gradle-plugin:4.1.0-02'
+    implementation 'org.sonatype.gradle.plugins:scan-gradle-plugin:4.1.1-01'
 
     // Gradle TestKit tests for the build-logic task classes; the same JUnit 4 + AssertJ stack as
     // the plugin's own tests.
