@@ -37,3 +37,11 @@ legacyBytecode.release.convention(8)
 tasks.withType(JavaCompile).configureEach { task ->
     task.options.release.set(legacyBytecode.release)
 }
+
+// These jars compile against era-pinned stubs of the environment they run inside (Grails 1.x/2.x,
+// Groovy 2.4: compileOnly, and deliberately never bumped, see .github/dependabot.yml). The stubs are
+// the end user's own installation, never shipped, and their decade-old advisories would be reported
+// forever, so only what the jar carries at runtime is scanned.
+vulnerabilityScan {
+    configurations = ['runtimeClasspath']
+}

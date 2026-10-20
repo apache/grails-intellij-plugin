@@ -36,11 +36,21 @@ dependencies {
     implementation 'org.jetbrains.intellij.platform:intellij-platform-gradle-plugin:2.19.0'
     implementation 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.20'
     implementation 'org.nosphere.apache.rat:org.nosphere.apache.rat.gradle.plugin:0.11.0'
-    implementation 'org.sonatype.gradle.plugins:scan-gradle-plugin:4.1.0-02'
+    // The CycloneDX SBOM generator behind the sbom convention plugin. The vulnerability scan itself
+    // has no plugin dependency: it is this build's own code under org.apache.grails.intellij.build.scan.
+    implementation 'org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:3.5.1'
 
     // Gradle TestKit tests for the build-logic task classes; the same JUnit 4 + AssertJ stack as
     // the plugin's own tests.
     testImplementation gradleTestKit()
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.assertj:assertj-core:4.0.0-M1'
+}
+
+tasks.named('test', Test) { task ->
+    // The credentials the Sonatype Guide stub accepts, which the service under test reads from the
+    // environment variables these name (never the real SONATYPE_GUIDE_* ones, so a developer's
+    // account is not consulted by a test).
+    task.environment('TEST_SONATYPE_GUIDE_USERNAME', 'test-user')
+    task.environment('TEST_SONATYPE_GUIDE_TOKEN', 'test-token')
 }

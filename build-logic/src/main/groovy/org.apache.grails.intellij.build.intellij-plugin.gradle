@@ -28,10 +28,20 @@ import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 plugins {
     id 'org.apache.grails.intellij.build.intellij-platform'
     id 'org.apache.grails.intellij.build.kotlin'
+    id 'org.apache.grails.intellij.build.sbom'
     id 'org.jetbrains.intellij.platform'
 }
 
 group = 'org.apache.grails.intellij.plugin'
+
+// The SBOM describes the ZIP, the one unit of distribution, so it is named after it and lists
+// everything in it: the runtime classpath (the libraries and compiler jars in lib/) and the content
+// modules (lib/modules/), which IPGP carries in a configuration of its own. The platform itself is on
+// no runtime configuration, so the host IDE is not listed as a dependency.
+sbom {
+    componentName = 'apache-grails-intellij-plugin'
+    configurations = ['runtimeClasspath', 'intellijPlatformPluginModule']
+}
 
 intellijPlatform {
     // Pinned explicitly. This drives the distribution ZIP name, the plugin directory inside it,
@@ -186,6 +196,10 @@ tasks.named('publishPlugin') { task ->
 // ignores archivesName, so it is pinned for the same reason projectName is.
 tasks.named('composedJar') { task ->
     task.archiveBaseName = 'apache-grails-intellij-plugin'
+    // The composed jar carries the jar's META-INF/sbom.json, but its manifest is IPGP's generated
+    // one rather than the jar task's, so the attributes the sbom convention sets on `jar` are
+    // repeated here for the jar that actually ships.
+    task.manifest.attributes('Sbom-Location': 'META-INF/sbom.json', 'Sbom-Format': 'CycloneDX')
 }
 
 // ASF policy: ship LICENSE and NOTICE inside the plugin jar. They live at the repository root,
@@ -204,10 +218,17 @@ tasks.named('processResources') { task ->
 // files in every unit of distribution "whether the unit of distribution is a .jar, .msi, .tar.gz,
 // .zip, .exe installer, or any other file format" -- having them only in the composed jar's
 // META-INF, as processResources does above, does not satisfy that for the ZIP itself.
+//
+// The SBOM goes in next to them as sbom.json, so a tool fed the ZIP finds it without opening the
+// composed jar, which carries the same file at META-INF/sbom.json.
 tasks.withType(PrepareSandboxTask).configureEach { task ->
     task.from(layout.projectDirectory.dir('standardDsls')) {
         into task.pluginName.map { "$it/lib/standardDsls/" }
     }
     task.from(layout.settingsDirectory.file('LICENSE')) { into task.pluginName }
     task.from(layout.settingsDirectory.file('NOTICE')) { into task.pluginName }
+    task.from(tasks.named('sbom').flatMap { it.sbom }) {
+        into task.pluginName
+        rename { 'sbom.json' }
+    }
 }

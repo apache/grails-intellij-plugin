@@ -13,7 +13,7 @@ from `settings.gradle`. That is what keeps repository declarations out of the pr
 
 ## Why plugin versions live here
 
-`build-logic/build.gradle` declares the IntelliJ Platform, Kotlin, RAT and Sonatype scan plugins as
+`build-logic/build.gradle` declares the IntelliJ Platform, Kotlin, RAT and CycloneDX plugins as
 `implementation` dependencies. That is what lets the convention plugins apply them **without a
 version**, and it removes the previous fragility where `org.jetbrains.intellij.platform.module` was
 applied version-free in every module and resolved only by inheriting the root build script's plugin
@@ -41,14 +41,42 @@ build still come from the root `gradle.properties` via `providers.gradleProperty
 | `rat` | root only — the licence audit |
 | `coverage-aggregation` | root only — cross-project JaCoCo |
 | `validate-actions` | root only — `validateActions`, the ASF approved-actions check on `.github/workflows` |
+| `vulnerability-scan-report` | root only — `vulnerabilityScanReport`, the Markdown summary of every project's scan at `build/reports/vulnerability-scan/summary.md` |
+| `sbom` | the plugin project (via `intellij-plugin`) — `sbom`, the reproducible CycloneDX SBOM packaged into the ZIP and the composed jar |
 | `reproducible`, `jacoco`, `vulnerability-scan` | applied transitively |
 | `repositories` | **settings** plugin — applied from `settings.gradle`, not by a project |
+
+## Vulnerability scan
+
+`vulnerability-scan` (applied by `java`, so by every project that compiles) registers
+`vulnerabilityScan`, which looks the resolved `runtimeClasspath` and `compileClasspath` up in the
+[OSV](https://osv.dev) database and, when `SONATYPE_GUIDE_USERNAME` and `SONATYPE_GUIDE_TOKEN` are
+set, in Sonatype Guide. The scanner is this build's own code in `org.apache.grails.intellij.build.scan`,
+ported from grails-core's `build-logic/vulnerability-scan`; it replaced the Sonatype scan-gradle-plugin,
+whose task is incompatible with the configuration cache and discarded the entry of every build that
+ran it. Points that differ from a plain dependency scan:
+
+- **The IntelliJ Platform is left out.** IPGP puts the IDE's modules and bundled plugins on every
+  compile classpath as Maven-like components (`bundledModule:intellij.platform.core:IU-…`) that no
+  database knows. `intellij-platform` sets `vulnerabilityScan.ignoredGroups` to those groups; a
+  real Maven artifact the platform pulls in stays scanned.
+- **`java-legacy` projects scan `runtimeClasspath` only.** Their `compileOnly` dependencies are
+  era-pinned stubs of the Grails/Groovy they run inside, never shipped.
+- **Credentials are read when a scan runs**, never at configuration time, so they are not in the
+  configuration cache entry and a rotated token reuses it. Answers are cached in the Gradle user
+  home for an hour (`-PvulnerabilityScan.cacheTtl=PT0S` asks again), in the directory grails-core
+  uses, so a machine that builds both asks once.
+- **Exclusions need a reason** and are limited to findings with no fix available; the built-in list
+  is `BuiltInExclusions`, a project adds its own with `vulnerabilityScan { exclude(id, module, reason) }`,
+  and the summary calls out exclusions that no longer match anything.
 
 ## Tests
 
 Task classes with real logic are tested with Gradle TestKit under `src/test/groovy`, on the same
 JUnit 4 + AssertJ stack as the plugin. `./gradlew :build-logic:test` runs them; the root `check`
-depends on build-logic's `check`, so CI runs them (and `validatePlugins`) on every build.
+depends on build-logic's `check`, so CI runs them (and `validatePlugins`) on every build. The scan
+tests run the convention plugins against in-process stubs of the OSV and Sonatype Guide APIs and a
+local Maven repository, with the configuration cache on and its problems fatal.
 
 ## Groovy DSL gotchas
 

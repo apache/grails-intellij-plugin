@@ -39,6 +39,13 @@ limitations under the License.
 ./gradlew rat
 ./gradlew runIde
 
+# Dependency vulnerability scan (OSV; plus Sonatype Guide when SONATYPE_GUIDE_USERNAME and
+# SONATYPE_GUIDE_TOKEN are set) and its Markdown summary in build/reports/vulnerability-scan/
+./gradlew vulnerabilityScan vulnerabilityScanReport --continue
+
+# The CycloneDX SBOM that ships in the plugin ZIP (runs whenever the plugin jar is built)
+./gradlew :plugin:sbom
+
 # GitHub Actions policy: every `uses:` must be on the ASF approved list (needs network)
 ./gradlew validateActions
 
@@ -240,6 +247,21 @@ files under it, so *Reveal in Project View* dead-ended.
 - The legacy plugin id `org.intellij.grails` is grandfathered on Marketplace and
   permanent for the existing listing (see `IMPROVEMENT-PLAN.md`); the `TemplateWordInPluginId` check is muted
   deliberately.
+- **Vulnerability scan and SBOM are this build's own code**, in `build-logic` under
+  `org.apache.grails.intellij.build.scan` and `.sbom`, ported from grails-core (the Sonatype
+  scan-gradle-plugin it replaced was incompatible with the configuration cache and discarded the
+  entry of every build that ran it). `vulnerabilityScan` looks `runtimeClasspath` and
+  `compileClasspath` up in OSV and Sonatype Guide; the `intellij-platform` convention sets
+  `vulnerabilityScan.ignoredGroups` so the IDE's own `bundledModule:`/`bundledPlugin:` components
+  are not looked up, and `java-legacy` projects and `libs/testFramework` scan `runtimeClasspath`
+  only because their compile-only dependencies are era-pinned stubs or JetBrains' test-framework
+  jars, never shipped. An exclusion needs a reason and a removal condition (`BuiltInExclusions`,
+  or `vulnerabilityScan { exclude(...) }` in one project); the summary lists exclusions that no
+  longer match. The `sbom` task writes a reproducible CycloneDX SBOM (epoch timestamp,
+  content-derived serial number, one license per dependency as `SbomLicensePolicy` picks it) into
+  the plugin ZIP root as `sbom.json` and the composed jar as `META-INF/sbom.json`; the jar
+  depends on it, so a dependency under a license ASF policy does not permit fails any build that
+  packages the jar. See `build-logic/README.md`.
 - **Coverage needs two non-default JaCoCo settings** (both in the `jacoco` and
   `coverage-aggregation` convention plugins): the tests load the plugin from the sandbox jars,
   which are built from the *instrumented* classes, so reports must analyse

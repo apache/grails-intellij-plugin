@@ -37,3 +37,17 @@ dependencies {
         intellijIdea providers.gradleProperty('platformVersion')
     }
 }
+
+// The platform puts its own modules and bundled plugins on every compile classpath as Maven-like
+// components in groups of IPGP's making (bundledModule:intellij.platform.core:IU-262..., see
+// Constants.Configurations.Dependencies in the plugin), plus Marketplace plugins under
+// com.jetbrains.plugins. They are the host IDE, not dependencies this plugin ships or chooses, and
+// no vulnerability database knows them: looking the ~800 of them up only costs Sonatype Guide
+// credits. The scan leaves them out; everything the platform pulls from Maven stays in.
+vulnerabilityScan {
+    ignoredGroups = [
+            'bundledModule', 'bundledPlugin',
+            'localIde', 'localPlugin', 'localJetBrainsRuntime',
+            'com.jetbrains.plugins',
+    ]
+}

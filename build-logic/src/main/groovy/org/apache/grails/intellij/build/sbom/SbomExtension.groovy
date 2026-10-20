@@ -17,18 +17,23 @@
  * under the License.
  */
 
-package org.apache.grails.intellij.build
+package org.apache.grails.intellij.build.sbom
 
-import org.gradle.api.services.BuildService
-import org.gradle.api.services.BuildServiceParameters
+import groovy.transform.CompileStatic
+
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.Property
 
 /**
- * Shared build service used solely as a concurrency gate for {@code ossIndexAudit} tasks.
- *
- * <p>The Sonatype OSS Index plugin guards its shared on-disk response cache with a file lock,
- * so concurrent audit tasks hit OverlappingFileLockException. Registering this service with
- * {@code maxParallelUsages = 1} serializes the audits while leaving the rest of the build
- * free to run in parallel.
+ * Configures the SBOM of a project, as the {@code sbom} extension registered by the
+ * {@code org.apache.grails.intellij.build.sbom} convention plugin.
  */
-abstract class OssIndexAuditThrottle implements BuildService<BuildServiceParameters.None> {
+@CompileStatic
+abstract class SbomExtension {
+
+    /** The name of the component the SBOM describes, the project name unless set. */
+    abstract Property<String> getComponentName()
+
+    /** The configurations whose resolved dependencies the SBOM lists, {@code runtimeClasspath} unless set. */
+    abstract ListProperty<String> getConfigurations()
 }

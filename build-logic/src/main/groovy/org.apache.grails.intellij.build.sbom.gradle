@@ -1,0 +1,120 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+import java.time.Instant
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+
+import org.apache.grails.intellij.build.sbom.ReproducibleSbomTask
+import org.apache.grails.intellij.build.sbom.SbomExtension
+import org.cyclonedx.gradle.CyclonedxDirectTask
+import org.cyclonedx.model.Component
+import org.cyclonedx.model.ExternalReference
+import org.cyclonedx.model.License
+import org.cyclonedx.model.LicenseChoice
+import org.cyclonedx.model.OrganizationalContact
+import org.cyclonedx.model.OrganizationalEntity
+
+// A CycloneDX software bill of materials for the component a project ships, as grails-core produces
+// for its jars: `cyclonedxDirectBom` generates it from the resolved dependencies, and `sbom` turns
+// that into the reproducible file that is packaged -- into the jar at META-INF/sbom.json, named by
+// the Sbom-Location and Sbom-Format manifest attributes, and wherever the consuming convention puts
+// it besides (the plugin ZIP's root). The license pass in `sbom` is also the check that nothing
+// under a license ASF policy forbids gets packaged: the jar depends on it, so a forbidden license
+// fails the build before anything ships.
+//
+// Only the CycloneDX direct task is registered, not the CycloneDX plugin itself: the plugin would
+// also register an aggregate SBOM of every project, which is misleading for a build whose unit of
+// distribution is one ZIP.
+//
+// The `sbom { }` extension names the component (the project name unless set) and the configurations
+// whose dependencies it lists (runtimeClasspath unless set).
+
+def extension = extensions.create('sbom', SbomExtension)
+extension.componentName.convention(project.name)
+extension.configurations.convention(['runtimeClasspath'])
+
+// Evaluated when the task inputs are computed rather than here: a build script may still set the
+// version after this plugin is applied.
+def projectVersion = provider { project.version.toString() }
+def projectPath = project.path
+
+// Byte-for-byte reproducible, so the SBOM is dated as the rest of the archive is: at the epoch
+// unless SOURCE_DATE_EPOCH names the build time, as release verification does.
+def timestamp = providers.environmentVariable('SOURCE_DATE_EPOCH')
+        .map { Instant.ofEpochSecond(it.toLong()) }
+        .orElse(Instant.EPOCH)
+        .map { DateTimeFormatter.ISO_INSTANT.format(it.truncatedTo(ChronoUnit.SECONDS)) }
+
+def generateBom = tasks.register('cyclonedxDirectBom', CyclonedxDirectTask) { CyclonedxDirectTask task ->
+    task.description = 'Generates the CycloneDX SBOM that the sbom task makes reproducible'
+    // JSON only, at a reports path: the file that ships is the sbom task's output
+    task.jsonOutput.set(layout.buildDirectory.file('reports/cyclonedx/bom.json'))
+    task.componentName.set(extension.componentName)
+    task.includeConfigs.set(extension.configurations)
+    task.projectType.set(Component.Type.APPLICATION)
+    task.organizationalEntity.set(new OrganizationalEntity(
+            name: 'Apache Software Foundation',
+            urls: ['https://www.apache.org/', 'https://security.apache.org/'],
+            contacts: [new OrganizationalContact(name: 'Apache Grails Development Team', email: 'dev@grails.apache.org')],
+    ))
+    task.licenseChoice.set(new LicenseChoice(
+            licenses: [new License(id: 'Apache-2.0', url: 'https://www.apache.org/licenses/LICENSE-2.0.txt')],
+    ))
+    task.externalReferences.set(projectVersion.map { String version ->
+        boolean snapshot = version.endsWith('SNAPSHOT')
+        [
+                new ExternalReference(url: 'https://grails.apache.org', type: ExternalReference.Type.WEBSITE),
+                new ExternalReference(url: 'https://github.com/apache/grails-intellij-plugin', type: ExternalReference.Type.VCS),
+                new ExternalReference(url: snapshot ? 'dev@grails.apache.org' : 'users@grails.apache.org',
+                        type: ExternalReference.Type.MAILING_LIST),
+        ]
+    })
+    // license texts are base64-encoded into the file and only inflate it
+    task.includeLicenseText.set(false)
+    // the build system reference is the CI run URL and the build environment the host's JDK and
+    // Gradle; neither can agree between CI and a release verifier's rebuild
+    task.includeBuildSystem.set(false)
+    task.includeBuildEnvironment.set(false)
+}
+
+def sbom = tasks.register('sbom', ReproducibleSbomTask) { ReproducibleSbomTask task ->
+    task.group = 'build'
+    task.description = 'Writes the reproducible CycloneDX SBOM that ships with the component'
+    task.bom.set(generateBom.flatMap { it.jsonOutput })
+    task.componentName.set(extension.componentName)
+    task.projectPath.set(projectPath)
+    task.timestamp.set(timestamp)
+    task.sbom.set(layout.buildDirectory.file(extension.componentName.zip(projectVersion) { String name, String version ->
+        "sbom/${name}-${version}-sbom.json".toString()
+    }))
+}
+
+pluginManager.withPlugin('java') {
+    tasks.named('jar', Jar) { Jar jar ->
+        jar.from(sbom.flatMap { it.sbom }) { spec ->
+            spec.into('META-INF')
+            spec.rename { 'sbom.json' }
+        }
+        jar.manifest.attributes('Sbom-Location': 'META-INF/sbom.json', 'Sbom-Format': 'CycloneDX')
+    }
+    // the SBOM changes with the dependency versions, not the code, so a consumer of the jar need
+    // not recompile for it
+    normalization.runtimeClasspath.ignore('META-INF/sbom.json')
+}

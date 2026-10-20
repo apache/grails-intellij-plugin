@@ -129,7 +129,11 @@ To build a specific version rather than the default in `gradle.properties`:
 ./gradlew rat                    # Apache RAT license audit
 ./gradlew runIde                 # launch a sandbox IDE with the plugin installed
 ./gradlew testCodeCoverageReport # aggregate JaCoCo coverage report
-./gradlew ossIndexAudit          # Sonatype OSS Index vulnerability scan (needs SONATYPE_GUIDE_TOKEN)
+./gradlew vulnerabilityScan vulnerabilityScanReport --continue
+                                 # dependency vulnerability scan against OSV (and Sonatype Guide when
+                                 # SONATYPE_GUIDE_USERNAME/SONATYPE_GUIDE_TOKEN are set), summarised in
+                                 # build/reports/vulnerability-scan/summary.md
+./gradlew :plugin:sbom           # the CycloneDX SBOM that ships in the plugin ZIP
 ```
 
 To confirm the build is reproducible, see

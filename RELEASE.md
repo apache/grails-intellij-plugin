@@ -217,7 +217,10 @@ from a key the PMC published to the release dist area), then checks the contents
 - **Binary distribution** must carry `LICENSE` and `NOTICE` at the root of the plugin
   directory — the ZIP is the unit being distributed, and ASF policy requires both files in
   every unit of distribution regardless of its format — as well as `META-INF/LICENSE`,
-  `META-INF/NOTICE`, and `META-INF/plugin.xml` inside the composed plugin jar.
+  `META-INF/NOTICE`, and `META-INF/plugin.xml` inside the composed plugin jar. The ZIP also
+  carries the CycloneDX SBOM, as `sbom.json` next to `LICENSE` and as `META-INF/sbom.json` in
+  the composed jar; it is reproducible like the rest of the archive, but it is not a policy
+  requirement and the verifier does not check it.
 - **`LICENSE` and `NOTICE` contents**, in both archives: `LICENSE` must be the Apache
   License 2.0 (title, version line, and end of the terms), and `NOTICE` must name *Apache
   Grails IntelliJ Plugin* and carry the ASF copyright line. A file that is present but

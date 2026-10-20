@@ -52,8 +52,10 @@ the phases below target the **new** plugin; the legacy plugin receives only Phas
 
 ## Optional ASF Follow-Up (Both Plugin Lines)
 
-- [ ] Generate a CycloneDX SBOM with a `LICENSE_MAPPING` for transitive dependencies
-      (grails-core parity). This is not a blocker for the first compliant release.
+- [x] Generate a CycloneDX SBOM with a `LICENSE_MAPPING` for transitive dependencies
+      (grails-core parity). Done: the `sbom` convention plugin writes a reproducible SBOM
+      into the plugin ZIP (`sbom.json`) and the composed jar (`META-INF/sbom.json`), with the
+      license policy in `SbomLicensePolicy`.
 
 ---
 
