@@ -50,3 +50,13 @@ dependencies {
 
     compileOnly project(':plugin')
 }
+
+// The test frameworks above are JetBrains' own test-framework jars at the platform version, with
+// the Jackson, Bouncy Castle and friends they were built against. They are test infrastructure --
+// on no runtime classpath and in no distribution -- and move only when the platform does, so the
+// scan would report advisories against them that only a platform bump can clear. Only what this
+// jar carries at runtime is scanned; the platform bump itself is where those versions are
+// reviewed.
+vulnerabilityScan {
+    configurations = ['runtimeClasspath']
+}

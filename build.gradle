@@ -20,14 +20,16 @@
 // The root project is a pure aggregator: it compiles nothing and produces no artifact. It owns
 // only the things that must run from the repository root -- the licence audit, whose exclude
 // patterns are anchored at the audited directory, the cross-project coverage aggregation, which
-// keeps its report at the path CI uploads, and the GitHub Actions policy check, which scans the
-// repository's .github/workflows.
+// keeps its report at the path CI uploads, the GitHub Actions policy check, which scans the
+// repository's .github/workflows, and the vulnerability scan summary, which collects every
+// project's scan report.
 //
 // Deliberately no allprojects/subprojects block: every project applies its own convention plugins.
 plugins {
     id 'org.apache.grails.intellij.build.rat'
     id 'org.apache.grails.intellij.build.coverage-aggregation'
     id 'org.apache.grails.intellij.build.validate-actions'
+    id 'org.apache.grails.intellij.build.vulnerability-scan-report'
 }
 
 // build-logic is an included build, so the root `check` does not reach its tests and plugin
