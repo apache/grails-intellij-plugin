@@ -271,6 +271,14 @@ files under it, so *Reveal in Project View* dead-ended.
   the plugin ZIP root as `sbom.json` and the composed jar as `META-INF/sbom.json`; the jar
   depends on it, so a dependency under a license ASF policy does not permit fails any build that
   packages the jar. See `build-logic/README.md`.
+- **CI installs JDK 8 explicitly.** `GradleGrailsImportingTest` imports a Grails 3.3.1 project with
+  Gradle 4.6, which runs on Java 8 or 9 only, and the test framework's `GradleJvmResolver` finds
+  that JDK through the IDE's `JavaHomeFinder` (`PATH`, `JAVA_HOME`, `/usr/lib/jvm`, SDKMAN, asdf,
+  `~/.gradle/jdks`). The `ubuntu-24.04` runner image shipped Temurin 8 under `/usr/lib/jvm`;
+  `ubuntu-26.04` dropped it, which failed the 263.0.1 release build. The Build & Test and release
+  jobs therefore run `setup-java` for JDK 8 and symlink it into `/usr/lib/jvm`, because
+  `setup-java` installs under `/opt/hostedtoolcache`, which the finder does not scan. Locally the
+  test still needs a JDK 8 and a JDK 11 installed (SDKMAN works).
 - **Coverage needs two non-default JaCoCo settings** (both in the `jacoco` and
   `coverage-aggregation` convention plugins): the tests load the plugin from the sandbox jars,
   which are built from the *instrumented* classes, so reports must analyse
@@ -302,6 +310,7 @@ files under it, so *Reveal in Project View* dead-ended.
 | Wrong JDK / build fails to configure | `sdk env` (JDK pinned in `.sdkmanrc`, no toolchain) |
 | RAT failure on a new file | Add the Apache license header; excludes need a justification |
 | A feature "missing" after switching plugin builds | Rebuild before judging — hit the Gradle refresh icon (or `./gradlew buildPlugin`) so the sandbox picks up the new classes. A stale build can make working code look broken, and the Grails project view pane is the usual tell because it is only added once an application is detected |
+| `GspResourceTagTest.testMove` (or another heavy test) fails with `Trying to get PSI for a file that is not included in the project model` naming a project store under `unitTest_importBasicGrailsProject_…` | A heavy test earlier in the run leaked its project; fix the first failure, not this one. `GradleImportingTestCase.setUpFixtures` resolves the Gradle JVM before the project exists for this reason, and `GradleImportingTestCaseJdkResolutionTest` pins it |
 | A project-view node shows the wrong label, or a filter change has no visible effect | Read "Project view gotchas" above before changing anything in `projectView/` — module content-root labels use coloured fragments that take precedence over `presentableText`; light-fixture coverage must register a content entry to exercise that case |
 
 
