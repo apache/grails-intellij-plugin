@@ -33,7 +33,7 @@ jobs:
     name: 'Build & Test'
     # The scheduled run is reserved for the Community Edition job below.
     if: github.event_name != 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: "📥 Checkout repository"
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -88,7 +88,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
   verify:
     name: 'Plugin Verifier'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: "📥 Checkout repository"
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -118,7 +118,7 @@ jobs:
     # -PplatformEdition=IC runs the Community-safe test set on that sandbox and points Plugin
     # Verifier at IC, which is what proves the ZIP loads there and that the main jar reaches for
     # no Ultimate class - neither the Ultimate test suite nor the Ultimate verifier catches that.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: "📥 Checkout repository"
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -44,7 +44,7 @@ jobs:
     name: "Build & Stage Plugin ZIP"
     permissions:
       contents: write # to upload release assets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: "📝 Establish release version"
         run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
@@ -117,7 +117,7 @@ jobs:
     needs: publish
     permissions:
       contents: write # to upload release assets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: "📝 Establish release version"
         run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
@@ -168,7 +168,7 @@ jobs:
     needs: [ publish, source ]
     permissions:
       contents: read # to check out the vote templates and resolve the tag SHA
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       SVN_USERNAME: ${{ secrets.SVC_DIST_GRAILS_USERNAME }}
       SVN_PASSWORD: ${{ secrets.SVC_DIST_GRAILS_PASSWORD }}
@@ -276,7 +276,7 @@ jobs:
     environment: release # post-vote gate: required reviewers configured in .asf.yaml
     name: "VOTE SUCCEEDED - Promote Distributions"
     needs: [ publish, source, upload ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: "📝 Establish release version"
         run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
@@ -325,7 +325,7 @@ jobs:
     environment: marketplace # gate: required reviewers configured in .asf.yaml
     name: "VOTE SUCCEEDED - Publish to JetBrains Marketplace"
     needs: [ publish, source, upload, release ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: "📝 Establish release version"
         run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
@@ -380,7 +380,7 @@ jobs:
     environment: close # separate gate again, so the bump is approved only once the release is really out
     name: "VOTE SUCCEEDED - Close Release"
     needs: [ publish, source, upload, release, marketplace ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write # to push the merge-back branch
       issues: write # to close the release milestone
