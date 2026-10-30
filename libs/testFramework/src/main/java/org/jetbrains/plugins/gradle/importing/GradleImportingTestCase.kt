@@ -63,6 +63,7 @@ import com.intellij.platform.testFramework.io.ExternalResourcesChecker
 import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.IdeaTestUtil
 import com.intellij.testFramework.RunAll
+import com.intellij.testFramework.TestApplicationManager
 import com.intellij.testFramework.UsefulTestCase
 import com.intellij.testFramework.common.ThreadLeakTracker
 import com.intellij.util.SmartList
@@ -141,6 +142,9 @@ abstract class GradleImportingTestCase : JavaExternalSystemImportingTestCase() {
     var gradleJdkHome: String? = null
     private set
 
+    /** Resolved in [setUpFixtures], before the project exists; copied to [gradleJdkHome] once [setUpInWriteAction] runs. */
+    private var resolvedGradleJdkHome: String? = null
+
     val gradleJvmInfo: JdkVersionDetector.JdkVersionInfo
     get() = JdkVersionDetector.getInstance().detectJdkVersionInfo(gradleJdkHome!!)!!
 
@@ -204,9 +208,24 @@ abstract class GradleImportingTestCase : JavaExternalSystemImportingTestCase() {
     }
 
     @Throws(Exception::class)
+    override fun setUpFixtures() {
+        // Resolve the Gradle JVM before the project fixture exists. Upstream resolves it in
+        // setUpInWriteAction(), but when that throws (no JDK 8 for Gradle 4.6, as on the
+        // ubuntu-26.04 runner image) NioExternalSystemTestCase tears the fixture down from inside
+        // the write action, closeProject() refuses ("Must not call closeProject() from under write
+        // action"), and the leaked project then fails unrelated heavy tests later in the same JVM
+        // with "Trying to get PSI for a file that is not included in the project model".
+        // Resolving here leaves nothing to tear down when it fails. JavaSdk needs the application,
+        // which the heavy fixture would otherwise initialise a moment later.
+        TestApplicationManager.getInstance()
+        resolvedGradleJdkHome = requireRealJdkHome()
+        super.setUpFixtures()
+    }
+
+    @Throws(Exception::class)
     override fun setUpInWriteAction() {
         super.setUpInWriteAction()
-        this.gradleJdkHome = requireRealJdkHome()
+        this.gradleJdkHome = resolvedGradleJdkHome ?: requireRealJdkHome()
         myGradleDistributionRoot = configureWrapper()
     }
 
