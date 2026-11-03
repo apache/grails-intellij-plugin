@@ -21,6 +21,9 @@ package org.apache.grails.intellij.plugin.runner;
 
 import com.intellij.execution.configurations.JavaParameters;
 import com.intellij.openapi.projectRoots.JavaSdk;
+import com.intellij.openapi.projectRoots.Sdk;
+import com.intellij.openapi.projectRoots.JavaSdkVersion;
+import com.intellij.openapi.projectRoots.JavaSdkVersionUtil;
 import com.intellij.testFramework.IdeaTestUtil;
 import org.apache.grails.intellij.lib.testFramework.GrailsTestCase;
 
@@ -32,11 +35,19 @@ import org.apache.grails.intellij.lib.testFramework.GrailsTestCase;
 public class GrailsCommandLineExecutorTest extends GrailsTestCase {
 
   public void testNativeAccessAllowedOnRecentJdk() {
+    Sdk jdk = JavaSdk.getInstance().createJdk("TEST_RECENT_JDK", IdeaTestUtil.requireRealJdkHome(), false);
     JavaParameters params = new JavaParameters();
-    params.setJdk(JavaSdk.getInstance().createJdk("TEST_RECENT_JDK", IdeaTestUtil.requireRealJdkHome(), false));
+    params.setJdk(jdk);
     GrailsCommandLineExecutor.allowNativeAccess(params);
-    assertTrue("the flag must be added for the recent test JDK: " + params.getVMParametersList().getList(),
-               params.getVMParametersList().getList().contains("--enable-native-access=ALL-UNNAMED"));
+    JavaSdkVersion version = JavaSdkVersionUtil.getJavaSdkVersion(jdk);
+    if (version != null && version.isAtLeast(JavaSdkVersion.JDK_22)) {
+      assertTrue("the flag must be added on JDK 22+: " + params.getVMParametersList().getList(),
+                 params.getVMParametersList().getList().contains("--enable-native-access=ALL-UNNAMED"));
+    }
+    else {
+      assertTrue("the flag must not be added on JDKs older than 22: " + params.getVMParametersList().getList(),
+                 params.getVMParametersList().getList().isEmpty());
+    }
   }
 
   public void testNativeAccessSkippedOnOldJdk() {
