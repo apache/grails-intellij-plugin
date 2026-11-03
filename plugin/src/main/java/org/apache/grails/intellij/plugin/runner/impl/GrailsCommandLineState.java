@@ -101,6 +101,7 @@ public class GrailsCommandLineState extends BaseGrailsCommandLineState {
     }
 
     GrailsRunnerSetup.setupJavaParameters(getConfiguration(), this, parameters);
+    GrailsCommandLineExecutor.allowNativeAccess(parameters);
     return parameters;
   }
 

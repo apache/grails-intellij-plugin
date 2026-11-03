@@ -27,6 +27,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.actionSystem.LangDataKeys;
 import com.intellij.openapi.actionSystem.Presentation;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
@@ -35,7 +36,7 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.util.NlsContexts;
 import com.intellij.openapi.util.NlsContexts.DialogTitle;
 import com.intellij.openapi.util.text.StringUtil;
-import com.intellij.openapi.vfs.VfsUtil;
+import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.JavaDirectoryService;
@@ -48,6 +49,7 @@ import org.jetbrains.annotations.PropertyKey;
 import org.apache.grails.intellij.plugin.GrailsBundle;
 import org.apache.grails.intellij.plugin.artefact.api.GrailsArtefactHandler;
 import org.apache.grails.intellij.plugin.runner.GrailsCommandExecutorUtil;
+import org.apache.grails.intellij.plugin.runner.GrailsConsole;
 import org.apache.grails.intellij.plugin.structure.GrailsApplication;
 import org.apache.grails.intellij.plugin.util.GrailsUtils;
 import org.apache.grails.intellij.plugin.mvc.MvcCommand;
@@ -118,7 +120,12 @@ public abstract class NewGrailsXXXAction extends AnAction implements DumbAware {
     String artefactFqn = StringUtil.getQualifiedName(packageName, name);
     if (checkExisting(application, artefactFqn)) return;
 
-    doAction(application, artefactFqn);
+    // Ensure the project-level GrailsConsole service (which registers its tool window and must
+    // be created on the EDT) is initialised before we hand off to a background thread.
+    GrailsConsole.getInstance(project);
+
+    // Hand off to a background thread so artefact creation does not block the EDT.
+    ApplicationManager.getApplication().executeOnPooledThread(() -> doAction(application, artefactFqn));
   }
 
   protected String getArtefactName(@NotNull AnActionEvent e, @NotNull Project project) {
@@ -140,21 +147,35 @@ public abstract class NewGrailsXXXAction extends AnAction implements DumbAware {
   }
 
   private void afterCommand(@NotNull GrailsApplication application, @NotNull String name) {
-    final VirtualFile targetDirectory = getTargetDirectory(application);
-    if (targetDirectory == null) {
+    if (getTargetDirectory(application) == null) {
       return;
     }
-    VfsUtil.markDirty(true, false, targetDirectory);
-    targetDirectory.refresh(true, true, () -> {
-      if (!application.isValid()) {
-        return;
+    // Refresh only the files this command is expected to generate, instead of marking the whole
+    // target directory dirty and refreshing it recursively: a directory-wide refresh pushes every
+    // file underneath through VFS events and indexing (dumb mode), stalling the UI.
+    final List<String> expected = getGeneratedFileNames(canonicalizeGeneratedName(application, name));
+    if (expected.isEmpty()) {
+      return;
+    }
+    final String rootPath = application.getRoot().getPath();
+    ApplicationManager.getApplication().executeOnPooledThread(() -> {
+      final LocalFileSystem fs = LocalFileSystem.getInstance();
+      final List<VirtualFile> files = new ArrayList<>();
+      for (String relativePath : expected) {
+        VirtualFile file = fs.refreshAndFindFileByPath(rootPath + '/' + relativePath);
+        if (file != null) {
+          files.add(file);
+        }
       }
-      List<VirtualFile> files = findExistingGeneratedFiles(application, name);
       if (files.isEmpty()) {
         return;
       }
-      final Project project = application.getProject();
-      FileEditorManager.getInstance(project).openFile(files.get(0), true);
+      ApplicationManager.getApplication().invokeLater(() -> {
+        if (!application.isValid()) {
+          return;
+        }
+        FileEditorManager.getInstance(application.getProject()).openFile(files.get(0), true);
+      });
     });
   }
 
@@ -255,11 +276,7 @@ public abstract class NewGrailsXXXAction extends AnAction implements DumbAware {
   }
 
   protected List<VirtualFile> findExistingGeneratedFiles(GrailsApplication application, String name) {
-    if (name.indexOf('.') == -1 && application.getGrailsVersion().isAtLeast("1.2.2")) {
-      // See _GrailsCreateArtifacts.createRootPackage()
-      name = StringUtil.toLowerCase(application.getRoot().getName().replace('-', '.')) + '.' + name;
-    }
-    final List<String> list = getGeneratedFileNames(name);
+    final List<String> list = getGeneratedFileNames(canonicalizeGeneratedName(application, name));
     final ArrayList<VirtualFile> files = new ArrayList<>();
     final VirtualFile dir = application.getRoot();
     for (String fileName : list) {
@@ -267,6 +284,19 @@ public abstract class NewGrailsXXXAction extends AnAction implements DumbAware {
       if (file != null) files.add(file);
     }
     return files;
+  }
+
+  /**
+   * Default-package artefacts are generated into the lowercased application-root package
+   * (see {@code _GrailsCreateArtifacts.createRootPackage()}), so a dot-less name must be
+   * expanded before deriving expected file paths - otherwise the generated file is never found.
+   */
+  private static @NotNull String canonicalizeGeneratedName(@NotNull GrailsApplication application,
+                                                            @NotNull String name) {
+    if (name.indexOf('.') == -1 && application.getGrailsVersion().isAtLeast("1.2.2")) {
+      return StringUtil.toLowerCase(application.getRoot().getName().replace('-', '.')) + '.' + name;
+    }
+    return name;
   }
 
   private List<String> getGeneratedFileNames(String name) {

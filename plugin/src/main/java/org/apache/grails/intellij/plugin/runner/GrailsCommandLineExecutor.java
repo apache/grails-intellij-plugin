@@ -25,7 +25,11 @@ import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.execution.configurations.JavaParameters;
 import com.intellij.execution.configurations.RunProfileState;
 import com.intellij.execution.runners.ExecutionEnvironment;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.projectRoots.JavaSdkVersion;
+import com.intellij.openapi.projectRoots.JavaSdkVersionUtil;
+import com.intellij.openapi.projectRoots.Sdk;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.apache.grails.intellij.plugin.runner.impl.Grails3TestCommandLineState;
@@ -38,6 +42,8 @@ import org.apache.grails.intellij.plugin.mvc.ConsoleProcessDescriptor;
 import org.apache.grails.intellij.plugin.mvc.MvcCommand;
 
 public abstract class GrailsCommandLineExecutor extends GrailsCommandExecutor {
+
+  private static final Logger LOG = Logger.getInstance(GrailsCommandLineExecutor.class);
 
   private static final String RUN_APP_PATTERN = "\\s*(-D[^\\s]+\\s+)*run-app(\\s.*)?";
   private static final String TEST_APP_PATTERN = "\\s*(-D[^\\s]+\\s+)*test-app(\\s.*)?";
@@ -84,11 +90,36 @@ public abstract class GrailsCommandLineExecutor extends GrailsCommandExecutor {
                                               @NotNull MvcCommand command) throws ExecutionException {
     JavaParameters params = createJavaParameters(application, command);
     params.setUseDynamicClasspath(application.getProject());
+    allowNativeAccess(params);
     return params.toCommandLine();
   }
 
   public abstract @NotNull JavaParameters createJavaParameters(@NotNull GrailsApplication grailsApplication,
                                                                @NotNull MvcCommand command) throws ExecutionException;
+
+  /**
+   * Allows the Grails CLI's terminal library (JLine) to use restricted foreign-memory methods
+   * without printing {@code WARNING: ... MemorySegment ...} noise on recent JDKs. The flag is
+   * only added when the launch JDK is known to accept it (22+, where the FFM API JLine uses is
+   * final); on older JDKs it is an unrecognized option and the JVM refuses to start at all. When
+   * the JDK cannot be determined, or the user already set the flag, the parameters are left
+   * untouched. Besides silencing the warnings, this keeps them out of stderr, so the console's
+   * error detection (and auto-hide on success) is not tripped by CLI noise.
+   */
+  public static void allowNativeAccess(@NotNull JavaParameters params) {
+    for (String parameter : params.getVMParametersList().getList()) {
+      if (parameter.startsWith("--enable-native-access")) {
+        return;
+      }
+    }
+    Sdk jdk = params.getJdk();
+    if (jdk == null) return;
+    JavaSdkVersion version = JavaSdkVersionUtil.getJavaSdkVersion(jdk);
+    if (version != null && version.isAtLeast(JavaSdkVersion.JDK_22)) {
+      LOG.debug("Allowing native access for Grails CLI on " + jdk.getName());
+      params.getVMParametersList().add("--enable-native-access=ALL-UNNAMED");
+    }
+  }
 
   public void addListener(@NotNull JavaParameters params, @NotNull String listener) {
     String listeners = params.getVMParametersList().getPropertyValue("grails.build.listeners");

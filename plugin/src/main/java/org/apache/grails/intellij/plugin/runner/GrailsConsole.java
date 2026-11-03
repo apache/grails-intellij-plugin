@@ -54,7 +54,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.util.Ref;
-import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.wm.ToolWindowAnchor;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.openapi.wm.ex.ToolWindowEx;
@@ -62,7 +61,6 @@ import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
 import com.intellij.ui.content.ContentManager;
 import com.intellij.util.DisposeAwareRunnable;
-import com.intellij.util.concurrency.ThreadingAssertions;
 import com.intellij.util.containers.ContainerUtil;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
@@ -94,12 +92,13 @@ public final class GrailsConsole implements Disposable, PersistentStateComponent
   private final ConsoleViewImpl myConsole;
   private final ToolWindowEx myToolWindow;
   private final Content myContent;
-  private boolean myIsAutoCloseEnabled = true;
+  private volatile boolean myIsAutoCloseEnabled = true;
   //private final JPanel myPanel = new JPanel(new BorderLayout());
   private final Queue<MyProcessInConsole> myProcessQueue = new LinkedList<>();
   private final MyKillProcessAction myKillAction = new MyKillProcessAction();
 
-  private boolean myExecuting = false;
+  private final Object myLock = new Object();
+  private volatile boolean myExecuting = false;
 
   public GrailsConsole(Project project) {
     myProject = project;
@@ -253,13 +252,21 @@ public final class GrailsConsole implements Disposable, PersistentStateComponent
                                                           boolean showConsole,
                                                           final boolean closeOnDone,
                                                           final String... input) {
-    ThreadingAssertions.assertEventDispatchThread();
-
+    // Relaxed: no longer asserts EDT so artefact creation can hand off to a background thread.
+    // Queueing/flag transitions are guarded by myLock to stay thread-safe.
     final MyProcessInConsole process = new MyProcessInConsole(commandLine, onDone, showConsole, closeOnDone, input);
-    if (isExecuting()) {
-      myProcessQueue.add(process);
+    boolean startNow;
+    synchronized (myLock) {
+      if (myExecuting) {
+        myProcessQueue.add(process);
+        startNow = false;
+      }
+      else {
+        myExecuting = true;
+        startNow = true;
+      }
     }
-    else {
+    if (startNow) {
       executeProcessImpl(process, true);
     }
     return process;
@@ -270,19 +277,38 @@ public final class GrailsConsole implements Disposable, PersistentStateComponent
   }
 
   private void executeProcessImpl(final MyProcessInConsole pic, boolean toFocus) {
+    synchronized (myLock) {
+      myExecuting = true;
+    }
     final GeneralCommandLine commandLine = pic.commandLine;
     final String[] input = pic.input;
     final Runnable onDone = pic.onDone;
 
-    myExecuting = true;
-
-    final ModalityState modalityState = ModalityState.current();
+    // ModalityState.current() is EDT-only; when invoked off the EDT (artefact creation) we are
+    // in a non-modal context, so fall back to nonModal() instead of asserting the EDT.
+    final ModalityState modalityState = ApplicationManager.getApplication().isDispatchThread()
+                                       ? ModalityState.current()
+                                       : ModalityState.nonModal();
     final boolean modalContext = modalityState != ModalityState.nonModal();
 
+    LOG.debug("Starting Grails process: " + commandLine.getCommandLineString());
+
+    // Defer tool-window activation off the EDT-critical path for background callers so that
+    // VCS "Changes" view layout handling (write-intent wait) does not run synchronously here.
     if (!modalContext && pic.showConsole) {
-      show(null, toFocus);
+      if (ApplicationManager.getApplication().isDispatchThread()) {
+        show(null, toFocus);
+      }
+      else {
+        ApplicationManager.getApplication().invokeLater(() -> {
+          if (myProject.isDisposed()) return;
+          show(null, toFocus);
+        }, modalityState);
+      }
     }
 
+    // saveAllDocuments runs on the calling thread: off the EDT when invoked from a background
+    // thread (artefact creation), on the EDT for the existing callers that keep EDT behaviour.
     FileDocumentManager.getInstance().saveAllDocuments();
     final OSProcessHandler handler;
     try {
@@ -325,7 +351,17 @@ public final class GrailsConsole implements Disposable, PersistentStateComponent
         ExecutionUtil.handleExecutionError(myProject, TOOL_WINDOW_ID, "Grails", ex);
         LOG.info(ex);
         try {
-          if (onDone != null) onDone.run();
+          if (onDone != null) {
+            // The success path runs onDone on the EDT via finishProcess; the failure path must
+            // honour the same contract (callers touch PSI/VFS/UI), while still propagating
+            // control-flow exceptions to the caller.
+            if (ApplicationManager.getApplication().isDispatchThread()) {
+              onDone.run();
+            }
+            else {
+              ApplicationManager.getApplication().invokeAndWait(onDone, modalityState);
+            }
+          }
         }
         catch (Exception e) {
           // A cancellation is not a failure, so it propagates - but the release below must happen
@@ -335,7 +371,7 @@ public final class GrailsConsole implements Disposable, PersistentStateComponent
         }
       }
       finally {
-        myExecuting = false;
+        startNextOrRelease();
       }
       return;
     }
@@ -343,46 +379,102 @@ public final class GrailsConsole implements Disposable, PersistentStateComponent
     pic.setHandler(handler);
     myKillAction.setHandler(handler);
 
-    myContent.setDisplayName(GrailsBundle.message("content.display.name.grails.executing"));
-    myConsole.scrollToEnd();
-    myConsole.attachToProcess(handler);
+    Runnable uiSetup = () -> {
+      if (myProject.isDisposed()) return;
+      myContent.setDisplayName(GrailsBundle.message("content.display.name.grails.executing"));
+      myConsole.scrollToEnd();
+      myConsole.attachToProcess(handler);
+    };
+    if (ApplicationManager.getApplication().isDispatchThread()) {
+      uiSetup.run();
+    }
+    else {
+      ApplicationManager.getApplication().invokeAndWait(uiSetup, modalityState);
+    }
+
     ApplicationManager.getApplication().executeOnPooledThread(() -> {
+      LOG.debug("Notifying Grails process handler");
       handler.startNotify();
-      if (!handler.waitFor()) return; // the process has not ended
+      if (!handler.waitFor()) {
+        // Killed or otherwise did not terminate normally: release the console and drain the
+        // queue without running onDone, so later commands are not stuck behind a dead process.
+        finishProcess(null, modalityState);
+        return;
+      }
+
+      LOG.debug("Grails process finished with exit code " + handler.getExitCode());
 
       Integer exitCode = handler.getExitCode(); // wait until CLI creates content of directory
-      if (exitCode == null || exitCode != 0) return; // something went wrong
+      if (exitCode == null || exitCode != 0) {
+        // Something went wrong: release the console and drain the queue without running onDone.
+        finishProcess(null, modalityState);
+        return;
+      }
 
-      ApplicationManager.getApplication().invokeLater(() -> {
-        if (myProject.isDisposed()) return;
+      // Success: run onDone and release on the EDT. No VFS refresh here: every onDone that
+      // needs fresh files refreshes exactly its own scope (e.g. NewGrailsXXXAction refreshes only
+      // the generated files), and anything else picks new files up through the filesystem watcher.
+      // Even a work-directory-scoped recursive refresh pushed every change underneath through the
+      // RefreshQueue's read+write session, starving the EDT's write-intent permit (freeze).
+      finishProcess(onDone, modalityState);
+    });
+  }
 
-        //module.putUserData(UPDATING_BY_CONSOLE_PROCESS, true);
-        LocalFileSystem.getInstance().refresh(false);
-        //module.putUserData(UPDATING_BY_CONSOLE_PROCESS, null);
-
-        try {
-          if (onDone != null) onDone.run();
-        }
-        catch (Exception e) {
-          // A cancellation is not a failure, so it propagates - but the teardown below must happen
-          // either way, or the console stays busy and the next queued command never starts.
-          ControlFlowGuard.rethrowIfControlFlow(e);
-          LOG.error(e);
-        }
-        finally {
-          myConsole.print("\n", ConsoleViewContentType.NORMAL_OUTPUT);
-          myKillAction.setHandler(null);
-          myContent.setDisplayName("");
-
-          myExecuting = false;
-
-          final MyProcessInConsole pic1 = myProcessQueue.poll();
-          if (pic1 != null) {
-            executeProcessImpl(pic1, false);
+  /**
+   * Runs {@code onDone} (unless the project is gone) and then always releases the console and
+   * starts the next queued process. Every completion path funnels through here so a killed,
+   * failed or orphaned process can never leave the console busy forever.
+   */
+  private void finishProcess(@Nullable Runnable onDone, ModalityState modalityState) {
+    ApplicationManager.getApplication().invokeLater(() -> {
+      try {
+        if (!myProject.isDisposed()) {
+          try {
+            if (onDone != null) onDone.run();
+          }
+          catch (Exception e) {
+            // A cancellation is not a failure, so it propagates - but the teardown below must
+            // happen either way, or the console stays busy and the next queued command never
+            // starts (hence the outer finally, not just a catch).
+            ControlFlowGuard.rethrowIfControlFlow(e);
+            LOG.error(e);
+          }
+          finally {
+            myConsole.print("\n", ConsoleViewContentType.NORMAL_OUTPUT);
+            myKillAction.setHandler(null);
+            myContent.setDisplayName("");
           }
         }
-      }, modalityState);
-    });
+      }
+      finally {
+        startNextOrRelease();
+      }
+    }, modalityState);
+  }
+
+  /**
+   * Starts the next queued process, keeping the console reserved across the handoff, or releases
+   * the console when the queue is empty. The reservation must be held: clearing
+   * {@code myExecuting} before starting the polled process lets a concurrent submitter observe
+   * idle and start a second process alongside the queued one.
+   */
+  private void startNextOrRelease() {
+    final MyProcessInConsole next;
+    synchronized (myLock) {
+      if (myProject.isDisposed()) {
+        myProcessQueue.clear();
+        myExecuting = false;
+        return;
+      }
+      next = myProcessQueue.poll();
+      if (next == null) {
+        myExecuting = false;
+      }
+      // else: myExecuting stays true across the handoff below.
+    }
+    if (next != null) {
+      executeProcessImpl(next, false);
+    }
   }
 
   @Override
