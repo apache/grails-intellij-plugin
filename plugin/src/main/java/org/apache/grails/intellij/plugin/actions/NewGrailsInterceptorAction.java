@@ -19,6 +19,7 @@
 
 package org.apache.grails.intellij.plugin.actions;
 
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -50,6 +51,9 @@ public class NewGrailsInterceptorAction extends NewGrailsXXXAction {
 
   @Override
   protected void fillGeneratedNamesList(@NotNull String name, @NotNull List<String> names) {
-    // todo
+    // create-interceptor exists since Grails 3, so only the Grails 3+ layout applies.
+    name = StringUtil.trimEnd(name, GrailsArtifact.INTERCEPTOR.suffix);
+    names.add("grails-app/controllers/" + canonicalize(name) + "Interceptor.groovy");
+    names.add("src/test/groovy/" + canonicalize(name) + "InterceptorSpec.groovy");
   }
 }

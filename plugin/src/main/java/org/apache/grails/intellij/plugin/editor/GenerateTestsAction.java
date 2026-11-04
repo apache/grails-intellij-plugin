@@ -24,8 +24,11 @@ import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys;
 import com.intellij.openapi.actionSystem.Presentation;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.vfs.VirtualFileSystem;
 import com.intellij.psi.PsiClass;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -36,10 +39,12 @@ import org.apache.grails.intellij.plugin.structure.GrailsApplication;
 import org.apache.grails.intellij.plugin.tests.GrailsTestUtils;
 import org.apache.grails.intellij.plugin.util.GrailsArtifact;
 import org.apache.grails.intellij.plugin.util.GrailsUtils;
+import org.apache.grails.intellij.plugin.util.version.Version;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
 import org.apache.grails.intellij.plugin.mvc.MvcCommand;
 
 import java.util.Collection;
+import java.util.List;
 
 public class GenerateTestsAction extends AnAction {
   private final boolean myIntegration;
@@ -89,11 +94,41 @@ public class GenerateTestsAction extends AnAction {
     final MvcCommand mvcCommand = new MvcCommand(myIntegration ? "create-integration-test" : "create-unit-test", qualifiedName);
     GrailsCommandExecutorUtil.execute(application, mvcCommand, () -> {
       if (!testedClass.isValid()) return;
-      PsiClass testClass = findTestClass(testedClass);
-      if (testClass != null) {
-        testClass.navigate(true);
-      }
+      // The console's own refresh after a command is asynchronous and not awaited, so the generated
+      // spec is brought into the VFS explicitly before the index lookup below, which would
+      // otherwise miss it: one scoped refresh per expected path, off the EDT.
+      final List<String> expected = expectedTestPaths(application.getGrailsVersion(), qualifiedName, myIntegration);
+      final VirtualFile root = application.getRoot();
+      final String rootPath = root.getPath();
+      final VirtualFileSystem fs = root.getFileSystem();
+      ApplicationManager.getApplication().executeOnPooledThread(() -> {
+        for (String relativePath : expected) {
+          fs.refreshAndFindFileByPath(rootPath + '/' + relativePath);
+        }
+        ApplicationManager.getApplication().invokeLater(() -> {
+          if (!testedClass.isValid()) return;
+          PsiClass testClass = findTestClass(testedClass);
+          if (testClass != null) {
+            testClass.navigate(true);
+          }
+        });
+      });
     }, true);
+  }
+
+  /**
+   * The paths, relative to the application root, at which {@code create-unit-test} or
+   * {@code create-integration-test} generates the test of the given artefact: the Grails 3+
+   * layout since 3.0, and both the Spock and the older {@code Tests} name under the Grails 2
+   * test directories before that.
+   */
+  static @NotNull List<String> expectedTestPaths(@NotNull Version grailsVersion, @NotNull String artefactFqn, boolean integration) {
+    final String relative = artefactFqn.replace('.', '/');
+    if (grailsVersion.isAtLeast(Version.GRAILS_3_0)) {
+      return List.of((integration ? "src/integration-test/groovy/" : "src/test/groovy/") + relative + "Spec.groovy");
+    }
+    final String directory = integration ? GrailsUtils.GRAILS_INTEGRATION_TESTS : GrailsUtils.GRAILS_UNIT_TESTS;
+    return List.of(directory + relative + "Spec.groovy", directory + relative + "Tests.groovy");
   }
 
   private @Nullable PsiClass findTestClass(PsiClass testedClass) {
