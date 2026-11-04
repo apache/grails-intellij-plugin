@@ -100,11 +100,13 @@ public abstract class GrailsCommandLineExecutor extends GrailsCommandExecutor {
   /**
    * Allows the Grails CLI's terminal library (JLine) to use restricted foreign-memory methods
    * without printing {@code WARNING: ... MemorySegment ...} noise on recent JDKs. The flag is
-   * only added when the launch JDK is known to accept it (22+, where the FFM API JLine uses is
-   * final); on older JDKs it is an unrecognized option and the JVM refuses to start at all. When
-   * the JDK cannot be determined, or the user already set the flag, the parameters are left
-   * untouched. Besides silencing the warnings, this keeps them out of stderr, so the console's
-   * error detection (and auto-hide on success) is not tripped by CLI noise.
+   * only added from JDK 22 on: that is where the FFM API is final and JLine's foreign-memory
+   * terminal provider (the source of the warnings) kicks in, and it keeps the launch unchanged for
+   * the JDK 8 and 11 era this plugin still supports, where the option does not exist (it was
+   * introduced in JDK 17) and would prevent the JVM from starting. When the JDK cannot be
+   * determined, or the user already set the flag, the parameters are left untouched. Besides
+   * silencing the warnings, this keeps them out of stderr, so the console's error detection (and
+   * auto-hide on success) is not tripped by CLI noise.
    */
   public static void allowNativeAccess(@NotNull JavaParameters params) {
     for (String parameter : params.getVMParametersList().getList()) {

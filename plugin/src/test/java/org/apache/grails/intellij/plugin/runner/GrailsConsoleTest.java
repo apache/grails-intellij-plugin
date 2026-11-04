@@ -20,6 +20,7 @@
 package org.apache.grails.intellij.plugin.runner;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.projectRoots.JavaSdk;
 import com.intellij.openapi.projectRoots.Sdk;
@@ -36,7 +37,10 @@ import org.jetbrains.annotations.NotNull;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -161,5 +165,106 @@ public class GrailsConsoleTest extends GrailsTestCase {
     Object killAction = killActionField.get(console);
     assertFalse("the kill handler must be cleared even when onDone() throws cancellation",
                 (Boolean)killAction.getClass().getMethod("isEnabled").invoke(killAction));
+  }
+
+  private static GeneralCommandLine java(String... arguments) {
+    Path javaBin = Path.of(IdeaTestUtil.requireRealJdkHome(), "bin", SystemInfo.isWindows ? "java.exe" : "java");
+    return new GeneralCommandLine(javaBin.toString()).withParameters(arguments);
+  }
+
+  /** Pumps the EDT until the console has released its reservation: completion runs there. */
+  private static void awaitIdle(GrailsConsole console) {
+    PlatformTestUtil.waitWithEventsDispatching("the console did not go idle", () -> !console.isExecuting(), 30);
+  }
+
+  private static boolean isKillActionEnabled(GrailsConsole console) throws Exception {
+    Field killActionField = GrailsConsole.class.getDeclaredField("myKillAction");
+    killActionField.setAccessible(true);
+    Object killAction = killActionField.get(console);
+    return (Boolean)killAction.getClass().getMethod("isEnabled").invoke(killAction);
+  }
+
+  /**
+   * A process that exits with a non-zero code used to leave {@code myExecuting} set forever: the
+   * waiter returned without releasing, so every later command queued silently behind it.
+   */
+  public void testFailedProcessReleasesTheConsoleWithoutRunningOnDone() throws Exception {
+    myConsole = GrailsConsole.getInstance(getProject());
+    GrailsConsole console = myConsole;
+    assertFalse("precondition: the console must start idle", console.isExecuting());
+
+    AtomicBoolean onDoneRan = new AtomicBoolean();
+    console.executeProcess(java("-no-such-option"), () -> onDoneRan.set(true), false, false);
+    assertTrue("the console is reserved until the completion runs on the EDT", console.isExecuting());
+
+    awaitIdle(console);
+    assertFalse("onDone must not run for a command that failed", onDoneRan.get());
+    assertFalse("the kill handler must be cleared once the process is gone", isKillActionEnabled(console));
+  }
+
+  /**
+   * Artefact creation submits from a pooled thread: the modality falls back to non-modal, the
+   * console attaches through invokeAndWait, and onDone still runs on the EDT like for EDT callers.
+   */
+  public void testProcessSubmittedFromAPooledThreadRunsOnDoneOnTheEdt() throws Exception {
+    myConsole = GrailsConsole.getInstance(getProject());
+    GrailsConsole console = myConsole;
+
+    AtomicBoolean onDoneRan = new AtomicBoolean();
+    AtomicBoolean onDoneOnEdt = new AtomicBoolean();
+    Future<?> submitted = ApplicationManager.getApplication().executeOnPooledThread(
+      () -> console.executeProcess(java("-version"), () -> {
+        onDoneOnEdt.set(ApplicationManager.getApplication().isDispatchThread());
+        onDoneRan.set(true);
+      }, false, false));
+
+    // The submitting thread needs the EDT (invokeAndWait for the console attachment), so pump it.
+    PlatformTestUtil.waitWithEventsDispatching("the background submission did not complete", submitted::isDone, 30);
+    submitted.get();
+    awaitIdle(console);
+
+    assertTrue("onDone must run after a successful command", onDoneRan.get());
+    assertTrue("onDone must run on the EDT, its callers touch PSI, VFS and UI", onDoneOnEdt.get());
+    assertFalse("the kill handler must be cleared once the process is gone", isKillActionEnabled(console));
+  }
+
+  /**
+   * Only an ExecutionException used to release the reservation. Anything else thrown while
+   * starting the process escaped with the console still busy, and on the background path nothing
+   * upstream could notice.
+   */
+  public void testExceptionWhileStartingTheProcessReleasesTheConsole() {
+    myConsole = GrailsConsole.getInstance(getProject());
+    GrailsConsole console = myConsole;
+
+    GeneralCommandLine exploding = new GeneralCommandLine("java") {
+      @Override
+      public @NotNull Process createProcess() {
+        throw new IllegalStateException("cannot start");
+      }
+    };
+    try {
+      console.executeProcess(exploding, null, false, false);
+      fail("expected the exception thrown while starting the process to propagate");
+    }
+    catch (IllegalStateException e) {
+      assertEquals("cannot start", e.getMessage());
+    }
+
+    assertFalse("a failure before the process runs must still release the console", console.isExecuting());
+  }
+
+  /** The second command waits for the first and starts once it completed; the console ends up idle. */
+  public void testQueuedProcessRunsAfterTheCurrentOne() {
+    myConsole = GrailsConsole.getInstance(getProject());
+    GrailsConsole console = myConsole;
+
+    List<String> order = new CopyOnWriteArrayList<>();
+    console.executeProcess(java("-version"), () -> order.add("first"), false, false);
+    console.executeProcess(java("-version"), () -> order.add("second"), false, false);
+    assertEquals("the second command queues behind the first", List.of(), order);
+
+    awaitIdle(console);
+    assertEquals(List.of("first", "second"), order);
   }
 }

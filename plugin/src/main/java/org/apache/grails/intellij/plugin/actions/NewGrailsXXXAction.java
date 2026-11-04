@@ -36,9 +36,9 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.util.NlsContexts;
 import com.intellij.openapi.util.NlsContexts.DialogTitle;
 import com.intellij.openapi.util.text.StringUtil;
-import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.vfs.VirtualFileSystem;
 import com.intellij.psi.JavaDirectoryService;
 import com.intellij.psi.PsiDirectory;
 import com.intellij.psi.PsiNameHelper;
@@ -146,8 +146,10 @@ public abstract class NewGrailsXXXAction extends AnAction implements DumbAware {
     GrailsCommandExecutorUtil.execute(application, mvcCommand, () -> afterCommand(application, name), true);
   }
 
-  private void afterCommand(@NotNull GrailsApplication application, @NotNull String name) {
-    if (getTargetDirectory(application) == null) {
+  // Package-private so tests can drive the completion path without running a Grails process.
+  void afterCommand(@NotNull GrailsApplication application, @NotNull String name) {
+    final VirtualFile targetDirectory = getTargetDirectory(application);
+    if (targetDirectory == null) {
       return;
     }
     // Refresh only the files this command is expected to generate, instead of marking the whole
@@ -155,11 +157,15 @@ public abstract class NewGrailsXXXAction extends AnAction implements DumbAware {
     // file underneath through VFS events and indexing (dumb mode), stalling the UI.
     final List<String> expected = getGeneratedFileNames(canonicalizeGeneratedName(application, name));
     if (expected.isEmpty()) {
+      // The subclass declares no generated files, so there is nothing specific to open; at least
+      // pick up the new entries of the target directory, since the console's refresh is deferred.
+      targetDirectory.refresh(true, false);
       return;
     }
-    final String rootPath = application.getRoot().getPath();
+    final VirtualFile root = application.getRoot();
+    final String rootPath = root.getPath();
+    final VirtualFileSystem fs = root.getFileSystem();
     ApplicationManager.getApplication().executeOnPooledThread(() -> {
-      final LocalFileSystem fs = LocalFileSystem.getInstance();
       final List<VirtualFile> files = new ArrayList<>();
       for (String relativePath : expected) {
         VirtualFile file = fs.refreshAndFindFileByPath(rootPath + '/' + relativePath);

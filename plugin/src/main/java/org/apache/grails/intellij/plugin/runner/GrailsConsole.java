@@ -32,6 +32,7 @@ import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.execution.ui.RunnerLayoutUi;
 import com.intellij.execution.ui.layout.PlaceInGrid;
 import com.intellij.icons.AllIcons;
+import com.intellij.ide.SaveAndSyncHandler;
 import com.intellij.notification.NotificationGroup;
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.openapi.Disposable;
@@ -280,6 +281,27 @@ public final class GrailsConsole implements Disposable, PersistentStateComponent
     synchronized (myLock) {
       myExecuting = true;
     }
+    // The reservation taken above is handed to the pooled waiter inside startProcess(). Until that
+    // handoff has happened, every exit - an unstartable command, a failure while saving documents
+    // or attaching the console, a cancellation - must release it here, or the console stays busy
+    // forever and every later command queues silently.
+    boolean handedOff = false;
+    try {
+      handedOff = startProcess(pic, toFocus);
+    }
+    finally {
+      if (!handedOff) {
+        startNextOrRelease();
+      }
+    }
+  }
+
+  /**
+   * Starts the process and the pooled thread that waits for it. Returns {@code true} once that
+   * thread owns the console reservation (it releases it through {@link #finishProcess}), and
+   * {@code false} when the command could not be started, in which case the caller releases.
+   */
+  private boolean startProcess(final MyProcessInConsole pic, boolean toFocus) {
     final GeneralCommandLine commandLine = pic.commandLine;
     final String[] input = pic.input;
     final Runnable onDone = pic.onDone;
@@ -347,77 +369,86 @@ public final class GrailsConsole implements Disposable, PersistentStateComponent
       });
     }
     catch (final ExecutionException ex) {
+      ExecutionUtil.handleExecutionError(myProject, TOOL_WINDOW_ID, "Grails", ex);
+      LOG.info(ex);
       try {
-        ExecutionUtil.handleExecutionError(myProject, TOOL_WINDOW_ID, "Grails", ex);
-        LOG.info(ex);
-        try {
-          if (onDone != null) {
-            // The success path runs onDone on the EDT via finishProcess; the failure path must
-            // honour the same contract (callers touch PSI/VFS/UI), while still propagating
-            // control-flow exceptions to the caller.
-            if (ApplicationManager.getApplication().isDispatchThread()) {
-              onDone.run();
-            }
-            else {
-              ApplicationManager.getApplication().invokeAndWait(onDone, modalityState);
-            }
+        if (onDone != null) {
+          // The success path runs onDone on the EDT via finishProcess; the failure path must
+          // honour the same contract (callers touch PSI/VFS/UI), while still propagating
+          // control-flow exceptions to the caller.
+          if (ApplicationManager.getApplication().isDispatchThread()) {
+            onDone.run();
+          }
+          else {
+            ApplicationManager.getApplication().invokeAndWait(onDone, modalityState);
           }
         }
-        catch (Exception e) {
-          // A cancellation is not a failure, so it propagates - but the release below must happen
-          // either way, or the console stays busy and every later command queues forever.
-          ControlFlowGuard.rethrowIfControlFlow(e);
-          LOG.error(e);
-        }
       }
-      finally {
-        startNextOrRelease();
+      catch (Exception e) {
+        // A cancellation is not a failure, so it propagates - the caller's finally releases the
+        // console either way, or every later command would queue forever.
+        ControlFlowGuard.rethrowIfControlFlow(e);
+        LOG.error(e);
       }
-      return;
+      return false;
     }
 
     pic.setHandler(handler);
     myKillAction.setHandler(handler);
 
-    Runnable uiSetup = () -> {
-      if (myProject.isDisposed()) return;
-      myContent.setDisplayName(GrailsBundle.message("content.display.name.grails.executing"));
-      myConsole.scrollToEnd();
-      myConsole.attachToProcess(handler);
-    };
-    if (ApplicationManager.getApplication().isDispatchThread()) {
-      uiSetup.run();
-    }
-    else {
-      ApplicationManager.getApplication().invokeAndWait(uiSetup, modalityState);
-    }
-
-    ApplicationManager.getApplication().executeOnPooledThread(() -> {
-      LOG.debug("Notifying Grails process handler");
-      handler.startNotify();
-      if (!handler.waitFor()) {
-        // Killed or otherwise did not terminate normally: release the console and drain the
-        // queue without running onDone, so later commands are not stuck behind a dead process.
-        finishProcess(null, modalityState);
-        return;
+    try {
+      Runnable uiSetup = () -> {
+        if (myProject.isDisposed()) return;
+        myContent.setDisplayName(GrailsBundle.message("content.display.name.grails.executing"));
+        myConsole.scrollToEnd();
+        myConsole.attachToProcess(handler);
+      };
+      if (ApplicationManager.getApplication().isDispatchThread()) {
+        uiSetup.run();
+      }
+      else {
+        ApplicationManager.getApplication().invokeAndWait(uiSetup, modalityState);
       }
 
-      LOG.debug("Grails process finished with exit code " + handler.getExitCode());
+      ApplicationManager.getApplication().executeOnPooledThread(() -> {
+        LOG.debug("Notifying Grails process handler");
+        handler.startNotify();
+        if (!handler.waitFor()) {
+          // The wait itself was cancelled (waitFor() returns false only on ProcessCanceledException),
+          // so the state of the process is unknown: release the console and drain the queue without
+          // running onDone, so later commands are not stuck behind it.
+          finishProcess(null, modalityState);
+          return;
+        }
 
-      Integer exitCode = handler.getExitCode(); // wait until CLI creates content of directory
-      if (exitCode == null || exitCode != 0) {
-        // Something went wrong: release the console and drain the queue without running onDone.
-        finishProcess(null, modalityState);
-        return;
-      }
+        Integer exitCode = handler.getExitCode(); // wait until CLI creates content of directory
+        LOG.debug("Grails process finished with exit code " + exitCode);
 
-      // Success: run onDone and release on the EDT. No VFS refresh here: every onDone that
-      // needs fresh files refreshes exactly its own scope (e.g. NewGrailsXXXAction refreshes only
-      // the generated files), and anything else picks new files up through the filesystem watcher.
-      // Even a work-directory-scoped recursive refresh pushed every change underneath through the
-      // RefreshQueue's read+write session, starving the EDT's write-intent permit (freeze).
-      finishProcess(onDone, modalityState);
-    });
+        // The command may have written anywhere under the project, whatever its exit code. Ask for
+        // the platform's throttled, asynchronous refresh of the known local roots - the one the IDE
+        // runs when its frame regains focus, and what External Tools do after a run
+        // (ToolProcessAdapter) - instead of the synchronous all-roots refresh that used to run on
+        // the EDT here and froze it. The refresh is not awaited, so an onDone that needs a specific
+        // generated file refreshes that file itself first (see NewGrailsXXXAction.afterCommand).
+        SaveAndSyncHandler.getInstance().scheduleRefresh();
+
+        if (exitCode == null || exitCode != 0) {
+          // Something went wrong: release the console and drain the queue without running onDone.
+          finishProcess(null, modalityState);
+          return;
+        }
+
+        finishProcess(onDone, modalityState);
+      });
+      return true;
+    }
+    catch (RuntimeException | Error e) {
+      // The process is running but the console could not take it over: stop it rather than leave
+      // it orphaned behind a console the caller is about to release.
+      myKillAction.setHandler(null);
+      handler.destroyProcess();
+      throw e;
+    }
   }
 
   /**
@@ -483,10 +514,12 @@ public final class GrailsConsole implements Disposable, PersistentStateComponent
           executeProcessImpl(next, false);
         }
         catch (RuntimeException e) {
-          // A pooled thread that dies with an uncaught exception leaves the console busy
-          // forever; release and drain here as a last resort.
-          LOG.error("Queued Grails process failed to start", e);
-          startNextOrRelease();
+          // executeProcessImpl() has already released the reservation (its finally), so this only
+          // adds context to the log. A control-flow exception has nothing left to cancel on a
+          // pooled thread and must not be logged.
+          if (!ControlFlowGuard.isControlFlow(e)) {
+            LOG.error("Queued Grails process failed to start", e);
+          }
         }
       });
     }
