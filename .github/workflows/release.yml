@@ -59,7 +59,7 @@ jobs:
         # GradleGrailsImportingTest imports a Grails 3.3.1 project with Gradle 4.6, which runs on
         # Java 8 or 9 only. The ubuntu-24.04 image shipped Temurin 8 under /usr/lib/jvm, where the
         # IDE's JavaHomeFinder picks it up; ubuntu-26.04 dropped it, so install one explicitly.
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: 8
@@ -68,7 +68,7 @@ jobs:
         # does scan /usr/lib/jvm. The build JDK is set up afterwards and stays the default.
         run: sudo mkdir -p /usr/lib/jvm && sudo ln -sfn "$JAVA_HOME_8_X64" /usr/lib/jvm/temurin-8-jdk
       - name: "☕️ Setup JDK"
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: ${{ env.JAVA_DISTRIBUTION }}
           java-version: ${{ steps.sdkmanrc.outputs.java }}
@@ -349,7 +349,7 @@ jobs:
         id: sdkmanrc
         run: echo "java=$(grep -E '^java=' .sdkmanrc | cut -d= -f2 | sed 's/-librca$//')" >> "$GITHUB_OUTPUT"
       - name: "☕️ Setup JDK"
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: ${{ env.JAVA_DISTRIBUTION }}
           java-version: ${{ steps.sdkmanrc.outputs.java }}
