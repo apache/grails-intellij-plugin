@@ -154,7 +154,6 @@ public class GspImplicitVariablesTest extends GrailsTestCase {
     checkNonExistingCompletionVariants("requestedSessionIdFromUrl", "isRequestedSessionIdFromUrl");
   }
 
-  /** The stock Grails index.gsp lists {@code grailsApplication.controllerClasses}. */
   /**
    * The stock Grails index.gsp lists {@code grailsApplication.controllerClasses} and groups them by namespace. Each
    * artefact has the interface of its own classes, except interceptors, whose classes are plain GrailsClasses.
