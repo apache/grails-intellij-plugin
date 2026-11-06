@@ -34,7 +34,7 @@ group = 'org.apache.grails.intellij.build'
 dependencies {
     // Dependabot (gradle ecosystem, /build-logic) keeps these versions current.
     implementation 'org.jetbrains.intellij.platform:intellij-platform-gradle-plugin:2.19.0'
-    implementation 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.20'
+    implementation 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.21'
     implementation 'org.nosphere.apache.rat:org.nosphere.apache.rat.gradle.plugin:0.11.0'
     // The CycloneDX SBOM generator behind the sbom convention plugin. The vulnerability scan itself
     // has no plugin dependency: it is this build's own code under org.apache.grails.intellij.build.scan.
