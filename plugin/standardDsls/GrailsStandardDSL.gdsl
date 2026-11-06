@@ -51,6 +51,22 @@ class Constants {
   static final String[] names_getXxxClasses = createNames("get", "Classes");
   static final String[] names_getXxxClass = createNames("get", "Class");
   static final String[] names_isXxxClass = createNames("is", "Class");
+
+  /**
+   * The artefact types of Grails 3 and later, each with the interface of its artefact classes: the type and the class
+   * type each artefact handler passes to grails.core.ArtefactHandlerAdapter, including the
+   * org.grails.plugins.web.interceptors.InterceptorArtefactHandler Grails 3 added, whose classes are plain GrailsClasses.
+   * Unchanged from Grails 3.3 to 8. #CHECK#
+   */
+  static final Map<String, String> grails3Artifacts = [
+    Domain     : 'grails.core.GrailsDomainClass',
+    Controller : 'grails.core.GrailsControllerClass',
+    Service    : 'grails.core.GrailsServiceClass',
+    TagLib     : 'grails.core.gsp.GrailsTagLibClass',
+    Bootstrap  : 'grails.web.servlet.bootstrap.GrailsBootstrapClass',
+    Codec      : 'org.grails.commons.GrailsCodecClass',
+    UrlMappings: 'grails.core.GrailsUrlMappingsClass',
+    Interceptor: 'grails.core.GrailsClass'];
 }
 
 contributor(grailsApplication) {
@@ -66,4 +82,21 @@ contributor(grailsApplication) {
     method name: name, params: [aClass: 'Class'], type: "boolean"
   }
 
+}
+
+// Grails 3 and later declare none of these on grails.core.GrailsApplication either: they are served dynamically by
+// grails.core.DefaultGrailsApplication#invokeMethod and #getProperty, which match (get)(\w+)(Classes), (get)(\w+)Class
+// and (is)(\w+)(Class). Grails 3 moved GrailsApplication and GrailsClass to grails.core, so the context above never
+// applies there. GrailsParameterMap needs no such contributor from Grails 3 on: grails.util.TypeConvertingMap declares
+// int(String) and the other typed getters.
+def grails3Application = context(ctype: "grails.core.GrailsApplication")
+
+// getArtefacts(String) declares GrailsClass[], but each artefact's classes implement its own interface, so that, for
+// example, controllerClasses has the controllers' namespace and actions.
+contributor(grails3Application) {
+  for (artifact in Constants.grails3Artifacts) {
+    method name: 'get' + artifact.key + 'Classes', type: artifact.value + '[]'
+    method name: 'get' + artifact.key + 'Class', params: [name: 'String'], type: artifact.value
+    method name: 'is' + artifact.key + 'Class', params: [aClass: 'Class'], type: 'boolean'
+  }
 }

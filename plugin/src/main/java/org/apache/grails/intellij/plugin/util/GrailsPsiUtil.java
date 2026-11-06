@@ -334,6 +334,13 @@ public final class GrailsPsiUtil {
     PsiType typeMap = factory.createTypeByFQClassName(CommonClassNames.JAVA_UTIL_MAP, scope);
 
     if (typeMap.isAssignableFrom(psiType)) {
+      // Iterating a map goes over its entries, which have the map's key and value types.
+      PsiClass entryClass = facade.findClass(CommonClassNames.JAVA_UTIL_MAP_ENTRY, scope);
+      PsiType keyType = PsiUtil.substituteTypeParameter(psiType, CommonClassNames.JAVA_UTIL_MAP, 0, false);
+      PsiType valueType = PsiUtil.substituteTypeParameter(psiType, CommonClassNames.JAVA_UTIL_MAP, 1, false);
+      if (entryClass != null && keyType != null && valueType != null) {
+        return factory.createType(entryClass, keyType, valueType);
+      }
       return factory.createTypeByFQClassName(CommonClassNames.JAVA_UTIL_MAP_ENTRY, scope);
     }
 
