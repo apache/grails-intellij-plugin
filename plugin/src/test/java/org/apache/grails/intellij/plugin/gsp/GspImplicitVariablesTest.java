@@ -155,12 +155,19 @@ public class GspImplicitVariablesTest extends GrailsTestCase {
   }
 
   /** The stock Grails index.gsp lists {@code grailsApplication.controllerClasses}. */
+  /**
+   * The stock Grails index.gsp lists {@code grailsApplication.controllerClasses} and groups them by namespace. Each
+   * artefact has the interface of its own classes, except interceptors, whose classes are plain GrailsClasses.
+   */
   public void testGrailsApplicationHasTheArtefactMethodsGrailsServesDynamically() {
     addGrails3Api();
     myFixture.addClass("package grails.core; public interface GrailsClass {}");
+    myFixture.addClass("package grails.core; public interface GrailsControllerClass extends GrailsClass { String getNamespace(); }");
 
     GspImplicitVariableAssertions.assertExpressionTypes(this, Map.of(
-      "grailsApplication.controllerClasses", "grails.core.GrailsClass[]",
+      "grailsApplication.controllerClasses", "grails.core.GrailsControllerClass[]",
+      "grailsApplication.controllerClasses[0].namespace", "java.lang.String",
+      "grailsApplication.getControllerClass('x')", "grails.core.GrailsControllerClass",
       "grailsApplication.getInterceptorClass('x')", "grails.core.GrailsClass",
       "grailsApplication.isDomainClass(String)", "boolean"));
   }
