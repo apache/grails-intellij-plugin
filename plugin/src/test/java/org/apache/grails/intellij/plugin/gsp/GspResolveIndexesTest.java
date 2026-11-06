@@ -71,6 +71,23 @@ public class GspResolveIndexesTest extends LightJavaCodeInsightFixtureTestCase {
     UsefulTestCase.assertInstanceOf(myFixture.getElementAtCaret().getNavigationElement(), XmlAttributeValue.class);
   }
 
+  /**
+   * Iterating a map goes over its entries, which have the map's key and value types, so that what the entry's value
+   * holds resolves. The stock Grails index.gsp iterates the controllers grouped by namespace this way.
+   */
+  public void testEachOverMapHasTypedEntries() {
+    PsiFile file = myFixture.addFileToProject("grails-app/views/test.gsp", """
+      <g:each in="${[a: 1]}" var="entry">
+        ${ent<caret>ry.value.byteValue()}
+      </g:each>
+      """);
+    myFixture.configureFromExistingVirtualFile(file.getVirtualFile());
+    assertType("java.util.Map.Entry<java.lang.String,java.lang.Integer>");
+    PsiReference byteValue = file.getViewProvider().findReferenceAt(file.getText().indexOf("byteValue"), GroovyLanguage.INSTANCE);
+    Assert.assertNotNull(byteValue);
+    Assert.assertNotNull("entry.value.byteValue() should resolve", byteValue.resolve());
+  }
+
   public void testEachStatus() {
     PsiFile file = myFixture.addFileToProject("grails-app/views/test.gsp", """
       <g:each in='["aaa", "bbb", "ccc"]' status='iii'>
