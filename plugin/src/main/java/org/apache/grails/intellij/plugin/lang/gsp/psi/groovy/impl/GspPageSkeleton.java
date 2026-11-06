@@ -21,6 +21,9 @@ package org.apache.grails.intellij.plugin.lang.gsp.psi.groovy.impl;
 
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.CommonClassNames;
+import com.intellij.psi.JavaPsiFacade;
+import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiClassType;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiType;
 import com.intellij.psi.PsiVariable;
@@ -45,6 +48,7 @@ import org.jetbrains.plugins.groovy.lang.psi.impl.synthetic.GrLightVariable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @SuppressWarnings("SSBasedInspection")
 public final class GspPageSkeleton {
@@ -220,9 +224,12 @@ public final class GspPageSkeleton {
 
     public PsiVariable getVariable() {
       if (variable == null) {
-        PsiType type = isDef ? getDeclaredType() : null;
+        XmlAttributeValue beanAttr = isDef ? null : GrailsPsiUtil.getAttributeValue(tag, "bean");
 
-        if (type == null) {
+        // g:set stores the bean when it names one, and ignores the value then (ApplicationTagLib.set).
+        PsiType type = isDef ? getDeclaredType() : beanAttr != null ? getBeanType(beanAttr) : null;
+
+        if (type == null && beanAttr == null) {
           XmlAttributeValue valueAttr = GrailsPsiUtil.getAttributeValue(tag, "value");
           if (valueAttr != null) {
             type = GrailsPsiUtil.getAttributeExpressionType(valueAttr);
@@ -230,8 +237,11 @@ public final class GspPageSkeleton {
         }
 
         if (type == null) {
-          // g:set without a value stores its rendered body, a String; g:def requires a value, of a type unknown here.
-          type = isDef ? TypesUtil.getJavaLangObject(tag) : PsiType.getJavaLangString(tag.getManager(), tag.getResolveScope());
+          // g:set without a bean or a value stores its rendered body, a String. A bean, or the value g:def requires,
+          // is of a type unknown here.
+          type = isDef || beanAttr != null
+                 ? TypesUtil.getJavaLangObject(tag)
+                 : PsiType.getJavaLangString(tag.getManager(), tag.getResolveScope());
         }
 
         variable = new GrLightVariable(tag.getManager(), name, type, GrailsPsiUtil.getAttributeValue(tag, "var"));
@@ -260,7 +270,45 @@ public final class GspPageSkeleton {
         return null;
       }
     }
+
+    /**
+     * The type of the bean g:set's {@code bean} attribute names, or {@code null} when it is unknown. The attribute is
+     * either an expression giving the bean's class, for which Grails looks the bean up by type, or a bean name.
+     */
+    private @Nullable PsiType getBeanType(@NotNull XmlAttributeValue beanAttr) {
+      if (!GrailsPsiUtil.isSimpleAttribute(beanAttr)) {
+        PsiType type = GrailsPsiUtil.getAttributeExpressionType(beanAttr);
+        if (type instanceof PsiClassType classType && CommonClassNames.JAVA_LANG_CLASS.equals(classType.rawType().getCanonicalText())) {
+          PsiType[] parameters = classType.getParameters();
+          if (parameters.length == 1 && parameters[0] instanceof PsiClassType beanType) return beanType;
+        }
+        return null;
+      }
+
+      List<String> candidates = KNOWN_BEAN_TYPES.get(beanAttr.getValue().trim());
+      if (candidates == null) return null;
+
+      JavaPsiFacade facade = JavaPsiFacade.getInstance(tag.getProject());
+      for (String candidate : candidates) {
+        PsiClass beanClass = facade.findClass(candidate, tag.getResolveScope());
+        if (beanClass != null) return JavaPsiFacade.getElementFactory(tag.getProject()).createType(beanClass);
+      }
+      return null;
+    }
   }
+
+  /**
+   * The beans every Grails application has that a page looks up by name, with the type each has in the newest API
+   * first. Grails and Spring register them in code, so no bean model knows them. #CHECK#
+   *
+   * @see grails.core.GrailsApplication#APPLICATION_ID
+   * @see grails.plugins.GrailsPluginManager#BEAN_NAME
+   * @see org.springframework.web.context.WebApplicationContext#SERVLET_CONTEXT_BEAN_NAME
+   */
+  private static final Map<String, List<String>> KNOWN_BEAN_TYPES = Map.of(
+    "grailsApplication", List.of("grails.core.GrailsApplication", "org.codehaus.groovy.grails.commons.GrailsApplication"),
+    "pluginManager", List.of("grails.plugins.GrailsPluginManager", "org.codehaus.groovy.grails.plugins.GrailsPluginManager"),
+    "servletContext", List.of("jakarta.servlet.ServletContext", "javax.servlet.ServletContext"));
 
   public abstract static class TagDescription {
     public final GspTag tag;

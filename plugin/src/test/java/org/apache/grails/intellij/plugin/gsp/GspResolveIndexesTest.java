@@ -338,6 +338,73 @@ public class GspResolveIndexesTest extends LightJavaCodeInsightFixtureTestCase {
                           """, file.getText());
   }
 
+  /** The stock Grails index.gsp looks the plugin manager up this way. */
+  public void testSetBeanByKnownName() {
+    myFixture.addClass("package grails.plugins; public interface GrailsPluginManager { Object[] getAllPlugins(); }");
+    PsiFile file = myFixture.addFileToProject("grails-app/views/test.gsp", """
+      <g:set var="pluginManager" bean="pluginManager"/>
+      ${plugin<caret>Manager.allPlugins}
+      """);
+    myFixture.configureFromExistingVirtualFile(file.getVirtualFile());
+    assertType("grails.plugins.GrailsPluginManager");
+    PsiReference allPlugins = file.getViewProvider().findReferenceAt(file.getText().indexOf("allPlugins"), GroovyLanguage.INSTANCE);
+    Assert.assertNotNull(allPlugins);
+    Assert.assertNotNull("allPlugins should resolve", allPlugins.resolve());
+  }
+
+  public void testSetBeanByKnownNamePrefersTheNewestApi() {
+    myFixture.addClass("package javax.servlet; public interface ServletContext {}");
+    myFixture.addClass("package jakarta.servlet; public interface ServletContext {}");
+    PsiFile file = myFixture.addFileToProject("grails-app/views/test.gsp", """
+      <g:set var="servletContext" bean="servletContext"/>
+      ${servlet<caret>Context}
+      """);
+    myFixture.configureFromExistingVirtualFile(file.getVirtualFile());
+    assertType("jakarta.servlet.ServletContext");
+  }
+
+  public void testSetBeanByKnownNameOnGrails2() {
+    myFixture.addClass("package org.codehaus.groovy.grails.plugins; public interface GrailsPluginManager {}");
+    PsiFile file = myFixture.addFileToProject("grails-app/views/test.gsp", """
+      <g:set var="pluginManager" bean="pluginManager"/>
+      ${plugin<caret>Manager}
+      """);
+    myFixture.configureFromExistingVirtualFile(file.getVirtualFile());
+    assertType("org.codehaus.groovy.grails.plugins.GrailsPluginManager");
+  }
+
+  /** A class rather than a name makes Grails look the bean up by type. */
+  public void testSetBeanByType() {
+    myFixture.addClass("package com.foo; public class Bar {}");
+    PsiFile file = myFixture.addFileToProject("grails-app/views/test.gsp", """
+      <g:set var="bar" bean="${com.foo.Bar}"/>
+      ${b<caret>ar}
+      """);
+    myFixture.configureFromExistingVirtualFile(file.getVirtualFile());
+    assertType("com.foo.Bar");
+  }
+
+  /** ApplicationTagLib.set ignores the value when the tag names a bean. */
+  public void testSetBeanWinsOverValue() {
+    myFixture.addClass("package grails.plugins; public interface GrailsPluginManager {}");
+    PsiFile file = myFixture.addFileToProject("grails-app/views/test.gsp", """
+      <g:set var="pluginManager" bean="pluginManager" value="${'abc'}"/>
+      ${plugin<caret>Manager}
+      """);
+    myFixture.configureFromExistingVirtualFile(file.getVirtualFile());
+    assertType("grails.plugins.GrailsPluginManager");
+  }
+
+  /** A bean is no String, which is what g:set stores without a bean or a value. */
+  public void testSetUnknownBeanIsAnObject() {
+    PsiFile file = myFixture.addFileToProject("grails-app/views/test.gsp", """
+      <g:set var="service" bean="someService"/>
+      ${ser<caret>vice}
+      """);
+    myFixture.configureFromExistingVirtualFile(file.getVirtualFile());
+    assertType("java.lang.Object");
+  }
+
   public void _testResolveIndexes() {
     PsiFile file = myFixture.addFileToProject("a.gsp", """
       <% def it = new Object(); %>
