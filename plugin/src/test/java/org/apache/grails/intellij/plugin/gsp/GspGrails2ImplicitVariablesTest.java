@@ -58,6 +58,13 @@ public class GspGrails2ImplicitVariablesTest extends GrailsTestCase {
       Set.of("applicationContext"));
   }
 
+  public void testGrailsApplicationHasTheArtefactMethodsGrailsServesDynamically() {
+    GspImplicitVariableAssertions.assertExpressionTypes(this, Map.of(
+      "grailsApplication.controllerClasses", "org.codehaus.groovy.grails.commons.GrailsClass[]",
+      "grailsApplication.getServiceClass('x')", "org.codehaus.groovy.grails.commons.GrailsClass",
+      "grailsApplication.isDomainClass(String)", "boolean"));
+  }
+
   public void testPageExtendsTheGrails2GroovyPage() {
     GrGspClass page = GspImplicitVariableAssertions.pageClass(addView("ccc/index.gsp", "${this}"));
 

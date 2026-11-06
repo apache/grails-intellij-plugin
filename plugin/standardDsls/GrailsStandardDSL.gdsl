@@ -51,6 +51,14 @@ class Constants {
   static final String[] names_getXxxClasses = createNames("get", "Classes");
   static final String[] names_getXxxClass = createNames("get", "Class");
   static final String[] names_isXxxClass = createNames("is", "Class");
+
+  /**
+   * The artefact types of Grails 3 and later: the TYPE of each org.grails.core.artefact handler, plus the
+   * org.grails.plugins.web.interceptors.InterceptorArtefactHandler Grails 3 added. Unchanged from Grails 3.3 to 7.
+   * #CHECK#
+   */
+  static final String[] grails3Artifacts = ['Domain', 'Controller', 'Service', 'TagLib', 'Bootstrap', 'Codec', 'UrlMappings',
+                                            'Interceptor'];
 }
 
 contributor(grailsApplication) {
@@ -66,4 +74,19 @@ contributor(grailsApplication) {
     method name: name, params: [aClass: 'Class'], type: "boolean"
   }
 
+}
+
+// Grails 3 and later declare none of these on grails.core.GrailsApplication either: they are served dynamically by
+// grails.core.DefaultGrailsApplication#invokeMethod and #getProperty, which match (get)(\w+)(Classes), (get)(\w+)Class
+// and (is)(\w+)(Class). Grails 3 moved GrailsApplication and GrailsClass to grails.core, so the context above never
+// applies there. GrailsParameterMap needs no such contributor from Grails 3 on: grails.util.TypeConvertingMap declares
+// int(String) and the other typed getters.
+def grails3Application = context(ctype: "grails.core.GrailsApplication")
+
+contributor(grails3Application) {
+  for (artifact in Constants.grails3Artifacts) {
+    method name: 'get' + artifact + 'Classes', type: 'grails.core.GrailsClass[]'
+    method name: 'get' + artifact + 'Class', params: [name: 'String'], type: 'grails.core.GrailsClass'
+    method name: 'is' + artifact + 'Class', params: [aClass: 'Class'], type: 'boolean'
+  }
 }

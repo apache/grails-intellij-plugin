@@ -154,6 +154,17 @@ public class GspImplicitVariablesTest extends GrailsTestCase {
     checkNonExistingCompletionVariants("requestedSessionIdFromUrl", "isRequestedSessionIdFromUrl");
   }
 
+  /** The stock Grails index.gsp lists {@code grailsApplication.controllerClasses}. */
+  public void testGrailsApplicationHasTheArtefactMethodsGrailsServesDynamically() {
+    addGrails3Api();
+    myFixture.addClass("package grails.core; public interface GrailsClass {}");
+
+    GspImplicitVariableAssertions.assertExpressionTypes(this, Map.of(
+      "grailsApplication.controllerClasses", "grails.core.GrailsClass[]",
+      "grailsApplication.getInterceptorClass('x')", "grails.core.GrailsClass",
+      "grailsApplication.isDomainClass(String)", "boolean"));
+  }
+
   public void testPageExtendsTheGrails3GroovyPage() {
     addGrails3Api();
 

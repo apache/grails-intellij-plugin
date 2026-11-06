@@ -25,6 +25,7 @@ import com.intellij.psi.PsiType;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.util.PsiTypesUtil;
 import com.intellij.testFramework.UsefulTestCase;
+import com.intellij.util.containers.ContainerUtil;
 import junit.framework.TestCase;
 import org.apache.grails.intellij.lib.testFramework.GrailsTestCase;
 import org.apache.grails.intellij.plugin.lang.gsp.psi.groovy.api.GrGspClass;
@@ -32,6 +33,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.groovy.GroovyLanguage;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
@@ -63,6 +65,23 @@ final class GspImplicitVariableAssertions {
       if (!unresolvedTypes.contains(variable)) {
         TestCase.assertNotNull(variable + " should resolve to " + expectedType, PsiTypesUtil.getPsiClass(type));
       }
+    });
+  }
+
+  /** Asserts the type of each Groovy expression, in a page that contains them all. */
+  static void assertExpressionTypes(@NotNull GrailsTestCase test, @NotNull Map<String, String> expectedTypes) {
+    StringBuilder text = new StringBuilder();
+    expectedTypes.keySet().forEach(expression -> text.append("${").append(expression).append("}\n"));
+    PsiFile gsp = test.addView("ccc/expressions.gsp", text.toString());
+    Collection<GrExpression> expressions =
+      PsiTreeUtil.findChildrenOfType(gsp.getViewProvider().getPsi(GroovyLanguage.INSTANCE), GrExpression.class);
+
+    expectedTypes.forEach((expression, expectedType) -> {
+      GrExpression found = ContainerUtil.find(expressions, candidate -> expression.equals(candidate.getText()));
+      TestCase.assertNotNull("no expression " + expression, found);
+      PsiType type = found.getType();
+      TestCase.assertNotNull(expression + " does not resolve", type);
+      TestCase.assertEquals(expression, expectedType, type.getCanonicalText());
     });
   }
 
