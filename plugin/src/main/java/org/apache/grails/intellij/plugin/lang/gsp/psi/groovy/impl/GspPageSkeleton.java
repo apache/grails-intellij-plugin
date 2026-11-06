@@ -30,6 +30,7 @@ import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlToken;
 import com.intellij.psi.xml.XmlTokenType;
+import com.intellij.util.IncorrectOperationException;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrays;
 import org.jetbrains.annotations.NotNull;
@@ -37,6 +38,8 @@ import org.jetbrains.annotations.Nullable;
 import org.apache.grails.intellij.plugin.lang.gsp.psi.groovy.api.GspGroovyFile;
 import org.apache.grails.intellij.plugin.lang.gsp.psi.gsp.api.GspTag;
 import org.apache.grails.intellij.plugin.util.GrailsPsiUtil;
+import org.jetbrains.plugins.groovy.GroovyLanguage;
+import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElementFactory;
 import org.jetbrains.plugins.groovy.lang.psi.impl.statements.expressions.TypesUtil;
 import org.jetbrains.plugins.groovy.lang.psi.impl.synthetic.GrLightVariable;
 
@@ -52,7 +55,7 @@ public final class GspPageSkeleton {
   private final List<TagDescription> eachTag = new ArrayList<>();
 
   GspPageSkeleton(GspGroovyFile gspGroovyFile) {
-    processTag(gspGroovyFile.getGspLanguageRoot().getRootTag(), 0, null);
+    processTag(gspGroovyFile.getGspLanguageRoot().getRootTag(), 0, null, Integer.MAX_VALUE);
   }
 
   public boolean processElementAtOffset(int offset, @NotNull PsiScopeProcessor processor,
@@ -64,7 +67,7 @@ public final class GspPageSkeleton {
       if (!tagDescription.process(processor, name, state)) return false;
     }
 
-    // Process variables defined in g:set tag.
+    // Process variables defined in g:set and g:def tags.
     if (defTags != null) {
       int index = IntArrays.binarySearch(defOffsets.elements(), 0, defOffsets.size(), offset);
       if (index < 0) {
@@ -73,6 +76,7 @@ public final class GspPageSkeleton {
 
       for (int i = index - 1; i >= 0; i--) {
         DefTagDescription description = defTags.get(i);
+        if (offset >= description.scopeEnd) continue;
         if (name == null || name.equals(description.name)) {
           if (!processor.execute(description.getVariable(), state)) return false;
         }
@@ -106,7 +110,11 @@ public final class GspPageSkeleton {
     return null;
   }
 
-  private void processTag(GspTag tag, int offset, TagDescription parentTagDescription) {
+  /**
+   * @param scopeEnd the end offset, exclusive, of the tag that encloses {@code tag}: the page compiles each tag body to a
+   *                 block or closure, so a local variable {@code tag} declares is visible up to there
+   */
+  private void processTag(GspTag tag, int offset, TagDescription parentTagDescription, int scopeEnd) {
     String tagName = tag.getName();
 
     PsiElement e = tag.getFirstChild();
@@ -151,7 +159,7 @@ public final class GspPageSkeleton {
 
     for (; e != null; e = e.getNextSibling()) {
       if (e instanceof GspTag) {
-        processTag((GspTag)e, offset + e.getStartOffsetInParent(), descr);
+        processTag((GspTag)e, offset + e.getStartOffsetInParent(), descr, offset + tag.getTextLength());
       }
     }
 
@@ -160,7 +168,10 @@ public final class GspPageSkeleton {
       eachTag.add(parentTagDescription);
     }
 
-    if (tagName.equals("g:set")) {
+    // g:set puts the variable in the page scope, so it is visible for the rest of the page. g:def compiles to a local
+    // variable declaration (org.grails.gsp.compiler.tags.GroovyDefTag), which ends with the enclosing tag.
+    boolean isDef = tagName.equals("g:def");
+    if (isDef || tagName.equals("g:set")) {
       XmlAttributeValue varAttr = GrailsPsiUtil.getAttributeValue(tag, "var");
       if (varAttr != null) {
         if (GrailsPsiUtil.isSimpleAttribute(varAttr)) {
@@ -172,7 +183,7 @@ public final class GspPageSkeleton {
             }
 
             defOffsets.add(offset + tag.getTextLength() - 1);
-            defTags.add(new DefTagDescription(tag, defName));
+            defTags.add(new DefTagDescription(tag, defName, isDef, isDef ? scopeEnd : Integer.MAX_VALUE));
           }
         }
       }
@@ -190,34 +201,64 @@ public final class GspPageSkeleton {
     return eachTag.get(index);
   }
 
+  /** A variable a {@code g:set} or {@code g:def} tag declares. */
   static class DefTagDescription {
     public final GspTag tag;
     public final String name;
+    /** Whether the tag is {@code g:def}, which declares a local variable whose type the {@code type} attribute gives. */
+    private final boolean isDef;
+    /** The end offset, exclusive, up to which the variable is visible. */
+    final int scopeEnd;
     private PsiVariable variable;
 
-    DefTagDescription(GspTag tag, String name) {
+    DefTagDescription(GspTag tag, String name, boolean isDef, int scopeEnd) {
       this.tag = tag;
       this.name = name;
+      this.isDef = isDef;
+      this.scopeEnd = scopeEnd;
     }
 
     public PsiVariable getVariable() {
       if (variable == null) {
-        XmlAttributeValue valueAttr = GrailsPsiUtil.getAttributeValue(tag, "value");
+        PsiType type = isDef ? getDeclaredType() : null;
 
-        PsiType type = null;
-
-        if (valueAttr != null) {
-          type = GrailsPsiUtil.getAttributeExpressionType(valueAttr);
+        if (type == null) {
+          XmlAttributeValue valueAttr = GrailsPsiUtil.getAttributeValue(tag, "value");
+          if (valueAttr != null) {
+            type = GrailsPsiUtil.getAttributeExpressionType(valueAttr);
+          }
         }
 
         if (type == null) {
-          type = PsiType.getJavaLangString(tag.getManager(), tag.getResolveScope());
+          // g:set without a value stores its rendered body, a String; g:def requires a value, of a type unknown here.
+          type = isDef ? TypesUtil.getJavaLangObject(tag) : PsiType.getJavaLangString(tag.getManager(), tag.getResolveScope());
         }
 
         variable = new GrLightVariable(tag.getManager(), name, type, GrailsPsiUtil.getAttributeValue(tag, "var"));
       }
 
       return variable;
+    }
+
+    /**
+     * The type g:def declares the variable with, or {@code null} when it declares none: GroovyDefTag writes
+     * {@code def} when the {@code type} attribute is missing, and an untyped declaration takes the value's type.
+     */
+    private @Nullable PsiType getDeclaredType() {
+      XmlAttributeValue typeAttr = GrailsPsiUtil.getAttributeValue(tag, "type");
+      if (typeAttr == null || !GrailsPsiUtil.isSimpleAttribute(typeAttr)) return null;
+
+      String typeName = typeAttr.getValue().trim();
+      if (typeName.isEmpty() || typeName.equals("def")) return null;
+
+      // Resolved from the page's Groovy file, so that the page's imports apply to simple names.
+      PsiElement context = tag.getContainingFile().getViewProvider().getPsi(GroovyLanguage.INSTANCE);
+      try {
+        return GroovyPsiElementFactory.getInstance(tag.getProject()).createTypeElement(typeName, context).getType();
+      }
+      catch (IncorrectOperationException ignored) {
+        return null;
+      }
     }
   }
 

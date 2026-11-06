@@ -56,7 +56,7 @@ public final class GspTagVariableDeclarationSearcher extends PomDeclarationSearc
     String tagName = ((GspTag)tag).getName();
     boolean isEach = tagName.equals("g:each");
 
-    if (!isEach && (isStatus || !tagName.equals("g:set"))) return;
+    if (!isEach && (isStatus || !(tagName.equals("g:set") || tagName.equals("g:def")))) return;
 
     PsiFile file = tag.getContainingFile();
     if (!(file instanceof GspFile)) return;

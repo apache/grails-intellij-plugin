@@ -253,6 +253,91 @@ public class GspResolveIndexesTest extends LightJavaCodeInsightFixtureTestCase {
     Assert.assertNotNull(ref.resolve());
   }
 
+  /** The stock Grails index.gsp counts the controllers this way. */
+  public void testDefWithPrimitiveType() {
+    PsiFile file = myFixture.addFileToProject("grails-app/views/test.gsp", """
+      <g:def type="int" var="numControllers" value="${[1, 2].size()}"/>
+      ${numCon<caret>trollers}
+      """);
+    myFixture.configureFromExistingVirtualFile(file.getVirtualFile());
+    assertType("int");
+    UsefulTestCase.assertInstanceOf(myFixture.getElementAtCaret().getNavigationElement(), XmlAttributeValue.class);
+  }
+
+  public void testDefWithImportedType() {
+    myFixture.addClass("package com.foo; public class Bar {}");
+    PsiFile file = myFixture.addFileToProject("grails-app/views/test.gsp", """
+      <%@ page import="com.foo.Bar" %>
+      <g:def type="Bar" var="bar" value="${null}"/>
+      ${b<caret>ar}
+      """);
+    myFixture.configureFromExistingVirtualFile(file.getVirtualFile());
+    assertType("com.foo.Bar");
+  }
+
+  /** Without a type, or with {@code def}, GroovyDefTag writes an untyped declaration, which takes the value's type. */
+  public void testDefWithoutTypeTakesTheValueType() {
+    PsiFile file = myFixture.addFileToProject("grails-app/views/test.gsp", """
+      <g:def var="untyped" value="${'abc'}"/>
+      <g:def type="def" var="defTyped" value="${'abc'}"/>
+      ${untyped} ${def<caret>Typed}
+      """);
+    myFixture.configureFromExistingVirtualFile(file.getVirtualFile());
+    assertType("java.lang.String");
+    myFixture.getEditor().getCaretModel().moveToOffset(file.getText().indexOf("${untyped}") + 3);
+    assertType("java.lang.String");
+  }
+
+  /** A g:def is a local variable of the enclosing tag's body, where a g:set stays visible for the rest of the page. */
+  public void testDefScope() {
+    PsiFile file = myFixture.addFileToProject("grails-app/views/test.gsp", """
+      ${v1}
+      <g:def var="v1" value="${1}"/>
+      ${v1}
+      <g:if test="${true}">
+        <g:def var="v2" value="${2}"/>
+        <g:set var="v3" value="${3}"/>
+        ${v1} ${v2} ${v3}
+      </g:if>
+      ${v2} ${v3}
+      """);
+    assertResolvesInOrder(file, "v1", false, true, true);
+    assertResolvesInOrder(file, "v2", true, false);
+    assertResolvesInOrder(file, "v3", true, true);
+  }
+
+  /** Asserts, for each {@code ${name}} expression of the page in order, whether {@code name} resolves there. */
+  private static void assertResolvesInOrder(PsiFile file, String name, boolean... resolves) {
+    String expression = "${" + name + "}";
+    int offset = -1;
+    for (int i = 0; i < resolves.length; i++) {
+      offset = file.getText().indexOf(expression, offset + 1);
+      Assert.assertTrue("occurrence " + (i + 1) + " of " + expression + " not found", offset >= 0);
+      PsiReference ref = file.getViewProvider().findReferenceAt(offset + 2, GroovyLanguage.INSTANCE);
+      Assert.assertNotNull("no reference at occurrence " + (i + 1) + " of " + expression, ref);
+      Assert.assertEquals("occurrence " + (i + 1) + " of " + expression + " resolves", resolves[i], ref.resolve() != null);
+    }
+    Assert.assertEquals("more occurrences of " + expression + " than expected", -1, file.getText().indexOf(expression, offset + 1));
+  }
+
+  public void testRenameDefVariable() {
+    PsiFile file = myFixture.configureByText(GspFileType.GSP_FILE_TYPE, """
+      <g:def type="int" var="v" value="${1}"/>
+      <g:if test="${v<caret> > 0}">
+        <%=v.byteValue()%>
+        ${v}
+      </g:if>
+      """);
+    myFixture.renameElementAtCaret("vvv");
+    Assert.assertEquals("""
+                          <g:def type="int" var="vvv" value="${1}"/>
+                          <g:if test="${vvv > 0}">
+                            <%=vvv.byteValue()%>
+                            ${vvv}
+                          </g:if>
+                          """, file.getText());
+  }
+
   public void _testResolveIndexes() {
     PsiFile file = myFixture.addFileToProject("a.gsp", """
       <% def it = new Object(); %>
