@@ -25,14 +25,17 @@ import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.psi.CommonClassNames;
 import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiCompiledElement;
 import com.intellij.psi.PsiDocCommentOwner;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiField;
+import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiModifier;
 import com.intellij.psi.PsiPackage;
+import com.intellij.psi.PsiParameter;
 import com.intellij.psi.PsiVariable;
 import com.intellij.psi.ResolveState;
 import com.intellij.psi.impl.search.AllClassesSearchExecutor;
@@ -46,6 +49,7 @@ import com.intellij.psi.search.PsiShortNamesCache;
 import com.intellij.psi.util.CachedValueProvider;
 import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.ClassUtil;
+import com.intellij.psi.util.InheritanceUtil;
 import com.intellij.psi.util.PsiModificationTracker;
 import com.intellij.util.PairProcessor;
 import com.intellij.util.containers.ContainerUtil;
@@ -61,7 +65,10 @@ import org.apache.grails.intellij.plugin.util.version.Version;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrField;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.params.GrParameter;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.members.GrMethod;
+import org.jetbrains.plugins.groovy.lang.psi.util.GroovyCommonClassNames;
 import org.jetbrains.plugins.groovy.lang.resolve.ResolveUtil;
 import org.apache.grails.intellij.plugin.mvc.MvcModuleStructureSynchronizer;
 
@@ -263,6 +270,83 @@ public final class GspTagLibUtil {
     TAGLIB_PREFEXES.put("org.codehaus.groovy.grails.plugins.web.taglib.SitemeshTagLib", "sitemesh");
   }
 
+  private static final String TAG_ANNOTATION = "grails.gsp.Tag";
+
+  private static final String NOT_A_TAG_ANNOTATION = "grails.gsp.NotATag";
+
+  private static final String ATTRS_PARAMETER_NAME = "attrs";
+
+  private static final String BODY_PARAMETER_NAME = "body";
+
+  /** Names that are Groovy or Object plumbing, or that every tag library has through the framework traits. */
+  private static final Set<String> NON_TAG_METHOD_NAMES = Set.of(
+    "invokeMethod", "methodMissing", "propertyMissing", "getProperty", "setProperty", "getMetaClass", "setMetaClass", "equals",
+    "hashCode", "toString",
+    "afterPropertiesSet", "currentRequestAttributes", "destroy", "initializeTagLibrary", "onApplicationEvent", "raw",
+    "throwTagError", "withCodec");
+
+  /**
+   * The methods of a tag library class that are tags, which Grails 8 lets a tag library declare besides Closure fields.
+   * Only the methods the class itself declares count: Grails dispatches a method tag from the declared methods, where it
+   * finds a closure tag as an inherited property.
+   */
+  public static @NotNull List<PsiMethod> getTagMethods(@NotNull PsiClass tagLibClass) {
+    PsiMethod[] methods = tagLibClass instanceof GrTypeDefinition definition ? definition.getCodeMethods() : tagLibClass.getMethods();
+    return ContainerUtil.filter(methods, GspTagLibUtil::isTagMethod);
+  }
+
+  /**
+   * Whether a method of a tag library is a tag, by the rules of org.grails.taglib.discovery.TagDiscoveryRules, which
+   * Grails 8 applies both when it compiles a tag library and when it runs one. #CHECK#
+   */
+  public static boolean isTagMethod(@NotNull PsiMethod method) {
+    if (method.isConstructor() || !method.hasModifierProperty(PsiModifier.PUBLIC) ||
+        method.hasModifierProperty(PsiModifier.STATIC) || method.hasModifierProperty(PsiModifier.ABSTRACT)) {
+      return false;
+    }
+    if (method.hasAnnotation(NOT_A_TAG_ANNOTATION)) return false;
+    if (method.hasAnnotation(TAG_ANNOTATION)) return true;
+
+    String name = method.getName();
+    if (name.isEmpty() || name.charAt(0) == '<' || name.indexOf('$') >= 0 || NON_TAG_METHOD_NAMES.contains(name)) return false;
+
+    PsiParameter[] parameters = method.getParameterList().getParameters();
+    // Property accessors are never tags.
+    if (parameters.length == 0 && (name.startsWith("get") || name.startsWith("is"))) return false;
+    if (parameters.length == 1 && name.startsWith("set")) return false;
+
+    // A tag can be called as (attrs), (body) or (attrs, body), counting the shorter calls default values allow.
+    int required = 0;
+    for (PsiParameter parameter : parameters) {
+      if (!(parameter instanceof GrParameter grParameter && grParameter.isOptional())) required++;
+    }
+    for (int arity = Math.max(required, 1); arity <= parameters.length; arity++) {
+      if (arity == 1 && (isAttrsParameter(parameters[0]) || isBodyParameter(parameters[0]))) return true;
+      if (arity == 2 && isAttrsParameter(parameters[0]) && isBodyParameter(parameters[1])) return true;
+    }
+    return false;
+  }
+
+  /** Whether a method tag takes a body, which only a Closure parameter can supply. */
+  public static boolean hasBodyParameter(@NotNull PsiMethod method) {
+    return ContainerUtil.exists(method.getParameterList().getParameters(), GspTagLibUtil::isBodyParameter);
+  }
+
+  private static boolean isAttrsParameter(@NotNull PsiParameter parameter) {
+    return InheritanceUtil.isInheritor(parameter.getType(), CommonClassNames.JAVA_UTIL_MAP) &&
+           carriesName(parameter, ATTRS_PARAMETER_NAME);
+  }
+
+  private static boolean isBodyParameter(@NotNull PsiParameter parameter) {
+    return InheritanceUtil.isInheritor(parameter.getType(), GroovyCommonClassNames.GROOVY_LANG_CLOSURE) &&
+           carriesName(parameter, BODY_PARAMETER_NAME);
+  }
+
+  /** A compiled method may not have kept its parameter names, and then there is no name to check. */
+  private static boolean carriesName(@NotNull PsiParameter parameter, @NotNull String expectedName) {
+    return parameter instanceof PsiCompiledElement || expectedName.equals(parameter.getName());
+  }
+
   public static boolean isSdkTagLib(@NotNull PsiClass aClass) {
     String name = aClass.getQualifiedName();
     return FQN_2_TAG.containsKey(name) ||
@@ -419,16 +503,27 @@ public final class GspTagLibUtil {
 
       Set<String> sourceAttrName = null;
 
-      if (element instanceof GrField) {
-        for (String attrName : ((GrField)element).getNamedParameters().keySet()) {
-          if (javaDocAttrMap.containsKey(attrName)) continue;
-          if ("tagName".equals(attrName) || "type".equals(attrName) || "remove".equals(attrName)) continue;
-
-          if (sourceAttrName == null) {
-            sourceAttrName = new HashSet<>();
-          }
-          sourceAttrName.add(attrName);
+      // The attributes the tag reads from its attrs map, and for a method tag, the parameters Grails 8 binds to the
+      // attribute of their name (org.grails.taglib.TagMethodInvoker).
+      Collection<String> sourceAttrCandidates = Collections.emptyList();
+      if (element instanceof GrField field) {
+        sourceAttrCandidates = field.getNamedParameters().keySet();
+      }
+      else if (element instanceof GrMethod method && isTagMethod(method)) {
+        sourceAttrCandidates = new LinkedHashSet<>(method.getNamedParameters().keySet());
+        for (PsiParameter parameter : method.getParameterList().getParameters()) {
+          if (!isAttrsParameter(parameter) && !isBodyParameter(parameter)) sourceAttrCandidates.add(parameter.getName());
         }
+      }
+
+      for (String attrName : sourceAttrCandidates) {
+        if (javaDocAttrMap.containsKey(attrName)) continue;
+        if ("tagName".equals(attrName) || "type".equals(attrName) || "remove".equals(attrName)) continue;
+
+        if (sourceAttrName == null) {
+          sourceAttrName = new HashSet<>();
+        }
+        sourceAttrName.add(attrName);
       }
 
       if (sourceAttrName == null) {

@@ -40,6 +40,7 @@ import com.intellij.psi.scope.ElementClassHint;
 import com.intellij.psi.scope.PsiScopeProcessor;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.SearchScope;
+import com.intellij.util.containers.ContainerUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.apache.grails.intellij.plugin.GroovyMvcIcons;
@@ -63,7 +64,13 @@ import java.util.Set;
 public class TagLibNamespaceDescriptor {
   
   public static final String GSP_TAG_METHOD_MARKER = "Grails:GSP_TAG";
-  
+
+  /** The buffer a tag renders into, from Grails 3 on. */
+  private static final String STREAM_CHAR_BUFFER = "org.grails.buffer.StreamCharBuffer";
+
+  /** The same class before Grails 3 moved Grails out of {@code org.codehaus.groovy.grails}. */
+  private static final String GRAILS_2_STREAM_CHAR_BUFFER = "org.codehaus.groovy.grails.web.util.StreamCharBuffer";
+
   private final String myNamespacePrefix;
 
   private final PsiManager myManager;
@@ -74,6 +81,8 @@ public class TagLibNamespaceDescriptor {
   private volatile Map<String, PsiMethod> myFinalCalculatedVariables;
 
   private volatile PsiVariable myDummyClassVariable;
+
+  private volatile String myTagReturnTypeName;
 
   private final Module myModule;
 
@@ -111,6 +120,15 @@ public class TagLibNamespaceDescriptor {
       }
     }
 
+    for (PsiClass aClass : myClasses) {
+      for (PsiMethod tagMethod : GspTagLibUtil.getTagMethods(aClass)) {
+        String name = tagMethod.getName();
+        if (!exclude.contains(name) && !variableMap.containsKey(name)) {
+          variableMap.put(name, new GspTagMethod(myManager, name, tagMethod));
+        }
+      }
+    }
+
     myFinalCalculatedVariables = variableMap;
 
     return variableMap.values();
@@ -128,12 +146,12 @@ public class TagLibNamespaceDescriptor {
     }
 
     RecursionGuard.StackStamp stamp = RecursionManager.markStack();
-    PsiMethod[] method = RecursionManager.doPreventingRecursion(name, true, () -> new PsiMethod[]{GrailsUtils.getClosureProperty(myClasses, name)});
-    if (method == null) {
+    PsiMember[] tag = RecursionManager.doPreventingRecursion(name, true, () -> new PsiMember[]{findTagDeclaration(name)});
+    if (tag == null) {
       return null;
     }
 
-    PsiMethod res = method[0] == null ? null : new GspTagMethod(myManager, name, GrailsUtils.toField(method[0]));
+    PsiMethod res = tag[0] == null ? null : new GspTagMethod(myManager, name, tag[0]);
 
     if (stamp.mayCacheNow()) {
       synchronized (this) {
@@ -145,6 +163,37 @@ public class TagLibNamespaceDescriptor {
     }
 
     return res;
+  }
+
+  /**
+   * The member that declares a tag: a Closure field, which wins as in {@link #getAllTags()}, or a method, which Grails 8
+   * also accepts as a tag.
+   */
+  private @Nullable PsiMember findTagDeclaration(@NotNull String name) {
+    PsiMethod closureGetter = GrailsUtils.getClosureProperty(myClasses, name);
+    if (closureGetter != null) return GrailsUtils.toField(closureGetter);
+
+    for (PsiClass aClass : myClasses) {
+      PsiMethod tagMethod = ContainerUtil.find(GspTagLibUtil.getTagMethods(aClass), method -> name.equals(method.getName()));
+      if (tagMethod != null) return tagMethod;
+    }
+    return null;
+  }
+
+  /**
+   * What a tag returns when a page calls it as a method: the buffer it renders into, in the package of the project's
+   * Grails.
+   */
+  private @NotNull String getTagReturnTypeName() {
+    String name = myTagReturnTypeName;
+    if (name == null) {
+      GlobalSearchScope scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(myModule);
+      name = JavaPsiFacade.getInstance(myManager.getProject()).findClass(STREAM_CHAR_BUFFER, scope) != null
+             ? STREAM_CHAR_BUFFER
+             : GRAILS_2_STREAM_CHAR_BUFFER;
+      myTagReturnTypeName = name;
+    }
+    return name;
   }
 
   public boolean processTags(@NotNull PsiScopeProcessor processor,
@@ -241,7 +290,7 @@ public class TagLibNamespaceDescriptor {
       setMethodKind(GSP_TAG_METHOD_MARKER);
 
       myReturnType = PsiElementFactory.getInstance(manager.getProject())
-        .createTypeByFQClassName("org.codehaus.groovy.grails.web.util.StreamCharBuffer", navigationElement.getResolveScope());
+        .createTypeByFQClassName(getTagReturnTypeName(), navigationElement.getResolveScope());
     }
 
     @Override
