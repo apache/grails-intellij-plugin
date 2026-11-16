@@ -38,7 +38,7 @@ dependencies {
     implementation 'org.nosphere.apache.rat:org.nosphere.apache.rat.gradle.plugin:0.11.0'
     // The CycloneDX SBOM generator behind the sbom convention plugin. The vulnerability scan itself
     // has no plugin dependency: it is this build's own code under org.apache.grails.intellij.build.scan.
-    implementation 'org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:3.5.1'
+    implementation 'org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:3.6.1'
 
     // Gradle TestKit tests for the build-logic task classes; the same JUnit 4 + AssertJ stack as
     // the plugin's own tests.
