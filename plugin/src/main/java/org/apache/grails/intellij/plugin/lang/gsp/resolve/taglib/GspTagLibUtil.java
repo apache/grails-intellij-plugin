@@ -521,16 +521,19 @@ public final class GspTagLibUtil {
       List<? extends PsiElement> declarations =
         element instanceof PsiMethod method && isTagMethod(method) ? getTagOverloads(method) : List.of(element);
 
+      // An attribute that several overloads document keeps the documentation of the first, and is required only when
+      // every overload requires it, since Grails takes a call with any overload whose parameters it can bind.
+      List<Map<String, XmlAttributeDescriptor>> documentation = ContainerUtil.map(declarations, GspTagLibUtil::getDocumentedAttributes);
       Map<String, XmlAttributeDescriptor> javaDocAttrMap = new HashMap<>();
-      for (PsiElement declaration : declarations) {
-        PsiDocComment docComment = declaration instanceof PsiDocCommentOwner owner ? owner.getDocComment() : null;
-        if (docComment == null) continue;
+      for (Map<String, XmlAttributeDescriptor> documented : documentation) {
+        for (XmlAttributeDescriptor descriptor : documented.values()) {
+          String name = descriptor.getName();
+          if (javaDocAttrMap.containsKey(name)) continue;
 
-        for (PsiDocTag attr : docComment.findTagsByName("attr")) {
-          XmlAttributeDescriptor descriptor = createDescriptorByDoc(attr);
-          if (descriptor != null) {
-            javaDocAttrMap.put(descriptor.getName(), descriptor);
-          }
+          boolean required = documentation.stream().allMatch(other -> other.containsKey(name) && other.get(name).isRequired());
+          javaDocAttrMap.put(name, required == descriptor.isRequired()
+                                   ? descriptor
+                                   : createAttributeDescriptor(name, required, descriptor.getDeclaration()));
         }
       }
 
@@ -571,6 +574,21 @@ public final class GspTagLibUtil {
     });
   }
 
+  /** The attributes a declaration documents with {@code @attr}, by name. Of an attribute documented twice, the last. */
+  private static @NotNull Map<String, XmlAttributeDescriptor> getDocumentedAttributes(@NotNull PsiElement declaration) {
+    PsiDocComment docComment = declaration instanceof PsiDocCommentOwner owner ? owner.getDocComment() : null;
+    if (docComment == null) return Collections.emptyMap();
+
+    Map<String, XmlAttributeDescriptor> res = new HashMap<>();
+    for (PsiDocTag attr : docComment.findTagsByName("attr")) {
+      XmlAttributeDescriptor descriptor = createDescriptorByDoc(attr);
+      if (descriptor != null) {
+        res.put(descriptor.getName(), descriptor);
+      }
+    }
+    return res;
+  }
+
   private static @Nullable XmlAttributeDescriptor createDescriptorByDoc(final PsiDocTag docTag) {
     final PsiDocTagValue valueElement = docTag.getValueElement();
     if (valueElement == null) return null;
@@ -582,6 +600,12 @@ public final class GspTagLibUtil {
     final boolean isRequired = dataElements.length > 1
                                && StringUtil.startsWithIgnoreCase(dataElements[1].getText().trim(), "required");
 
+    return createAttributeDescriptor(name, isRequired, valueElement);
+  }
+
+  private static @NotNull XmlAttributeDescriptor createAttributeDescriptor(@NotNull String name,
+                                                                          boolean isRequired,
+                                                                          @Nullable PsiElement declaration) {
     return new AnyXmlAttributeDescriptor(name) {
       @Override
       public boolean isRequired() {
@@ -590,7 +614,7 @@ public final class GspTagLibUtil {
 
       @Override
       public PsiElement getDeclaration() {
-        return valueElement;
+        return declaration;
       }
     };
   }

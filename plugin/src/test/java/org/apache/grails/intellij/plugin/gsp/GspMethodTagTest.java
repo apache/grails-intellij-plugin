@@ -179,6 +179,40 @@ public class GspMethodTagTest extends GrailsTestCase {
     myFixture.testCompletionVariants(getFilePath(addView("ccc/field.gsp", "<my:field <caret>/>")), "bean", "property", "type");
   }
 
+  /**
+   * Grails takes a call with any overload whose parameters it can bind, so an attribute is required only when every
+   * overload requires it. Its documentation is that of the first overload that documents it.
+   */
+  public void testAttributeIsRequiredOnlyWhenEveryOverloadRequiresIt() {
+    PsiFile tagLib = addGrails8TagLib("""
+      class MyTagLib {
+        static namespace = 'my'
+
+        /**
+         * @attr bean REQUIRED the bean to show
+         * @attr label the label
+         */
+        def field(Map attrs) {}
+
+        /**
+         * @attr bean REQUIRED the bean to show
+         * @attr label REQUIRED the label
+         * @attr type REQUIRED the type of field
+         */
+        @grails.gsp.Tag
+        def field(String type, Map attrs) {}
+      }
+      """);
+    XmlElementDescriptor field = descriptorOf(addView("ccc/field.gsp", "<my:field/>\n"), "my:field");
+
+    assertTrue(field.getAttributeDescriptor("bean", null).isRequired());
+    assertFalse(field.getAttributeDescriptor("label", null).isRequired());
+    assertFalse(field.getAttributeDescriptor("type", null).isRequired());
+
+    GrMethod firstOverload = PsiTreeUtil.findChildrenOfType(tagLib, GrMethod.class).iterator().next();
+    assertTrue(PsiTreeUtil.isAncestor(firstOverload.getDocComment(), field.getAttributeDescriptor("label", null).getDeclaration(), false));
+  }
+
   public void testRenamingTheTagRenamesEveryOverload() {
     PsiFile tagLib = addGrails8TagLib(OVERLOADED_TAG_LIB);
     PsiFile other = addView("ccc/other.gsp", "<my:field/> ${my.field(type: 'x')}");
