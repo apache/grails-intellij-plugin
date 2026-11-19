@@ -24,17 +24,19 @@ import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.roots.LibraryOrderEntry;
+import com.intellij.openapi.roots.OrderEntry;
 import com.intellij.openapi.roots.OrderRootType;
+import com.intellij.openapi.roots.ProjectFileIndex;
 import com.intellij.openapi.roots.libraries.Library;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.JarFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.platform.backend.workspace.WorkspaceModel;
 import com.intellij.platform.workspace.jps.entities.LibraryEntity;
 import com.intellij.psi.PsiFile;
 import com.intellij.util.ArrayUtil;
 import com.intellij.workspaceModel.ide.legacyBridge.LibraryBridgesKt;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.apache.grails.intellij.plugin.config.GrailsConfigUtils;
 
 import java.io.IOException;
@@ -63,8 +65,7 @@ final class GrailsAttachSourcesProvider extends AbstractAttachSourceProvider {
     var libraries = new HashSet<>(libraryEntities);
     if (libraries.size() != 1) return List.of();
 
-    final Library library = LibraryBridgesKt.findLibraryBridge(libraries.iterator().next(),
-      WorkspaceModel.getInstance(psiFile.getProject()).getCurrentSnapshot());
+    final Library library = findLibrary(libraries.iterator().next(), psiFile);
     if (library == null) return List.of();
 
     VirtualFile[] files = library.getFiles(OrderRootType.CLASSES);
@@ -140,4 +141,23 @@ final class GrailsAttachSourcesProvider extends AbstractAttachSourceProvider {
     });
   }
 
+  /**
+   * Resolves the entity to the {@link Library} the attach actions modify. The platform's direct
+   * entity-to-library lookup ({@code findLibraryBridge}) is internal API, so the library is found among
+   * the order entries that contain the file and matched by its workspace-model id.
+   */
+  private static @Nullable Library findLibrary(@NotNull LibraryEntity entity, @NotNull PsiFile psiFile) {
+    VirtualFile file = psiFile.getVirtualFile();
+    if (file == null) return null;
+
+    for (OrderEntry entry : ProjectFileIndex.getInstance(psiFile.getProject()).getOrderEntriesForFile(file)) {
+      if (entry instanceof LibraryOrderEntry libraryEntry) {
+        Library library = libraryEntry.getLibrary();
+        if (library != null && entity.getSymbolicId().equals(LibraryBridgesKt.findLibraryId(library))) {
+          return library;
+        }
+      }
+    }
+    return null;
+  }
 }
