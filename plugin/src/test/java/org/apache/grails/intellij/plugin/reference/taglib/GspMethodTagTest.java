@@ -378,6 +378,38 @@ public class GspMethodTagTest extends GrailsTestCase {
     myFixture.checkHighlighting(true, false, true);
   }
 
+  public void testParametersOfTagMethodsAreNotReportedAsUnused() {
+    addMethodTagSupport();
+    myFixture.enableInspections(new GroovyUnusedDeclarationInspection(), new UnusedDeclarationInspectionBase(true));
+
+    configureByTaglib("""
+                        import grails.gsp.Tag
+
+                        class MyTagLib {
+                          def emoticon(Map attrs, Closure body) {}
+
+                          @Tag
+                          def greeting(String name) {}
+
+                          def <warning>notATag</warning>(String <warning>name</warning>) {}
+                        }
+                        """);
+
+    myFixture.checkHighlighting(true, false, true);
+  }
+
+  public void testParametersOfTagLikeMethodsAreStillReportedAsUnusedBeforeGrails8() {
+    myFixture.enableInspections(new GroovyUnusedDeclarationInspection(), new UnusedDeclarationInspectionBase(true));
+
+    configureByTaglib("""
+                        class MyTagLib {
+                          def <warning>emoticon</warning>(Map <warning>attrs</warning>, Closure <warning>body</warning>) {}
+                        }
+                        """);
+
+    myFixture.checkHighlighting(true, false, true);
+  }
+
   public void testTagLikeMethodsAreStillReportedAsUnusedBeforeGrails8() {
     myFixture.enableInspections(new GroovyUnusedDeclarationInspection(), new UnusedDeclarationInspectionBase(true));
 

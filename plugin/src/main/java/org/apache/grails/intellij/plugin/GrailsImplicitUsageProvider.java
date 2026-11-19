@@ -28,6 +28,7 @@ import org.apache.grails.intellij.plugin.lang.gsp.resolve.taglib.GspTagMethodUti
 import org.apache.grails.intellij.plugin.util.GrailsArtifact;
 import org.apache.grails.intellij.plugin.util.GrailsUtils;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrField;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.params.GrParameter;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.members.GrMember;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.members.GrMethod;
@@ -43,6 +44,16 @@ public final class GrailsImplicitUsageProvider implements ImplicitUsageProvider 
   public boolean isImplicitUsage(@NotNull PsiElement element) {
     if (element instanceof GrClassDefinition) {
       if (GrailsArtifact.getType((PsiClass)element) != null) {
+        return true;
+      }
+    }
+    else if (element instanceof GrParameter parameter) {
+      // The parameters of a tag method are its contract with Grails, not the method's own business:
+      // (Map attrs, Closure body) is what makes it a tag at all, and the parameters of a @Tag method
+      // name the attributes that select it. A tag that happens not to read one cannot drop it.
+      if (parameter.getDeclarationScope() instanceof GrMethod method
+          && GrailsArtifact.getType(method.getContainingClass()) == GrailsArtifact.TAGLIB
+          && GspTagMethodUtil.isTagOfMethodTagLibrary(method)) {
         return true;
       }
     }
