@@ -333,6 +333,9 @@ public final class GspTagLibUtil {
   /**
    * Whether a method of a tag library is a tag, by the rules of org.grails.taglib.discovery.TagDiscoveryRules, which
    * Grails 8 applies both when it compiles a tag library and when it runs one. #CHECK#
+   * <p>
+   * The rules leave out generated methods, which on a tag library's source (org.grails.taglib.discovery.AstTagMethodView)
+   * include abstract ones.
    */
   public static boolean isTagMethod(@NotNull PsiMethod method) {
     if (method.isConstructor() || !method.hasModifierProperty(PsiModifier.PUBLIC) ||
