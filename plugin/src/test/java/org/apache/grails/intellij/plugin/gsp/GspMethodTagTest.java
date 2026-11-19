@@ -85,7 +85,7 @@ public class GspMethodTagTest extends GrailsTestCase {
     }
     """;
 
-  private static final List<String> TAGS =List.of("greet", "wrap", "bodyOnly", "withDefault", "annotated", "legacy");
+  private static final List<String> TAGS = List.of("greet", "wrap", "bodyOnly", "withDefault", "annotated", "legacy");
 
   private static final List<String> NOT_TAGS =
     List.of("excluded", "helper", "untypedAttrs", "wrongName", "setThing", "thing", "util", "secret", "raw");
