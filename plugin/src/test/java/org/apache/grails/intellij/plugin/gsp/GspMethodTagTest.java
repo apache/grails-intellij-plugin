@@ -68,7 +68,22 @@ public class GspMethodTagTest extends GrailsTestCase {
     }
     """;
 
-  private static final List<String> TAGS = List.of("greet", "wrap", "bodyOnly", "withDefault", "annotated", "legacy");
+  /** A tag declared as two methods, the way the Grails documentation shows it. */
+  private static final String OVERLOADED_TAG_LIB = """
+    class MyTagLib {
+      static namespace = 'my'
+
+      /**
+       * @attr bean the bean to show
+       */
+      def field(Map attrs) { out << attrs.property }
+
+      @grails.gsp.Tag
+      def field(String type, Map attrs, Closure body) { out << body() }
+    }
+    """;
+
+  private static final List<String> TAGS =List.of("greet", "wrap", "bodyOnly", "withDefault", "annotated", "legacy");
 
   private static final List<String> NOT_TAGS =
     List.of("excluded", "helper", "untypedAttrs", "wrongName", "setThing", "thing", "util", "secret", "raw");
@@ -146,6 +161,32 @@ public class GspMethodTagTest extends GrailsTestCase {
       """);
 
     myFixture.testCompletionVariants(getFilePath(addView("ccc/field.gsp", "<my:field <caret>/>")), "type");
+  }
+
+  /** Grails tries each overload of a tag in turn, so the tag takes a body when one of them does. */
+  public void testOverloadWithABodyMakesTheTagTakeOne() {
+    addGrails8TagLib(OVERLOADED_TAG_LIB);
+    PsiFile gsp = addView("ccc/field.gsp", "<my:field>text</my:field>\n");
+
+    assertFalse(XmlElementDescriptor.CONTENT_TYPE_EMPTY == descriptorOf(gsp, "my:field").getContentType());
+  }
+
+  public void testAttributesOfEveryOverload() {
+    addGrails8TagLib(OVERLOADED_TAG_LIB);
+
+    myFixture.testCompletionVariants(getFilePath(addView("ccc/field.gsp", "<my:field <caret>/>")), "bean", "property", "type");
+  }
+
+  public void testRenamingTheTagRenamesEveryOverload() {
+    PsiFile tagLib = addGrails8TagLib(OVERLOADED_TAG_LIB);
+    PsiFile other = addView("ccc/other.gsp", "<my:field/> ${my.field(type: 'x')}");
+    PsiFile page = addView("ccc/page.gsp", "<my:fie<caret>ld/>");
+    myFixture.configureFromExistingVirtualFile(page.getVirtualFile());
+
+    myFixture.renameElementAtCaret("input");
+
+    assertEquals(OVERLOADED_TAG_LIB.replace("def field(", "def input("), tagLib.getText());
+    assertEquals("<my:input/> ${my.input(type: 'x')}", other.getText());
   }
 
   public void testTagCallReturnsTheGrails2BufferOnGrails2() {

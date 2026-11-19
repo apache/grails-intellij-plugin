@@ -309,8 +309,25 @@ public final class GspTagLibUtil {
    * caller to check, with {@link #supportsMethodTags}.
    */
   public static @NotNull List<PsiMethod> getTagMethods(@NotNull PsiClass tagLibClass) {
-    PsiMethod[] methods = tagLibClass instanceof GrTypeDefinition definition ? definition.getCodeMethods() : tagLibClass.getMethods();
-    return ContainerUtil.filter(methods, GspTagLibUtil::isTagMethod);
+    return ContainerUtil.filter(getDeclaredMethods(tagLibClass), GspTagLibUtil::isTagMethod);
+  }
+
+  /**
+   * The methods that together are the tag a tag method declares: the tag methods of its name that its class declares.
+   * Grails tries each of them when a page calls the tag, the one with the most parameters first
+   * (org.grails.taglib.TagMethodInvoker).
+   */
+  public static @NotNull List<PsiMethod> getTagOverloads(@NotNull PsiMethod tagMethod) {
+    PsiClass tagLibClass = tagMethod.getContainingClass();
+    if (tagLibClass == null) return List.of(tagMethod);
+
+    List<PsiMethod> overloads = ContainerUtil.filter(getDeclaredMethods(tagLibClass), method ->
+      method.getName().equals(tagMethod.getName()) && isTagMethod(method));
+    return overloads.isEmpty() ? List.of(tagMethod) : overloads;
+  }
+
+  private static PsiMethod @NotNull [] getDeclaredMethods(@NotNull PsiClass aClass) {
+    return aClass instanceof GrTypeDefinition definition ? definition.getCodeMethods() : aClass.getMethods();
   }
 
   /**
@@ -345,9 +362,10 @@ public final class GspTagLibUtil {
     return false;
   }
 
-  /** Whether a method tag takes a body, which only a Closure parameter can supply. */
-  public static boolean hasBodyParameter(@NotNull PsiMethod method) {
-    return ContainerUtil.exists(method.getParameterList().getParameters(), GspTagLibUtil::isBodyParameter);
+  /** Whether a method tag takes a body, which only a Closure parameter of one of its overloads can supply. */
+  public static boolean acceptsBody(@NotNull PsiMethod tagMethod) {
+    return ContainerUtil.exists(getTagOverloads(tagMethod), overload ->
+      ContainerUtil.exists(overload.getParameterList().getParameters(), GspTagLibUtil::isBodyParameter));
   }
 
   private static boolean isAttrsParameter(@NotNull PsiParameter parameter) {
@@ -496,48 +514,48 @@ public final class GspTagLibUtil {
   public static Pair<Map<String, XmlAttributeDescriptor>, Set<String>> getAttributesDescriptorsFromJavadocs(PsiElement place) {
     PsiElement element = place.getNavigationElement().getNavigationElement();
     return CachedValuesManager.getCachedValue(element, () -> {
-      Map<String, XmlAttributeDescriptor> javaDocAttrMap = null;
+      // A method tag can be declared as several overloads, and the tag's attributes are those of all of them.
+      List<? extends PsiElement> declarations =
+        element instanceof PsiMethod method && isTagMethod(method) ? getTagOverloads(method) : List.of(element);
 
-      if (element instanceof PsiDocCommentOwner) {
-        PsiDocComment docComment = ((PsiDocCommentOwner)element).getDocComment();
-        if (docComment != null) {
-          PsiDocTag[] attrs = docComment.findTagsByName("attr");
-          if (attrs.length > 0) {
-            javaDocAttrMap = new HashMap<>();
+      Map<String, XmlAttributeDescriptor> javaDocAttrMap = new HashMap<>();
+      for (PsiElement declaration : declarations) {
+        PsiDocComment docComment = declaration instanceof PsiDocCommentOwner owner ? owner.getDocComment() : null;
+        if (docComment == null) continue;
 
-            for (final PsiDocTag attr : attrs) {
-              XmlAttributeDescriptor descriptor = createDescriptorByDoc(attr);
-              if (descriptor != null) {
-                javaDocAttrMap.put(descriptor.getName(), descriptor);
-              }
-            }
+        for (PsiDocTag attr : docComment.findTagsByName("attr")) {
+          XmlAttributeDescriptor descriptor = createDescriptorByDoc(attr);
+          if (descriptor != null) {
+            javaDocAttrMap.put(descriptor.getName(), descriptor);
           }
         }
       }
 
-      if (javaDocAttrMap == null) {
+      if (javaDocAttrMap.isEmpty()) {
         javaDocAttrMap = Collections.emptyMap();
       }
 
       Set<String> sourceAttrName = new HashSet<>();
 
-      // The attributes the tag reads from its attrs map, apart from a few names.
-      Collection<String> attrsMapNames = Collections.emptySet();
-      if (element instanceof GrField field) {
-        attrsMapNames = field.getNamedParameters().keySet();
-      }
-      else if (element instanceof GrMethod method && isTagMethod(method)) {
-        attrsMapNames = method.getNamedParameters().keySet();
-      }
-      for (String attrName : attrsMapNames) {
-        if (!"tagName".equals(attrName) && !"type".equals(attrName) && !"remove".equals(attrName)) sourceAttrName.add(attrName);
-      }
+      for (PsiElement declaration : declarations) {
+        // The attributes the tag reads from its attrs map, apart from a few names.
+        Collection<String> attrsMapNames = Collections.emptySet();
+        if (declaration instanceof GrField field) {
+          attrsMapNames = field.getNamedParameters().keySet();
+        }
+        else if (declaration instanceof GrMethod method && isTagMethod(method)) {
+          attrsMapNames = method.getNamedParameters().keySet();
+        }
+        for (String attrName : attrsMapNames) {
+          if (!"tagName".equals(attrName) && !"type".equals(attrName) && !"remove".equals(attrName)) sourceAttrName.add(attrName);
+        }
 
-      // For a method tag, also the parameters Grails 8 binds to the attribute of their name, whatever that name is
-      // (org.grails.taglib.TagMethodInvoker).
-      if (element instanceof GrMethod method && isTagMethod(method)) {
-        for (PsiParameter parameter : method.getParameterList().getParameters()) {
-          if (!isAttrsParameter(parameter) && !isBodyParameter(parameter)) sourceAttrName.add(parameter.getName());
+        // For a method tag, also the parameters Grails 8 binds to the attribute of their name, whatever that name is
+        // (org.grails.taglib.TagMethodInvoker).
+        if (declaration instanceof GrMethod method && isTagMethod(method)) {
+          for (PsiParameter parameter : method.getParameterList().getParameters()) {
+            if (!isAttrsParameter(parameter) && !isBodyParameter(parameter)) sourceAttrName.add(parameter.getName());
+          }
         }
       }
 

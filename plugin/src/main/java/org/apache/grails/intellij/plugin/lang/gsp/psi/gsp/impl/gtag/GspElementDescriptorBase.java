@@ -90,8 +90,8 @@ public abstract class GspElementDescriptorBase implements XmlElementDescriptor {
       }
     }
 
-    // Likewise a method tag, which only a Closure parameter gives a body.
-    if (element instanceof PsiMethod method && GspTagLibUtil.isTagMethod(method) && !GspTagLibUtil.hasBodyParameter(method)) {
+    // Likewise a method tag, which only a Closure parameter of one of its overloads gives a body.
+    if (element instanceof PsiMethod method && GspTagLibUtil.isTagMethod(method) && !GspTagLibUtil.acceptsBody(method)) {
       return CONTENT_TYPE_EMPTY;
     }
 

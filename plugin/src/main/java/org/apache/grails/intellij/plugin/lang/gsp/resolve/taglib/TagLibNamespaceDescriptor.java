@@ -318,6 +318,13 @@ public class TagLibNamespaceDescriptor {
     @Override
     protected void onRename(@NotNull String newName) {
       PsiElement element = getNavigationElement();
+      if (element instanceof PsiMethod method) {
+        // A tag declared as several methods is one tag, so each of its overloads takes the new name.
+        for (PsiMethod overload : GspTagLibUtil.getTagOverloads(method)) {
+          overload.setName(newName);
+        }
+        return;
+      }
       ((PsiNamedElement)element).setName(newName);
     }
 
