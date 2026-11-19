@@ -20,6 +20,7 @@ package org.apache.grails.intellij.plugin.lang.gsp.psi.gsp.impl.gtag;
 
 import com.intellij.psi.PsiDocCommentOwner;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiMethod;
 import com.intellij.psi.javadoc.PsiDocComment;
 import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlTag;
@@ -29,6 +30,7 @@ import com.intellij.xml.XmlElementDescriptor;
 import com.intellij.xml.XmlElementsGroup;
 import com.intellij.xml.XmlNSDescriptor;
 import org.jetbrains.annotations.NotNull;
+import org.apache.grails.intellij.plugin.lang.gsp.resolve.taglib.GspTagMethodUtil;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrField;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
@@ -86,6 +88,10 @@ public abstract class GspElementDescriptorBase implements XmlElementDescriptor {
           return CONTENT_TYPE_EMPTY;
         }
       }
+    }
+
+    if (element instanceof PsiMethod && !GspTagMethodUtil.acceptsBody((PsiMethod)element)) {
+      return CONTENT_TYPE_EMPTY;
     }
 
     if (element instanceof PsiDocCommentOwner) {

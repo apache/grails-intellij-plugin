@@ -24,6 +24,7 @@ import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiModifier;
 import org.jetbrains.annotations.NotNull;
+import org.apache.grails.intellij.plugin.lang.gsp.resolve.taglib.GspTagMethodUtil;
 import org.apache.grails.intellij.plugin.util.GrailsArtifact;
 import org.apache.grails.intellij.plugin.util.GrailsUtils;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrField;
@@ -71,6 +72,12 @@ public final class GrailsImplicitUsageProvider implements ImplicitUsageProvider 
               if (DOMAIN_METHODS.contains(member.getName())) {
                 return true;
               }
+            }
+          }
+          case TAGLIB -> {
+            // Grails 8 dispatches tags to methods; a GSP is what calls them.
+            if (member instanceof GrMethod && GspTagMethodUtil.isTagOfMethodTagLibrary((GrMethod)member)) {
+              return true;
             }
           }
           case BOOTSTRAP -> {

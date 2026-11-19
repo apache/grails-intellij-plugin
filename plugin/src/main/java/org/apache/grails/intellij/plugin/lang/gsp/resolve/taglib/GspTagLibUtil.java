@@ -31,6 +31,7 @@ import com.intellij.psi.PsiCompiledElement;
 import com.intellij.psi.PsiDocCommentOwner;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiField;
+import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiModifier;
 import com.intellij.psi.PsiPackage;
 import com.intellij.psi.PsiVariable;
@@ -62,6 +63,7 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrField;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.members.GrMethod;
 import org.jetbrains.plugins.groovy.lang.resolve.ResolveUtil;
 import org.apache.grails.intellij.plugin.mvc.MvcModuleStructureSynchronizer;
 
@@ -428,6 +430,21 @@ public final class GspTagLibUtil {
             sourceAttrName = new HashSet<>();
           }
           sourceAttrName.add(attrName);
+        }
+      }
+      else if (element instanceof PsiMethod) {
+        // A method tag: the attributes it reads off its attribute map, and those bound to parameters.
+        Set<String> names = new LinkedHashSet<>();
+        for (PsiMethod overload : GspTagMethodUtil.getTagOverloads((PsiMethod)element)) {
+          if (overload instanceof GrMethod) {
+            names.addAll(((GrMethod)overload).getNamedParameters().keySet());
+          }
+        }
+        names.addAll(GspTagMethodUtil.getParameterAttributeNames((PsiMethod)element));
+        names.removeAll(javaDocAttrMap.keySet());
+
+        if (!names.isEmpty()) {
+          sourceAttrName = names;
         }
       }
 

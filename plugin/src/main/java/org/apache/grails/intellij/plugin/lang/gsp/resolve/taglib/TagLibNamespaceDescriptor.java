@@ -111,6 +111,15 @@ public class TagLibNamespaceDescriptor {
       }
     }
 
+    // Grails 8 also dispatches tags to methods. A closure field of the same name stays the tag.
+    for (Map.Entry<String, PsiMethod> entry : GspTagMethodUtil.collectTagMethods(myClasses).entrySet()) {
+      String name = entry.getKey();
+
+      if (!exclude.contains(name) && !variableMap.containsKey(name)) {
+        variableMap.put(name, new GspTagMethod(myManager, name, entry.getValue()));
+      }
+    }
+
     myFinalCalculatedVariables = variableMap;
 
     return variableMap.values();
@@ -133,7 +142,8 @@ public class TagLibNamespaceDescriptor {
       return null;
     }
 
-    PsiMethod res = method[0] == null ? null : new GspTagMethod(myManager, name, GrailsUtils.toField(method[0]));
+    PsiMember declaration = method[0] == null ? GspTagMethodUtil.findTagMethod(myClasses, name) : GrailsUtils.toField(method[0]);
+    PsiMethod res = declaration == null ? null : new GspTagMethod(myManager, name, declaration);
 
     if (stamp.mayCacheNow()) {
       synchronized (this) {
@@ -265,6 +275,13 @@ public class TagLibNamespaceDescriptor {
     @Override
     protected void onRename(@NotNull String newName) {
       PsiElement element = getNavigationElement();
+      if (element instanceof PsiMethod) {
+        // A tag written as several overloads is one tag, so all of them take the new name.
+        for (PsiMethod overload : GspTagMethodUtil.getTagOverloads((PsiMethod)element)) {
+          overload.setName(newName);
+        }
+        return;
+      }
       ((PsiNamedElement)element).setName(newName);
     }
 
