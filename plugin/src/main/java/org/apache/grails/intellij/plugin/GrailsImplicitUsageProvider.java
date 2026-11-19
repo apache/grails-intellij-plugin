@@ -20,13 +20,17 @@
 package org.apache.grails.intellij.plugin;
 
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider;
+import com.intellij.openapi.module.Module;
+import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiModifier;
 import org.jetbrains.annotations.NotNull;
+import org.apache.grails.intellij.plugin.lang.gsp.resolve.taglib.GspTagLibUtil;
 import org.apache.grails.intellij.plugin.util.GrailsArtifact;
 import org.apache.grails.intellij.plugin.util.GrailsUtils;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrField;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.params.GrParameter;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrClassDefinition;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.members.GrMember;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.members.GrMethod;
@@ -42,6 +46,13 @@ public final class GrailsImplicitUsageProvider implements ImplicitUsageProvider 
   public boolean isImplicitUsage(@NotNull PsiElement element) {
     if (element instanceof GrClassDefinition) {
       if (GrailsArtifact.getType((PsiClass)element) != null) {
+        return true;
+      }
+    }
+    else if (element instanceof GrParameter parameter) {
+      // The parameters of a tag method are its contract with Grails rather than its own business: (Map attrs, Closure body)
+      // is what makes it a tag, and the other parameters of a @Tag method name the attributes Grails selects it by.
+      if (parameter.getDeclarationScope() instanceof GrMethod method && isTagMethod(method)) {
         return true;
       }
     }
@@ -73,6 +84,12 @@ public final class GrailsImplicitUsageProvider implements ImplicitUsageProvider 
               }
             }
           }
+          case TAGLIB -> {
+            // Grails dispatches a page's tags to the tag methods, which may well be called from no page of the project.
+            if (member instanceof GrMethod method && isTagMethod(method)) {
+              return true;
+            }
+          }
           case BOOTSTRAP -> {
             if (member instanceof GrField) {
               String filedName = member.getName();
@@ -94,6 +111,15 @@ public final class GrailsImplicitUsageProvider implements ImplicitUsageProvider 
     }
 
     return false;
+  }
+
+  /** Whether a method is a tag of a tag library, in a module whose Grails dispatches tags to methods. */
+  private static boolean isTagMethod(@NotNull GrMethod method) {
+    if (GrailsArtifact.getType(method.getContainingClass()) != GrailsArtifact.TAGLIB || !GspTagLibUtil.isTagMethod(method)) {
+      return false;
+    }
+    Module module = ModuleUtilCore.findModuleForPsiElement(method);
+    return module != null && GspTagLibUtil.supportsMethodTags(module);
   }
 
   @Override

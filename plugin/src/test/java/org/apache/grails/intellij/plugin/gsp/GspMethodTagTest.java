@@ -19,6 +19,7 @@
 
 package org.apache.grails.intellij.plugin.gsp;
 
+import com.intellij.codeInspection.deadCode.UnusedDeclarationInspectionBase;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiMethod;
@@ -32,6 +33,7 @@ import org.apache.grails.intellij.lib.testFramework.GrailsTestCase;
 import org.apache.grails.intellij.plugin.lang.gsp.resolve.taglib.GspTagLibUtil;
 import org.apache.grails.intellij.plugin.lang.gsp.resolve.taglib.TagLibNamespaceDescriptor;
 import org.jetbrains.plugins.groovy.GroovyLanguage;
+import org.jetbrains.plugins.groovy.codeInspection.GroovyUnusedDeclarationInspection;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.members.GrMethod;
 
@@ -189,6 +191,35 @@ public class GspMethodTagTest extends GrailsTestCase {
     assertEquals("<my:input/> ${my.input(type: 'x')}", other.getText());
   }
 
+  /** Grails calls a tag method, with its parameters, even when no page of the project uses the tag. */
+  public void testTagMethodsAndTheirParametersAreUsed() {
+    addGrails8TagAnnotations();
+    myFixture.enableInspections(new GroovyUnusedDeclarationInspection(), new UnusedDeclarationInspectionBase(true));
+    configureByTaglib("""
+      class MyTagLib {
+        def wrap(Map attrs, Closure body) {}
+
+        @grails.gsp.Tag
+        def greeting(String name) {}
+
+        def <warning>helper</warning>(String <warning>text</warning>) {}
+      }
+      """);
+
+    myFixture.checkHighlighting(true, false, true);
+  }
+
+  public void testTagShapedMethodsAreUnusedBeforeGrails8() {
+    myFixture.enableInspections(new GroovyUnusedDeclarationInspection(), new UnusedDeclarationInspectionBase(true));
+    configureByTaglib("""
+      class MyTagLib {
+        def <warning>wrap</warning>(Map <warning>attrs</warning>, Closure <warning>body</warning>) {}
+      }
+      """);
+
+    myFixture.checkHighlighting(true, false, true);
+  }
+
   public void testTagCallReturnsTheGrails2BufferOnGrails2() {
     addTaglib(TAG_LIB);
 
@@ -214,9 +245,13 @@ public class GspMethodTagTest extends GrailsTestCase {
    * that came with method tags in Grails 8.
    */
   private PsiFile addGrails8TagLib(String classText) {
+    addGrails8TagAnnotations();
+    return addTaglib(classText);
+  }
+
+  private void addGrails8TagAnnotations() {
     myFixture.addClass("package grails.gsp; public @interface Tag {}");
     myFixture.addClass("package grails.gsp; public @interface NotATag {}");
-    return addTaglib(classText);
   }
 
   private TagLibNamespaceDescriptor defaultNamespace() {
