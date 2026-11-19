@@ -73,15 +73,8 @@ public class GspMethodTagTest extends GrailsTestCase {
   private static final List<String> NOT_TAGS =
     List.of("excluded", "helper", "untypedAttrs", "wrongName", "setThing", "thing", "util", "secret", "raw");
 
-  @Override
-  protected void setUp() throws Exception {
-    super.setUp();
-    myFixture.addClass("package grails.gsp; public @interface Tag {}");
-    myFixture.addClass("package grails.gsp; public @interface NotATag {}");
-  }
-
   public void testTagsFollowTheGrails8Rules() {
-    addTaglib(TAG_LIB);
+    addGrails8TagLib(TAG_LIB);
 
     // Each tag on its own first, before listing them all fills the cache getTag also reads.
     for (String name : TAGS) {
@@ -96,9 +89,23 @@ public class GspMethodTagTest extends GrailsTestCase {
     assertDoesntContain(allTags, NOT_TAGS);
   }
 
+  /** Before Grails 8, a method of a tag library is an ordinary helper, whatever its shape. */
+  public void testMethodsAreNotTagsBeforeGrails8() {
+    addTaglib(TAG_LIB);
+
+    List<String> methodTags = ContainerUtil.filter(TAGS, name -> !name.equals("legacy"));
+    for (String name : methodTags) {
+      assertNull(name + " should not be a tag", defaultNamespace().getTag(name));
+    }
+
+    List<String> allTags = ContainerUtil.map(defaultNamespace().getAllTags(), PsiMethod::getName);
+    assertContainsElements(allTags, "legacy");
+    assertDoesntContain(allTags, methodTags);
+  }
+
   /** The stock Grails index.gsp calls the message and meta tags of Grails 8 this way. */
   public void testMethodTagResolvesAsAMethodCall() {
-    addTaglib(TAG_LIB);
+    addGrails8TagLib(TAG_LIB);
     PsiFile gsp = addView("ccc/index.gsp", "${greet(name: 'x')}");
 
     PsiReference reference = gsp.getViewProvider().findReferenceAt(gsp.getText().indexOf("greet"), GroovyLanguage.INSTANCE);
@@ -109,7 +116,7 @@ public class GspMethodTagTest extends GrailsTestCase {
   }
 
   public void testMethodTagResolvesAsATag() {
-    addTaglib(TAG_LIB);
+    addGrails8TagLib(TAG_LIB);
     PsiFile gsp = addView("ccc/index.gsp", "<g:greet name='x'/>\n<g:wrap>text</g:wrap>\n");
 
     XmlElementDescriptor greet = descriptorOf(gsp, "g:greet");
@@ -121,7 +128,7 @@ public class GspMethodTagTest extends GrailsTestCase {
 
   /** From the Javadoc, from the attributes the body reads, and from the parameters Grails 8 binds to attributes. */
   public void testMethodTagAttributes() {
-    addTaglib(TAG_LIB);
+    addGrails8TagLib(TAG_LIB);
 
     myFixture.testCompletionVariants(getFilePath(addView("ccc/greet.gsp", "<g:greet <caret>/>")), "name", "title");
     myFixture.testCompletionVariants(getFilePath(addView("ccc/default.gsp", "<g:withDefault <caret>/>")), "suffix");
@@ -130,14 +137,31 @@ public class GspMethodTagTest extends GrailsTestCase {
   public void testTagCallReturnsTheGrails2BufferOnGrails2() {
     addTaglib(TAG_LIB);
 
-    assertEquals("org.codehaus.groovy.grails.web.util.StreamCharBuffer", typeOfTagCall());
+    assertEquals("org.codehaus.groovy.grails.web.util.StreamCharBuffer", typeOfTagCall("legacy(name: 'x')"));
   }
 
   public void testTagCallReturnsTheGrails3BufferFromGrails3On() {
     myFixture.addClass("package org.grails.buffer; public class StreamCharBuffer {}");
     addTaglib(TAG_LIB);
 
-    assertEquals("org.grails.buffer.StreamCharBuffer", typeOfTagCall());
+    assertEquals("org.grails.buffer.StreamCharBuffer", typeOfTagCall("legacy(name: 'x')"));
+  }
+
+  public void testMethodTagCallReturnsTheBuffer() {
+    myFixture.addClass("package org.grails.buffer; public class StreamCharBuffer {}");
+    addGrails8TagLib(TAG_LIB);
+
+    assertEquals("org.grails.buffer.StreamCharBuffer", typeOfTagCall("greet(name: 'x')"));
+  }
+
+  /**
+   * Adds a tag library to a project whose Grails dispatches tags to methods, which the plugin tells by the annotations
+   * that came with method tags in Grails 8.
+   */
+  private PsiFile addGrails8TagLib(String classText) {
+    myFixture.addClass("package grails.gsp; public @interface Tag {}");
+    myFixture.addClass("package grails.gsp; public @interface NotATag {}");
+    return addTaglib(classText);
   }
 
   private TagLibNamespaceDescriptor defaultNamespace() {
@@ -146,11 +170,11 @@ public class GspMethodTagTest extends GrailsTestCase {
     return descriptor;
   }
 
-  private String typeOfTagCall() {
-    PsiFile gsp = addView("ccc/call.gsp", "${greet(name: 'x')}");
+  private String typeOfTagCall(String callText) {
+    PsiFile gsp = addView("ccc/call.gsp", "${" + callText + "}");
     GrExpression call = ContainerUtil.find(
       PsiTreeUtil.findChildrenOfType(gsp.getViewProvider().getPsi(GroovyLanguage.INSTANCE), GrExpression.class),
-      expression -> expression.getText().equals("greet(name: 'x')"));
+      expression -> expression.getText().equals(callText));
     assertNotNull(call);
     PsiType type = call.getType();
     assertNotNull(type);

@@ -120,11 +120,13 @@ public class TagLibNamespaceDescriptor {
       }
     }
 
-    for (PsiClass aClass : myClasses) {
-      for (PsiMethod tagMethod : GspTagLibUtil.getTagMethods(aClass)) {
-        String name = tagMethod.getName();
-        if (!exclude.contains(name) && !variableMap.containsKey(name)) {
-          variableMap.put(name, new GspTagMethod(myManager, name, tagMethod));
+    if (GspTagLibUtil.supportsMethodTags(myModule)) {
+      for (PsiClass aClass : myClasses) {
+        for (PsiMethod tagMethod : GspTagLibUtil.getTagMethods(aClass)) {
+          String name = tagMethod.getName();
+          if (!exclude.contains(name) && !variableMap.containsKey(name)) {
+            variableMap.put(name, new GspTagMethod(myManager, name, tagMethod));
+          }
         }
       }
     }
@@ -172,6 +174,8 @@ public class TagLibNamespaceDescriptor {
   private @Nullable PsiMember findTagDeclaration(@NotNull String name) {
     PsiMethod closureGetter = GrailsUtils.getClosureProperty(myClasses, name);
     if (closureGetter != null) return GrailsUtils.toField(closureGetter);
+
+    if (!GspTagLibUtil.supportsMethodTags(myModule)) return null;
 
     for (PsiClass aClass : myClasses) {
       PsiMethod tagMethod = ContainerUtil.find(GspTagLibUtil.getTagMethods(aClass), method -> name.equals(method.getName()));

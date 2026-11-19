@@ -23,6 +23,7 @@ import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.roots.ProjectRootModificationTracker;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.CommonClassNames;
@@ -286,9 +287,26 @@ public final class GspTagLibUtil {
     "throwTagError", "withCodec");
 
   /**
+   * Whether the Grails of a module dispatches tags to methods, which Grails does from 8.0 on. Before that, a method of a
+   * tag library is an ordinary helper, whatever its shape. The {@code grails.gsp.Tag} annotation came with method tags,
+   * and looking for it works for every kind of project, where the Grails version is not always known.
+   */
+  public static boolean supportsMethodTags(@NotNull Module module) {
+    Project project = module.getProject();
+    return CachedValuesManager.getManager(project).getCachedValue(module, () -> CachedValueProvider.Result.create(
+      !DumbService.isDumb(project) &&
+      JavaPsiFacade.getInstance(project).findClass(TAG_ANNOTATION, GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)) != null,
+      PsiModificationTracker.MODIFICATION_COUNT,
+      ProjectRootModificationTracker.getInstance(project),
+      DumbService.getInstance(project).getModificationTracker()
+    ));
+  }
+
+  /**
    * The methods of a tag library class that are tags, which Grails 8 lets a tag library declare besides Closure fields.
    * Only the methods the class itself declares count: Grails dispatches a method tag from the declared methods, where it
-   * finds a closure tag as an inherited property.
+   * finds a closure tag as an inherited property. Whether the project's Grails dispatches tags to methods at all is for the
+   * caller to check, with {@link #supportsMethodTags}.
    */
   public static @NotNull List<PsiMethod> getTagMethods(@NotNull PsiClass tagLibClass) {
     PsiMethod[] methods = tagLibClass instanceof GrTypeDefinition definition ? definition.getCodeMethods() : tagLibClass.getMethods();
