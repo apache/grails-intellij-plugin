@@ -519,32 +519,30 @@ public final class GspTagLibUtil {
         javaDocAttrMap = Collections.emptyMap();
       }
 
-      Set<String> sourceAttrName = null;
+      Set<String> sourceAttrName = new HashSet<>();
 
-      // The attributes the tag reads from its attrs map, and for a method tag, the parameters Grails 8 binds to the
-      // attribute of their name (org.grails.taglib.TagMethodInvoker).
-      Collection<String> sourceAttrCandidates = Collections.emptyList();
+      // The attributes the tag reads from its attrs map, apart from a few names.
+      Collection<String> attrsMapNames = Collections.emptySet();
       if (element instanceof GrField field) {
-        sourceAttrCandidates = field.getNamedParameters().keySet();
+        attrsMapNames = field.getNamedParameters().keySet();
       }
       else if (element instanceof GrMethod method && isTagMethod(method)) {
-        sourceAttrCandidates = new LinkedHashSet<>(method.getNamedParameters().keySet());
+        attrsMapNames = method.getNamedParameters().keySet();
+      }
+      for (String attrName : attrsMapNames) {
+        if (!"tagName".equals(attrName) && !"type".equals(attrName) && !"remove".equals(attrName)) sourceAttrName.add(attrName);
+      }
+
+      // For a method tag, also the parameters Grails 8 binds to the attribute of their name, whatever that name is
+      // (org.grails.taglib.TagMethodInvoker).
+      if (element instanceof GrMethod method && isTagMethod(method)) {
         for (PsiParameter parameter : method.getParameterList().getParameters()) {
-          if (!isAttrsParameter(parameter) && !isBodyParameter(parameter)) sourceAttrCandidates.add(parameter.getName());
+          if (!isAttrsParameter(parameter) && !isBodyParameter(parameter)) sourceAttrName.add(parameter.getName());
         }
       }
 
-      for (String attrName : sourceAttrCandidates) {
-        if (javaDocAttrMap.containsKey(attrName)) continue;
-        if ("tagName".equals(attrName) || "type".equals(attrName) || "remove".equals(attrName)) continue;
-
-        if (sourceAttrName == null) {
-          sourceAttrName = new HashSet<>();
-        }
-        sourceAttrName.add(attrName);
-      }
-
-      if (sourceAttrName == null) {
+      sourceAttrName.removeAll(javaDocAttrMap.keySet());
+      if (sourceAttrName.isEmpty()) {
         sourceAttrName = Collections.emptySet();
       }
 

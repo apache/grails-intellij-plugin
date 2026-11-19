@@ -134,6 +134,20 @@ public class GspMethodTagTest extends GrailsTestCase {
     myFixture.testCompletionVariants(getFilePath(addView("ccc/default.gsp", "<g:withDefault <caret>/>")), "suffix");
   }
 
+  /** A parameter is the attribute of its name, even a name that is not offered when the tag reads it from attrs. */
+  public void testParameterNamedTypeIsAnAttribute() {
+    addGrails8TagLib("""
+      class MyTagLib {
+        static namespace = 'my'
+
+        @grails.gsp.Tag
+        def field(String type, Map attrs) { out << type }
+      }
+      """);
+
+    myFixture.testCompletionVariants(getFilePath(addView("ccc/field.gsp", "<my:field <caret>/>")), "type");
+  }
+
   public void testTagCallReturnsTheGrails2BufferOnGrails2() {
     addTaglib(TAG_LIB);
 
