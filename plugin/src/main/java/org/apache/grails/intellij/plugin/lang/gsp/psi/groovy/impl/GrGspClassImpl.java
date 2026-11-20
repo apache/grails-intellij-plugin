@@ -20,6 +20,8 @@
 package org.apache.grails.intellij.plugin.lang.gsp.psi.groovy.impl;
 
 import com.intellij.lang.ASTNode;
+import com.intellij.openapi.project.DumbService;
+import com.intellij.openapi.roots.ProjectRootModificationTracker;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -46,9 +48,12 @@ import com.intellij.psi.infos.CandidateInfo;
 import com.intellij.psi.javadoc.PsiDocComment;
 import com.intellij.psi.scope.ElementClassHint;
 import com.intellij.psi.scope.PsiScopeProcessor;
+import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.util.CachedValueProvider;
+import com.intellij.psi.util.CachedValuesManager;
+import com.intellij.psi.util.PsiModificationTracker;
 import com.intellij.util.IncorrectOperationException;
 import com.intellij.util.containers.ContainerUtil;
-import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -58,7 +63,11 @@ import org.apache.grails.intellij.plugin.lang.gsp.psi.groovy.api.GrGspRunMethod;
 import org.apache.grails.intellij.plugin.lang.gsp.psi.groovy.api.GspGroovyFile;
 import org.apache.grails.intellij.plugin.lang.gsp.psi.gsp.api.GspFile;
 import org.apache.grails.intellij.plugin.lang.gsp.resolve.taglib.GspTagLibUtil;
+import org.apache.grails.intellij.plugin.structure.GrailsApplication;
+import org.apache.grails.intellij.plugin.structure.GrailsApplicationManager;
 import org.apache.grails.intellij.plugin.util.GrailsUtils;
+import org.apache.grails.intellij.plugin.util.version.Version;
+import org.apache.grails.intellij.plugin.util.version.VersionImpl;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrField;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.members.GrMethod;
 import org.jetbrains.plugins.groovy.lang.psi.impl.GroovyPsiElementImpl;
@@ -72,29 +81,104 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class GrGspClassImpl extends GroovyPsiElementImpl implements GrGspClass {
 
+  /** The class every compiled page extends, from Grails 3 on. */
+  private static final String GROOVY_PAGE = "org.grails.gsp.GroovyPage";
+
+  /** The same class before Grails 3 moved Grails out of {@code org.codehaus.groovy.grails}. */
+  private static final String GRAILS_2_GROOVY_PAGE = "org.codehaus.groovy.grails.web.pages.GroovyPage";
+
+  /**
+   * The request wrapper the implicit variables come from. Its Grails 3 package means the classpath has the Grails 3
+   * web API, so the variables take their types from {@link #GRAILS_3_VARIABLE_TYPES}.
+   */
+  private static final String GRAILS_3_WEB_REQUEST = "org.grails.web.servlet.mvc.GrailsWebRequest";
+
+  private static final String JAVAX_SERVLET_PACKAGE = "javax.servlet";
+
+  /**
+   * The servlet API package from Jakarta EE 9 on, which Grails 7 is built on. Earlier Grails versions use
+   * {@link #JAVAX_SERVLET_PACKAGE}.
+   */
+  private static final String JAKARTA_SERVLET_PACKAGE = "jakarta.servlet";
+
+  private static final String JAKARTA_HTTP_SERVLET_REQUEST = JAKARTA_SERVLET_PACKAGE + ".http.HttpServletRequest";
+
   // @see org.codehaus.groovy.grails.web.pages.GroovyPageWritable#writeTo
   // and org.codehaus.groovy.grails.web.pages.GroovyPageRequestBinding#lazyRequestBasedValuesMap #CHECK#
-  @Language("JAVA")
-  private static final String DYNAMIC_FIELDS_SOURCE = "class GspProperties {" +
-                                                      //"  private final org.codehaus.groovy.grails.web.util.GrailsPrintWriter codecOut;" +
-                                                      "  private final String actionName;" +
-                                                      "  private final String controllerName;" +
-                                                      "  private final javax.servlet.ServletContext application;" +
-                                                      "  private final org.codehaus.groovy.grails.commons.spring.GrailsWebApplicationContext applicationContext;" +
-                                                      "  private final org.codehaus.groovy.grails.web.servlet.FlashScope flash;" +
-                                                      "  private final org.codehaus.groovy.grails.commons.GrailsApplication grailsApplication;" +
-                                                      "  private final org.codehaus.groovy.grails.web.util.GrailsPrintWriter out;" +
-                                                      "  private final org.codehaus.groovy.grails.web.servlet.mvc.GrailsParameterMap params;" +
-                                                      "  private final javax.servlet.http.HttpServletRequest request;" +
-                                                      "  private final javax.servlet.http.HttpServletResponse response;" +
-                                                      "  private final javax.servlet.http.HttpSession session;" +
-                                                      "  private final groovy.lang.Binding pageScope;" +
-                                                      "  private final org.codehaus.groovy.grails.web.servlet.mvc.GrailsWebRequest webRequest;" +
-                                                      "  private final org.codehaus.groovy.grails.web.errors.GrailsWrappedRuntimeException exception;" +
-                                                      "}";
+  private static final Map<String, String> GRAILS_2_VARIABLE_TYPES = Map.of(
+    "applicationContext", "org.codehaus.groovy.grails.commons.spring.GrailsWebApplicationContext",
+    "flash", "org.codehaus.groovy.grails.web.servlet.FlashScope",
+    "grailsApplication", "org.codehaus.groovy.grails.commons.GrailsApplication",
+    "out", "org.codehaus.groovy.grails.web.util.GrailsPrintWriter",
+    "params", "org.codehaus.groovy.grails.web.servlet.mvc.GrailsParameterMap",
+    "webRequest", "org.codehaus.groovy.grails.web.servlet.mvc.GrailsWebRequest",
+    "exception", "org.codehaus.groovy.grails.web.errors.GrailsWrappedRuntimeException");
+
+  // Unchanged from Grails 3.3 to 8. There is no `out`: GroovyPage.getOut() declares it, and that getter wins over
+  // a field here, as it already does in Grails 2.
+  // @see org.grails.web.taglib.WebRequestTemplateVariableBinding#lazyRequestBasedValuesMap
+  // and org.grails.web.errors.GrailsExceptionResolver, which binds `exception` as a request attribute #CHECK#
+  private static final Map<String, String> GRAILS_3_VARIABLE_TYPES = Map.of(
+    "applicationContext", "org.springframework.context.ApplicationContext",
+    "flash", "grails.web.mvc.FlashScope",
+    "grailsApplication", "grails.core.GrailsApplication",
+    "params", "grails.web.servlet.mvc.GrailsParameterMap",
+    "webRequest", GRAILS_3_WEB_REQUEST,
+    "exception", "org.grails.web.errors.GrailsWrappedRuntimeException");
+
+  /**
+   * The first Grails release that binds {@code namespace}, the controller namespace. Its GSP library, 6.2.2, is the
+   * first to bind it.
+   */
+  private static final Version NAMESPACE_VARIABLE_SINCE = new VersionImpl("6.2.1");
+
+  /** The first Grails release that binds {@code servletContext}, the same object as {@code application}. */
+  private static final Version SERVLET_CONTEXT_VARIABLE_SINCE = new VersionImpl("8.0.0-M6");
+
+  /**
+   * The Java source of a class whose fields are the implicit variables of a page.
+   *
+   * @param grailsTypes    the types of the variables whose classes moved between Grails versions
+   * @param servletPackage the servlet API package, either {@link #JAVAX_SERVLET_PACKAGE} or {@link #JAKARTA_SERVLET_PACKAGE}
+   * @param grailsVersion  the application's Grails version, which decides the variables later releases added, or
+   *                       {@code null} when the page belongs to no application
+   */
+  private static @NotNull String implicitVariablesSource(@NotNull Map<String, String> grailsTypes,
+                                                         @NotNull String servletPackage,
+                                                         @Nullable Version grailsVersion) {
+    // Sorted, so the same variables always produce the same source.
+    Map<String, String> types = new TreeMap<>(grailsTypes);
+    types.put("actionName", "String");
+    types.put("controllerName", "String");
+    types.put("pageScope", "groovy.lang.Binding");
+    types.put("application", servletPackage + ".ServletContext");
+    types.put("request", servletPackage + ".http.HttpServletRequest");
+    types.put("response", servletPackage + ".http.HttpServletResponse");
+    types.put("session", servletPackage + ".http.HttpSession");
+    if (grailsVersion != null && grailsVersion.isAtLeast(NAMESPACE_VARIABLE_SINCE)) {
+      types.put("namespace", "String");
+    }
+    if (grailsVersion != null && grailsVersion.isAtLeast(SERVLET_CONTEXT_VARIABLE_SINCE)) {
+      types.put("servletContext", servletPackage + ".ServletContext");
+    }
+
+    StringBuilder source = new StringBuilder("class GspProperties {");
+    types.forEach((name, type) -> source.append(" private final ").append(type).append(' ').append(name).append(';'));
+    return source.append(" }").toString();
+  }
+
+  /**
+   * The Grails API a page is compiled against, as far as this class models it.
+   *
+   * @param groovyPageClass         the fully qualified name of the class the page extends
+   * @param implicitVariablesSource the source passed to {@link DynamicMemberUtils} for the implicit variables
+   */
+  private record PageApi(@NotNull String groovyPageClass, @NotNull String implicitVariablesSource) {
+  }
 
   public GrGspClassImpl(ASTNode node) {
     super(node);
@@ -171,7 +255,7 @@ public class GrGspClassImpl extends GroovyPsiElementImpl implements GrGspClass {
 
   @Override
   public @Nullable PsiClass getSuperClass() {
-    return JavaPsiFacade.getInstance(getProject()).findClass("org.codehaus.groovy.grails.web.pages.GroovyPage", getResolveScope());
+    return JavaPsiFacade.getInstance(getProject()).findClass(getPageApi().groovyPageClass(), getResolveScope());
   }
 
   @Override
@@ -188,7 +272,7 @@ public class GrGspClassImpl extends GroovyPsiElementImpl implements GrGspClass {
   @Override
   public PsiClassType @NotNull [] getSuperTypes() {
     PsiElementFactory factory = JavaPsiFacade.getInstance(getProject()).getElementFactory();
-    return new PsiClassType[]{factory.createTypeByFQClassName("org.codehaus.groovy.grails.web.pages.GroovyPage", getResolveScope())};
+    return new PsiClassType[]{factory.createTypeByFQClassName(getPageApi().groovyPageClass(), getResolveScope())};
   }
 
   @Override
@@ -235,8 +319,8 @@ public class GrGspClassImpl extends GroovyPsiElementImpl implements GrGspClass {
         }
       }
 
-      // Process builtin gsp properties. (e.g. request, responce, ...)
-      for (PsiField field : DynamicMemberUtils.getMembers(place.getProject(), DYNAMIC_FIELDS_SOURCE).getFields(name)) {
+      // Process builtin gsp properties. (e.g. request, response, ...)
+      for (PsiField field : DynamicMemberUtils.getMembers(place.getProject(), getPageApi().implicitVariablesSource()).getFields(name)) {
         if (!processor.execute(field, state)) return false;
       }
     }
@@ -249,6 +333,39 @@ public class GrGspClassImpl extends GroovyPsiElementImpl implements GrGspClass {
     }
 
     return true;
+  }
+
+  /**
+   * Picks the Grails API from the classes on the page's classpath rather than from the Grails version, so a page
+   * gets types that resolve. Each choice follows the class it is about: the base class is whichever
+   * {@code GroovyPage} exists, the Grails types follow {@code GrailsWebRequest}, and the servlet types follow
+   * {@code HttpServletRequest}. The newer API wins when both are present, which happens when an older library pulls
+   * the javax servlet API in transitively.
+   * <p>
+   * The exception is the variables later releases added, {@code namespace} and {@code servletContext}: no class marks
+   * them, so they follow the application's Grails version.
+   */
+  private @NotNull PageApi getPageApi() {
+    return CachedValuesManager.getCachedValue(this, () -> {
+      JavaPsiFacade facade = JavaPsiFacade.getInstance(getProject());
+      GlobalSearchScope scope = getResolveScope();
+      String groovyPageClass = facade.findClass(GROOVY_PAGE, scope) != null ? GROOVY_PAGE : GRAILS_2_GROOVY_PAGE;
+      Map<String, String> grailsTypes =
+        facade.findClass(GRAILS_3_WEB_REQUEST, scope) != null ? GRAILS_3_VARIABLE_TYPES : GRAILS_2_VARIABLE_TYPES;
+      String servletPackage =
+        facade.findClass(JAKARTA_HTTP_SERVLET_REQUEST, scope) != null ? JAKARTA_SERVLET_PACKAGE : JAVAX_SERVLET_PACKAGE;
+      GrailsApplication application = GrailsApplicationManager.findApplication(this);
+      Version grailsVersion = application == null ? null : application.getGrailsVersion();
+      PageApi api = new PageApi(groovyPageClass, implicitVariablesSource(grailsTypes, servletPackage, grailsVersion));
+      return CachedValueProvider.Result.create(api,
+                                               PsiModificationTracker.MODIFICATION_COUNT,
+                                               ProjectRootModificationTracker.getInstance(getProject()),
+                                               // Recomputed applications can have another Grails version.
+                                               GrailsApplicationManager.getInstance(getProject()),
+                                               // The lookups can miss classes while indexing; drop those answers
+                                               // when indexing ends.
+                                               DumbService.getInstance(getProject()).getModificationTracker());
+    });
   }
 
   private static boolean processGspVariables(final @NotNull PsiScopeProcessor processor,

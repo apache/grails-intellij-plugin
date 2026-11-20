@@ -23,16 +23,20 @@ import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.roots.ProjectRootModificationTracker;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.psi.CommonClassNames;
 import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiCompiledElement;
 import com.intellij.psi.PsiDocCommentOwner;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiField;
+import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiModifier;
 import com.intellij.psi.PsiPackage;
+import com.intellij.psi.PsiParameter;
 import com.intellij.psi.PsiVariable;
 import com.intellij.psi.ResolveState;
 import com.intellij.psi.impl.search.AllClassesSearchExecutor;
@@ -46,6 +50,7 @@ import com.intellij.psi.search.PsiShortNamesCache;
 import com.intellij.psi.util.CachedValueProvider;
 import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.ClassUtil;
+import com.intellij.psi.util.InheritanceUtil;
 import com.intellij.psi.util.PsiModificationTracker;
 import com.intellij.util.PairProcessor;
 import com.intellij.util.containers.ContainerUtil;
@@ -61,7 +66,10 @@ import org.apache.grails.intellij.plugin.util.version.Version;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrField;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.params.GrParameter;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.GrTypeDefinition;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.typedef.members.GrMethod;
+import org.jetbrains.plugins.groovy.lang.psi.util.GroovyCommonClassNames;
 import org.jetbrains.plugins.groovy.lang.resolve.ResolveUtil;
 import org.apache.grails.intellij.plugin.mvc.MvcModuleStructureSynchronizer;
 
@@ -263,6 +271,121 @@ public final class GspTagLibUtil {
     TAGLIB_PREFEXES.put("org.codehaus.groovy.grails.plugins.web.taglib.SitemeshTagLib", "sitemesh");
   }
 
+  private static final String TAG_ANNOTATION = "grails.gsp.Tag";
+
+  private static final String NOT_A_TAG_ANNOTATION = "grails.gsp.NotATag";
+
+  private static final String ATTRS_PARAMETER_NAME = "attrs";
+
+  private static final String BODY_PARAMETER_NAME = "body";
+
+  /** Names that are Groovy or Object plumbing, or that every tag library has through the framework traits. */
+  private static final Set<String> NON_TAG_METHOD_NAMES = Set.of(
+    "invokeMethod", "methodMissing", "propertyMissing", "getProperty", "setProperty", "getMetaClass", "setMetaClass", "equals",
+    "hashCode", "toString",
+    "afterPropertiesSet", "currentRequestAttributes", "destroy", "initializeTagLibrary", "onApplicationEvent", "raw",
+    "throwTagError", "withCodec");
+
+  /**
+   * Whether the Grails of a module dispatches tags to methods, which Grails does from 8.0 on. Before that, a method of a
+   * tag library is an ordinary helper, whatever its shape. The {@code grails.gsp.Tag} annotation came with method tags,
+   * and looking for it works for every kind of project, where the Grails version is not always known.
+   */
+  public static boolean supportsMethodTags(@NotNull Module module) {
+    Project project = module.getProject();
+    return CachedValuesManager.getManager(project).getCachedValue(module, () -> CachedValueProvider.Result.create(
+      !DumbService.isDumb(project) &&
+      JavaPsiFacade.getInstance(project).findClass(TAG_ANNOTATION, GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)) != null,
+      PsiModificationTracker.MODIFICATION_COUNT,
+      ProjectRootModificationTracker.getInstance(project),
+      DumbService.getInstance(project).getModificationTracker()
+    ));
+  }
+
+  /**
+   * The methods of a tag library class that are tags, which Grails 8 lets a tag library declare besides Closure fields.
+   * Only the methods the class itself declares count: Grails dispatches a method tag from the declared methods, where it
+   * finds a closure tag as an inherited property. Whether the project's Grails dispatches tags to methods at all is for the
+   * caller to check, with {@link #supportsMethodTags}.
+   */
+  public static @NotNull List<PsiMethod> getTagMethods(@NotNull PsiClass tagLibClass) {
+    return ContainerUtil.filter(getDeclaredMethods(tagLibClass), GspTagLibUtil::isTagMethod);
+  }
+
+  /**
+   * The methods that together are the tag a tag method declares: the tag methods of its name that its class declares.
+   * Grails tries each of them when a page calls the tag, the one with the most parameters first
+   * (org.grails.taglib.TagMethodInvoker).
+   */
+  public static @NotNull List<PsiMethod> getTagOverloads(@NotNull PsiMethod tagMethod) {
+    PsiClass tagLibClass = tagMethod.getContainingClass();
+    if (tagLibClass == null) return List.of(tagMethod);
+
+    List<PsiMethod> overloads = ContainerUtil.filter(getDeclaredMethods(tagLibClass), method ->
+      method.getName().equals(tagMethod.getName()) && isTagMethod(method));
+    return overloads.isEmpty() ? List.of(tagMethod) : overloads;
+  }
+
+  private static PsiMethod @NotNull [] getDeclaredMethods(@NotNull PsiClass aClass) {
+    return aClass instanceof GrTypeDefinition definition ? definition.getCodeMethods() : aClass.getMethods();
+  }
+
+  /**
+   * Whether a method of a tag library is a tag, by the rules of org.grails.taglib.discovery.TagDiscoveryRules, which
+   * Grails 8 applies both when it compiles a tag library and when it runs one. #CHECK#
+   * <p>
+   * The rules leave out generated methods, which on a tag library's source (org.grails.taglib.discovery.AstTagMethodView)
+   * include abstract ones.
+   */
+  public static boolean isTagMethod(@NotNull PsiMethod method) {
+    if (method.isConstructor() || !method.hasModifierProperty(PsiModifier.PUBLIC) ||
+        method.hasModifierProperty(PsiModifier.STATIC) || method.hasModifierProperty(PsiModifier.ABSTRACT)) {
+      return false;
+    }
+    if (method.hasAnnotation(NOT_A_TAG_ANNOTATION)) return false;
+    if (method.hasAnnotation(TAG_ANNOTATION)) return true;
+
+    String name = method.getName();
+    if (name.isEmpty() || name.charAt(0) == '<' || name.indexOf('$') >= 0 || NON_TAG_METHOD_NAMES.contains(name)) return false;
+
+    PsiParameter[] parameters = method.getParameterList().getParameters();
+    // Property accessors are never tags.
+    if (parameters.length == 0 && (name.startsWith("get") || name.startsWith("is"))) return false;
+    if (parameters.length == 1 && name.startsWith("set")) return false;
+
+    // A tag can be called as (attrs), (body) or (attrs, body), counting the shorter calls default values allow.
+    int required = 0;
+    for (PsiParameter parameter : parameters) {
+      if (!(parameter instanceof GrParameter grParameter && grParameter.isOptional())) required++;
+    }
+    for (int arity = Math.max(required, 1); arity <= parameters.length; arity++) {
+      if (arity == 1 && (isAttrsParameter(parameters[0]) || isBodyParameter(parameters[0]))) return true;
+      if (arity == 2 && isAttrsParameter(parameters[0]) && isBodyParameter(parameters[1])) return true;
+    }
+    return false;
+  }
+
+  /** Whether a method tag takes a body, which only a Closure parameter of one of its overloads can supply. */
+  public static boolean acceptsBody(@NotNull PsiMethod tagMethod) {
+    return ContainerUtil.exists(getTagOverloads(tagMethod), overload ->
+      ContainerUtil.exists(overload.getParameterList().getParameters(), GspTagLibUtil::isBodyParameter));
+  }
+
+  private static boolean isAttrsParameter(@NotNull PsiParameter parameter) {
+    return InheritanceUtil.isInheritor(parameter.getType(), CommonClassNames.JAVA_UTIL_MAP) &&
+           carriesName(parameter, ATTRS_PARAMETER_NAME);
+  }
+
+  private static boolean isBodyParameter(@NotNull PsiParameter parameter) {
+    return InheritanceUtil.isInheritor(parameter.getType(), GroovyCommonClassNames.GROOVY_LANG_CLOSURE) &&
+           carriesName(parameter, BODY_PARAMETER_NAME);
+  }
+
+  /** A compiled method may not have kept its parameter names, and then there is no name to check. */
+  private static boolean carriesName(@NotNull PsiParameter parameter, @NotNull String expectedName) {
+    return parameter instanceof PsiCompiledElement || expectedName.equals(parameter.getName());
+  }
+
   public static boolean isSdkTagLib(@NotNull PsiClass aClass) {
     String name = aClass.getQualifiedName();
     return FQN_2_TAG.containsKey(name) ||
@@ -394,49 +517,76 @@ public final class GspTagLibUtil {
   public static Pair<Map<String, XmlAttributeDescriptor>, Set<String>> getAttributesDescriptorsFromJavadocs(PsiElement place) {
     PsiElement element = place.getNavigationElement().getNavigationElement();
     return CachedValuesManager.getCachedValue(element, () -> {
-      Map<String, XmlAttributeDescriptor> javaDocAttrMap = null;
+      // A method tag can be declared as several overloads, and the tag's attributes are those of all of them.
+      List<? extends PsiElement> declarations =
+        element instanceof PsiMethod method && isTagMethod(method) ? getTagOverloads(method) : List.of(element);
 
-      if (element instanceof PsiDocCommentOwner) {
-        PsiDocComment docComment = ((PsiDocCommentOwner)element).getDocComment();
-        if (docComment != null) {
-          PsiDocTag[] attrs = docComment.findTagsByName("attr");
-          if (attrs.length > 0) {
-            javaDocAttrMap = new HashMap<>();
+      // An attribute that several overloads document keeps the documentation of the first, and is required only when
+      // every overload requires it, since Grails takes a call with any overload whose parameters it can bind.
+      List<Map<String, XmlAttributeDescriptor>> documentation = ContainerUtil.map(declarations, GspTagLibUtil::getDocumentedAttributes);
+      Map<String, XmlAttributeDescriptor> javaDocAttrMap = new HashMap<>();
+      for (Map<String, XmlAttributeDescriptor> documented : documentation) {
+        for (XmlAttributeDescriptor descriptor : documented.values()) {
+          String name = descriptor.getName();
+          if (javaDocAttrMap.containsKey(name)) continue;
 
-            for (final PsiDocTag attr : attrs) {
-              XmlAttributeDescriptor descriptor = createDescriptorByDoc(attr);
-              if (descriptor != null) {
-                javaDocAttrMap.put(descriptor.getName(), descriptor);
-              }
-            }
-          }
+          boolean required = documentation.stream().allMatch(other -> other.containsKey(name) && other.get(name).isRequired());
+          javaDocAttrMap.put(name, required == descriptor.isRequired()
+                                   ? descriptor
+                                   : createAttributeDescriptor(name, required, descriptor.getDeclaration()));
         }
       }
 
-      if (javaDocAttrMap == null) {
+      if (javaDocAttrMap.isEmpty()) {
         javaDocAttrMap = Collections.emptyMap();
       }
 
-      Set<String> sourceAttrName = null;
+      Set<String> sourceAttrName = new HashSet<>();
 
-      if (element instanceof GrField) {
-        for (String attrName : ((GrField)element).getNamedParameters().keySet()) {
-          if (javaDocAttrMap.containsKey(attrName)) continue;
-          if ("tagName".equals(attrName) || "type".equals(attrName) || "remove".equals(attrName)) continue;
+      for (PsiElement declaration : declarations) {
+        // The attributes the tag reads from its attrs map, apart from a few names.
+        Collection<String> attrsMapNames = Collections.emptySet();
+        if (declaration instanceof GrField field) {
+          attrsMapNames = field.getNamedParameters().keySet();
+        }
+        else if (declaration instanceof GrMethod method && isTagMethod(method)) {
+          attrsMapNames = method.getNamedParameters().keySet();
+        }
+        for (String attrName : attrsMapNames) {
+          if (!"tagName".equals(attrName) && !"type".equals(attrName) && !"remove".equals(attrName)) sourceAttrName.add(attrName);
+        }
 
-          if (sourceAttrName == null) {
-            sourceAttrName = new HashSet<>();
+        // For a method tag, also the parameters Grails 8 binds to the attribute of their name, whatever that name is
+        // (org.grails.taglib.TagMethodInvoker).
+        if (declaration instanceof GrMethod method && isTagMethod(method)) {
+          for (PsiParameter parameter : method.getParameterList().getParameters()) {
+            if (!isAttrsParameter(parameter) && !isBodyParameter(parameter)) sourceAttrName.add(parameter.getName());
           }
-          sourceAttrName.add(attrName);
         }
       }
 
-      if (sourceAttrName == null) {
+      sourceAttrName.removeAll(javaDocAttrMap.keySet());
+      if (sourceAttrName.isEmpty()) {
         sourceAttrName = Collections.emptySet();
       }
 
       return CachedValueProvider.Result.create(Pair.create(javaDocAttrMap, sourceAttrName), element);
     });
+  }
+
+  /** The attributes a declaration documents with {@code @attr}, by name. Of an attribute documented twice, the last. */
+  private static @NotNull Map<String, XmlAttributeDescriptor> getDocumentedAttributes(@NotNull PsiElement declaration) {
+    PsiDocComment docComment = declaration instanceof PsiDocCommentOwner owner ? owner.getDocComment() : null;
+    if (docComment == null) return Collections.emptyMap();
+
+    Map<String, XmlAttributeDescriptor> res = new HashMap<>();
+    for (PsiDocTag attr : docComment.findTagsByName("attr")) {
+      XmlAttributeDescriptor descriptor = createDescriptorByDoc(attr);
+      if (descriptor != null) {
+        res.put(descriptor.getName(), descriptor);
+      }
+    }
+    return res;
   }
 
   private static @Nullable XmlAttributeDescriptor createDescriptorByDoc(final PsiDocTag docTag) {
@@ -450,6 +600,12 @@ public final class GspTagLibUtil {
     final boolean isRequired = dataElements.length > 1
                                && StringUtil.startsWithIgnoreCase(dataElements[1].getText().trim(), "required");
 
+    return createAttributeDescriptor(name, isRequired, valueElement);
+  }
+
+  private static @NotNull XmlAttributeDescriptor createAttributeDescriptor(@NotNull String name,
+                                                                          boolean isRequired,
+                                                                          @Nullable PsiElement declaration) {
     return new AnyXmlAttributeDescriptor(name) {
       @Override
       public boolean isRequired() {
@@ -458,7 +614,7 @@ public final class GspTagLibUtil {
 
       @Override
       public PsiElement getDeclaration() {
-        return valueElement;
+        return declaration;
       }
     };
   }
