@@ -326,6 +326,16 @@ public class GrailsCustomFoldersListTest extends GrailsTestCase {
     assertNull(rows.noteAt(0));
   }
 
+  /** The path cell editor needs a double-click, so a single click selects the row instead of editing. */
+  public void testPathCellEditorRequiresTwoClicksToStartEditing() {
+    GrailsCustomFoldersList rows = list();
+    rows.addRow("docs");
+    JTable table = table(rows);
+    javax.swing.table.TableCellEditor editor = table.getCellEditor(0, 0);
+    assertTrue("the column supplies its own editor", editor instanceof javax.swing.DefaultCellEditor);
+    assertEquals(2, ((javax.swing.DefaultCellEditor) editor).getClickCountToStart());
+  }
+
   private static @NotNull GrailsCustomFoldersList list() {
     return new GrailsCustomFoldersList(() -> null, (parent, toSelect) -> null);
   }
