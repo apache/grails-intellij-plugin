@@ -25,6 +25,8 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.application.impl.TestOnlyThreading;
+import com.intellij.openapi.roots.ModuleRootModificationUtil;
+import com.intellij.openapi.roots.OrderEnumerator;
 import com.intellij.openapi.roots.OrderRootType;
 import com.intellij.openapi.roots.libraries.Library;
 import com.intellij.openapi.vfs.JarFileSystem;
@@ -168,6 +170,46 @@ public class GrailsAttachSourcesProviderTest extends LightJavaCodeInsightFixture
     PsiTestUtil.removeLibrary(getModule(), library);
     libraries.remove(library);
     assertEmpty(provider.getLibrariesActions(Set.of(entity), file));
+  }
+
+  /**
+   * A module-level library is in no library table, so it can only be found through the order entries
+   * of the module that owns it.
+   */
+  public void testResolvesModuleLevelLibrary() throws IOException {
+    VirtualFile classes = createJar("grails/grails-core-2.0.0.jar");
+    VirtualFile sources = createJar("grails/src/grails-core-2.0.0-sources.jar");
+    ModuleRootModificationUtil.updateModel(getModule(), model -> {
+      Library.ModifiableModel library = model.getModuleLibraryTable().createLibrary("GrailsModuleLevel").getModifiableModel();
+      library.addRoot(classes, OrderRootType.CLASSES);
+      library.commit();
+    });
+    List<Library> found = new ArrayList<>();
+    OrderEnumerator.orderEntries(getModule()).forEachLibrary(candidate -> {
+      if ("GrailsModuleLevel".equals(candidate.getName())) found.add(candidate);
+      return true;
+    });
+    Library library = assertOneElement(found);
+    libraries.add(library);
+    assertNull("the library must be module-level", library.getTable());
+
+    AttachSourcesAction action = assertOneElement(provider.getLibrariesActions(Set.of(entity(library)), jarFile(classes)));
+    assertTrue(action.perform(Set.of(entity(library)), getProject()).isDone());
+    assertSame(sources, assertOneElement(library.getFiles(OrderRootType.SOURCES)));
+  }
+
+  /** The entity must be matched by id, not assumed to be whichever library happens to contain the file. */
+  public void testPicksTheRequestedLibraryWhenTwoContainTheJar() throws IOException {
+    VirtualFile classes = createJar("grails/grails-core-2.0.0.jar");
+    VirtualFile sources = createJar("grails/src/grails-core-2.0.0-sources.jar");
+    Library first = addLibrary(classes);
+    Library second = addLibrary(classes);
+
+    AttachSourcesAction action = assertOneElement(provider.getLibrariesActions(Set.of(entity(second)), jarFile(classes)));
+    assertTrue(action.perform(Set.of(entity(second)), getProject()).isDone());
+
+    assertSame(sources, assertOneElement(second.getFiles(OrderRootType.SOURCES)));
+    assertEmpty(first.getFiles(OrderRootType.SOURCES));
   }
 
   public void testIgnoresNonGrailsLibrary() throws IOException {

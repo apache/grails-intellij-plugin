@@ -82,6 +82,38 @@ public class NewGrailsXXXActionTest extends GrailsTestCase {
     assertOpened(controller);
   }
 
+  public void testAfterCommandOpensTheGeneratedFileWithFocus() {
+    VirtualFile service = myFixture.addFileToProject("grails-app/services/shop/OrderService.groovy",
+                                                     "package shop\nclass OrderService {}").getVirtualFile();
+    new NewGrailsServiceAction().afterCommand(application(), "shop.Order");
+    assertOpened(service);
+    assertOrderedEquals(FileEditorManager.getInstance(getProject()).getSelectedFiles(), service);
+  }
+
+  public void testAfterCommandOpensOnlyTheFirstGeneratedFile() {
+    VirtualFile service = myFixture.addFileToProject("grails-app/services/shop/OrderService.groovy",
+                                                     "package shop\nclass OrderService {}").getVirtualFile();
+    VirtualFile spec = myFixture.addFileToProject("test/unit/shop/OrderServiceSpec.groovy",
+                                                  "package shop\nclass OrderServiceSpec {}").getVirtualFile();
+    new NewGrailsServiceAction().afterCommand(application(), "shop.Order");
+    assertOpened(service);
+    assertFalse("only the artefact itself is opened, not its test", FileEditorManager.getInstance(getProject()).isFileOpen(spec));
+  }
+
+  public void testNothingIsOpenedWhenTheCommandGeneratedNoFile() {
+    myFixture.addFileToProject("grails-app/services/shop/OtherService.groovy", "package shop\nclass OtherService {}");
+    NewGrailsServiceAction action = new NewGrailsServiceAction();
+    List<String> expected = new ArrayList<>();
+    action.fillGeneratedNamesList("shop.Order", expected);
+
+    // Run the lookup on this thread rather than through afterCommand's pooled thread, so the absence of an
+    // editor can be asserted once the EDT queue has drained instead of after an arbitrary wait.
+    action.openFirstGeneratedFile(application(), expected);
+    PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue();
+
+    assertEmpty(FileEditorManager.getInstance(getProject()).getOpenFiles());
+  }
+
   public void testInterceptorDeclaresItsGeneratedFiles() {
     List<String> expected = List.of("grails-app/controllers/com/example/AuthInterceptor.groovy",
                                     "src/test/groovy/com/example/AuthInterceptorSpec.groovy");

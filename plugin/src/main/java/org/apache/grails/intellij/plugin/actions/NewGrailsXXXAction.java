@@ -28,7 +28,7 @@ import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.actionSystem.LangDataKeys;
 import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.InputValidator;
@@ -162,26 +162,35 @@ public abstract class NewGrailsXXXAction extends AnAction implements DumbAware {
       targetDirectory.refresh(true, false);
       return;
     }
+    ApplicationManager.getApplication().executeOnPooledThread(() -> openFirstGeneratedFile(application, expected));
+  }
+
+  /**
+   * Refreshes the files the command was expected to generate and opens the first one that exists, with focus,
+   * on the EDT. Does nothing when the command produced none of them or the application has gone away.
+   * Package-private so tests can run the lookup synchronously instead of on a pooled thread.
+   */
+  void openFirstGeneratedFile(@NotNull GrailsApplication application, @NotNull List<String> expected) {
     final VirtualFile root = application.getRoot();
     final String rootPath = root.getPath();
     final VirtualFileSystem fs = root.getFileSystem();
-    ApplicationManager.getApplication().executeOnPooledThread(() -> {
-      final List<VirtualFile> files = new ArrayList<>();
-      for (String relativePath : expected) {
-        VirtualFile file = fs.refreshAndFindFileByPath(rootPath + '/' + relativePath);
-        if (file != null) {
-          files.add(file);
-        }
+    final List<VirtualFile> files = new ArrayList<>();
+    for (String relativePath : expected) {
+      VirtualFile file = fs.refreshAndFindFileByPath(rootPath + '/' + relativePath);
+      if (file != null) {
+        files.add(file);
       }
-      if (files.isEmpty()) {
+    }
+    if (files.isEmpty()) {
+      return;
+    }
+    ApplicationManager.getApplication().invokeLater(() -> {
+      if (!application.isValid()) {
         return;
       }
-      ApplicationManager.getApplication().invokeLater(() -> {
-        if (!application.isValid()) {
-          return;
-        }
-        FileEditorManager.getInstance(application.getProject()).openFile(files.get(0), true);
-      });
+      // FileEditorManager.openFile(VirtualFile, boolean) is deprecated as of 2026.3 and its replacement is
+      // experimental and absent from 2026.2; navigating through a descriptor is stable API in both.
+      new OpenFileDescriptor(application.getProject(), files.get(0)).navigate(true);
     });
   }
 
