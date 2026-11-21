@@ -25,6 +25,7 @@ import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.project.DumbAwareAction;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.ColoredTableCellRenderer;
+import com.intellij.ui.GuiUtils;
 import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.ui.TableUtil;
 import com.intellij.ui.ToolbarDecorator;
@@ -344,6 +345,18 @@ public class GrailsCustomFoldersList extends JPanel {
     @Override
     public boolean isCellEditable(Row row) {
       return true;
+    }
+
+    @Override
+    public @Nullable javax.swing.table.TableCellEditor getEditor(Row row) {
+      // TableView's default String editor starts editing on a single click (clickCountToStart = 1),
+      // so selecting a row to remove or move it instead drops straight into edit mode. Use an
+      // editor that needs a double-click, like the platform's other editable tables, so a click
+      // selects the row and editing stays an explicit gesture.
+      javax.swing.DefaultCellEditor editor =
+        new javax.swing.DefaultCellEditor(GuiUtils.createUndoableTextField());
+      editor.setClickCountToStart(2);
+      return editor;
     }
 
     @Override
