@@ -16,6 +16,25 @@ an absolute path, or one starting with `~`, can point anywhere, including outsid
 appear below the test nodes in the order they are listed, this project's first. Six render by default,
 and the limit can be changed on the same page.
 
+For a project of Grails 9 and later, which has no Grails shell, the plugin follows the contract
+Grails 9 gives IDEs (upgrade note 51 of the Grails guide): *Run Grails Command* and the *New* actions
+run the Grails 9 command line (`org.apache.grails:grails-cli`, which the Gradle import resolves for
+the project's `grailsVersion`), and completion offers the commands `grails help --json` lists in the
+project. The Grails run configuration runs the application with the Gradle task `bootRun`, so Run,
+Debug and Stop work as they do for any Gradle task, and the tests run with the IDE's Gradle test
+runner. Projects on Grails 7 and 8 keep the Grails shell.
+
+The snapshots and milestones of Grails 9 published before its command line still have the Grails shell, so
+the version alone does not decide which one a project gets. The plugin asks the jar of `grails-cli` for
+`help --json` once (in the background, for at most 30 seconds) and uses the Grails 9 command line when the
+answer is a document it reads. Otherwise it runs the commands in the Grails shell of that version
+(`org.apache.grails:grails-shell-cli`, which the Gradle import resolves too), as for Grails 8. When the
+command line answers with a document of a newer format, or neither of the two can be used, commands still
+run, without completion of their names, and a notification says why, once for each project and jar. To
+override the automatic choice, set *Command line of Grails 9 projects* under *Settings ▸ Languages &
+Frameworks ▸ Grails* to *Grails 9 command line* or *Grails shell*; the setting is kept per project, in its
+workspace. Running the application (`bootRun`) and its tests with Gradle does not depend on this choice.
+
 The plugin runs on IntelliJ IDEA Ultimate and, with a reduced feature set, on IntelliJ IDEA
 Community Edition 2026.2+ (see [CE-SUPPORT.md](CE-SUPPORT.md)).
 

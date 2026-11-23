@@ -36,14 +36,24 @@ public class GrailsModuleImpl implements GrailsModule {
 
   private final @Nullable List<String> myShellUrls;
 
+  private final @Nullable List<String> myCommandLineUrls;
+
   public GrailsModuleImpl(@NotNull String grailsVersion, @NotNull String grailsPluginId) {
     this(grailsVersion, grailsPluginId, null);
   }
 
   public GrailsModuleImpl(@NotNull String grailsVersion, @NotNull String grailsPluginId, @Nullable List<String> urls) {
+    this(grailsVersion, grailsPluginId, urls, null);
+  }
+
+  public GrailsModuleImpl(@NotNull String grailsVersion,
+                          @NotNull String grailsPluginId,
+                          @Nullable List<String> shellUrls,
+                          @Nullable List<String> commandLineUrls) {
     myGrailsVersion = grailsVersion;
     myGrailsPluginId = grailsPluginId;
-    myShellUrls = urls;
+    myShellUrls = shellUrls;
+    myCommandLineUrls = commandLineUrls;
   }
 
   @Override
@@ -59,5 +69,10 @@ public class GrailsModuleImpl implements GrailsModule {
   @Override
   public @Nullable List<String> getShellUrls() {
     return myShellUrls;
+  }
+
+  @Override
+  public @Nullable List<String> getCommandLineUrls() {
+    return myCommandLineUrls;
   }
 }

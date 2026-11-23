@@ -36,6 +36,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleUtilCore;
+import com.intellij.openapi.roots.ModuleRootManager;
 import com.intellij.openapi.roots.ContentEntry;
 import com.intellij.openapi.roots.ModifiableRootModel;
 import com.intellij.psi.PsiElement;
@@ -46,10 +47,14 @@ import com.intellij.psi.SmartPointersKt;
 import com.intellij.psi.SmartPsiElementPointer;
 import com.intellij.testFramework.MapDataContext;
 import com.intellij.testFramework.PsiTestUtil;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.containers.ContainerUtil;
 import junit.framework.TestCase;
 import org.jetbrains.annotations.Nullable;
 import org.apache.grails.intellij.plugin.runner.GrailsRunConfiguration;
+import org.apache.grails.intellij.plugin.structure.Grails9Projects;
+import org.apache.grails.intellij.plugin.structure.GradleGrailsApplications;
+import org.apache.grails.intellij.plugin.structure.GrailsApplicationManager;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyFile;
 import org.apache.grails.intellij.plugin.mvc.MvcModuleStructureSynchronizer;
 
@@ -136,6 +141,17 @@ public class GrailsRunConfigurationProducerTest extends GrailsTestCase {
   public void testJUnit3WithoutS() {
     doTest("test/unit/package1/T1Test.groovy", "package package1; class T1Test extends junit.framework.TestCase {}",
            "test-app unit: package1.T1 -echoOut");
+  }
+
+  public void testTheTestsOfAGrails9ProjectAreLeftToGradle() {
+    PsiFile test = myFixture.addFileToProject("test/unit/package1/T1Tests.groovy", "package package1; class T1Tests extends junit.framework.TestCase {}");
+    VirtualFile root = ModuleRootManager.getInstance(getModule()).getContentRoots()[0];
+    GradleGrailsApplications.register(getProject(), root, "9.0.0", List.of("/repo/grails-cli-9.0.0-all.jar"), getTestRootDisposable());
+    TestCase.assertTrue(Grails9Projects.isGrails9OrLater(GrailsApplicationManager.findApplication(test)));
+
+    // its command line has no test proxy of the IDE: the Gradle test configurations run the tests
+    TestCase.assertNull(getGrailsRunConfiguration(test));
+    TestCase.assertNull(getGrailsRunConfiguration(test.getContainingDirectory()));
   }
 
   public void testJUnitNonTest() {

@@ -32,6 +32,18 @@ public interface GrailsModule extends Serializable {
   @NotNull
   String getGrailsPluginId();
 
+  /**
+   * @return the class path of the Grails shell of the project's version, which runs its commands up to Grails 8;
+   * {@code null} when it could not be resolved. For a project of Grails 9 and later it is there only when that
+   * version still publishes the shell, as the builds of Grails 9 from before its command line do.
+   */
   @Nullable
   List<String> getShellUrls();
+
+  /**
+   * @return for a project of Grails 9 and later, the jar of its command line ({@link GrailsCommandLine});
+   * {@code null} for an earlier version and when it could not be resolved
+   */
+  @Nullable
+  List<String> getCommandLineUrls();
 }

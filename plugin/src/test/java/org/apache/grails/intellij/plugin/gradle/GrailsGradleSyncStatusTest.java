@@ -103,6 +103,20 @@ public class GrailsGradleSyncStatusTest extends GrailsTestCase {
     assertEmpty("a successful import clears the indicator", status().findBlockedGrailsRoots());
   }
 
+  public void testTheRecordOfAGrails9ProjectMarksItsRootToo() {
+    VirtualFile recordOnly = myFixture.addFileToProject("generated/.grails/project.yml", "format: 1\n").getVirtualFile().getParent().getParent();
+    VirtualFile both = createGrailsAppUnder("shop");
+    myFixture.addFileToProject("shop/.grails/project.yml", "format: 1\n");
+    VirtualFile notARecord = myFixture.addFileToProject("docs/project.yml", "").getVirtualFile().getParent();
+    for (VirtualFile root : List.of(recordOnly, both, notARecord)) {
+      status().recordFailure(root.getPath(), "Plugin [id: 'org.apache.grails.gradle.grails-web'] was not found");
+    }
+
+    List<VirtualFile> roots = status().findBlockedGrailsRoots().stream().map(BlockedGrailsRoot::root).toList();
+    assertEquals("a root with grails-app and the record is listed once, and a project.yml outside .grails marks nothing",
+                 List.of(recordOnly, both), roots);
+  }
+
   public void testNothingIsReportedWhenNoBuildIsBroken() {
     createGrailsAppUnder("app");
     assertEmpty(status().findBlockedGrailsRoots());

@@ -21,12 +21,18 @@ package org.apache.grails.intellij.plugin.commands;
 
 import org.jetbrains.annotations.NotNull;
 import org.apache.grails.intellij.plugin.structure.Grails3Application;
+import org.apache.grails.intellij.plugin.structure.Grails9Projects;
 import org.apache.grails.intellij.plugin.structure.GrailsApplication;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * The commands of the Grails shell, for a project of Grails 3 to 8. A project of Grails 9 has no shell, and its
+ * commands are those its command line lists ({@link Grails9CommandProvider}); only a build of Grails 9 from before that
+ * command line, or one for which the shell is chosen, runs its commands in the shell ({@link Grails9CommandLines}).
+ */
 final class Grails3CommandProvider implements GrailsCommandProvider {
   private static final List<String> GRAILS3_COMMANDS = List.of(
     "bug-report",
@@ -67,6 +73,10 @@ final class Grails3CommandProvider implements GrailsCommandProvider {
 
   @Override
   public @NotNull Collection<String> addCommands(@NotNull GrailsApplication application) {
-    return application instanceof Grails3Application ? GRAILS3_COMMANDS : Collections.emptyList();
+    if (!(application instanceof Grails3Application)) return Collections.emptyList();
+    if (!Grails9Projects.isGrails9OrLater(application)) return GRAILS3_COMMANDS;
+    return Grails9CommandLines.getInstance(application.getProject()).awaitRunnerOf(application) == Grails9CommandLines.Runner.SHELL
+           ? GRAILS3_COMMANDS
+           : Collections.emptyList();
   }
 }

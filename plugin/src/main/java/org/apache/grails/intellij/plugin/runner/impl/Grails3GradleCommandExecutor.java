@@ -26,6 +26,7 @@ import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.util.PathUtil;
 import org.jetbrains.annotations.NotNull;
 import org.apache.grails.intellij.lib.grails.rt.GrailsRtMarker;
+import org.apache.grails.intellij.plugin.commands.Grails9CommandLines;
 import org.apache.grails.intellij.plugin.runner.GrailsCommandLineExecutor;
 import org.apache.grails.intellij.plugin.structure.Grails3Application;
 import org.apache.grails.intellij.plugin.structure.GrailsApplication;
@@ -36,9 +37,17 @@ import static org.apache.grails.intellij.plugin.runner.util.GrailsExecutionUtils
 
 public final class Grails3GradleCommandExecutor extends GrailsCommandLineExecutor {
 
+  /**
+   * The Grails shell of Grails 3 to 8, which the Gradle import resolved. A project of Grails 9 has no shell, and
+   * {@link Grails9CommandExecutor} runs its commands; only a build of Grails 9 from before its command line, whose jar
+   * does not answer as that command line does, or for which the shell is chosen, runs them here
+   * ({@link Grails9CommandLines}).
+   */
   @Override
   public boolean isApplicable(@NotNull GrailsApplication grailsApplication) {
-    return grailsApplication instanceof Grails3Application && !((Grails3Application)grailsApplication).getGradleData().getShellUrls().isEmpty();
+    return grailsApplication instanceof Grails3Application
+           && !((Grails3Application)grailsApplication).getGradleData().getShellUrls().isEmpty()
+           && Grails9CommandLines.runsShell(grailsApplication);
   }
 
   @Override

@@ -31,6 +31,7 @@ import org.jetbrains.annotations.NotNull;
 import org.apache.grails.intellij.lib.grails.rt.GrailsRtMarker;
 import org.apache.grails.intellij.plugin.GrailsBundle;
 import org.apache.grails.intellij.plugin.runner.GrailsCommandLineExecutor;
+import org.apache.grails.intellij.plugin.commands.Grails9CommandLines;
 import org.apache.grails.intellij.plugin.runner.GrailsInstallationExecutor;
 import org.apache.grails.intellij.plugin.sdk.GrailsSDK;
 import org.apache.grails.intellij.plugin.sdk.GrailsSDKManager;
@@ -49,9 +50,16 @@ import static org.apache.grails.intellij.plugin.runner.util.GrailsExecutionUtils
 
 public final class Grails3InstallationCommandExecutor extends GrailsCommandLineExecutor implements GrailsInstallationExecutor {
 
+  /**
+   * Not for a project of Grails 9, whose distribution has no Grails shell to start: {@link Grails9CommandExecutor}
+   * runs its commands with the command line the Gradle import resolves. Only a build of Grails 9 from before that
+   * command line, whose commands run in the shell ({@link Grails9CommandLines}), can run them in the one of a Grails SDK.
+   */
   @Override
   public boolean isApplicable(@NotNull GrailsApplication grailsApplication) {
-    return grailsApplication instanceof Grails3Application && GrailsSDKManager.getGrailsSdk(grailsApplication) != null;
+    return grailsApplication instanceof Grails3Application
+           && GrailsSDKManager.getGrailsSdk(grailsApplication) != null
+           && Grails9CommandLines.runsShell(grailsApplication);
   }
 
   @Override

@@ -313,6 +313,26 @@ Controller, Domain, Service, TagLib, UrlMappings (fixed name, lives in
 
 ### 2.6 Run, test, and command execution
 
+- [x] Grails 9 and later, which publish no Grails shell (upgrade note 51 of the Grails guide): commands run in
+      the Grails 9 command line, the `all` jar of `org.apache.grails:grails-cli` that the Gradle import resolves
+      for `grailsVersion`, with `--plain-output --non-interactive`; the command list is what `grails help --json`
+      lists in the project, cached per project; the Grails run configuration's `run-app` runs Gradle `bootRun`;
+      the Grails test configuration producer leaves the tests to the Gradle test runner. Grails 7/8 keep the shell
+      and the items below.
+- [x] The Grails 9 support can ship before Grails 9.0: the command line is chosen by what the jar of `grails-cli`
+      answers to `help --json` (asked once per jar, off the event dispatch thread, 30 s at most, with
+      `GRAILS_PREFERRED_SHELL=forge` so that an earlier build refuses at once), not by the version. The builds of
+      Grails 9 from before its command line fall back to the `grails-shell-cli` of their version, which the import
+      also resolves; a document of a later format, a failure or a timeout leaves the commands without completion and
+      gives one notice per project and jar. The global options the plugin passes are those the document lists. A
+      per-project setting (Settings ▸ Languages & Frameworks ▸ Grails) chooses automatic, the Grails 9 command line or
+      the Grails shell.
+- [ ] Follow-up: an import test pinned to the first published Grails 9 milestone, added when that milestone exists
+      (a fixed version, so the result does not move): the model holds its `all` jar, the probe finds format 1, the
+      commands of a generated application are completed and `create-controller` runs. Until then the Grails 9 import
+      tests use stand-in jars from a file repository in the test project, and no test resolves a published Grails 9
+      build. A check against the Grails 9 snapshots, if wanted before the milestone, belongs on a schedule rather than
+      in every build.
 - [ ] Run config delegates to Gradle `bootRun` (Boot 3/4 `BootRun` task; dev-mode PID
       file `run-app.pid`); debug via standard Gradle/JVM attach.
 - [ ] Test integration: unit-test traits from `grails-testing-support-*`

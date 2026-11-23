@@ -48,6 +48,7 @@ import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.messages.MessageBusConnection;
 import org.apache.grails.intellij.plugin.GrailsBundle;
 import org.apache.grails.intellij.plugin.projectView.GrailsProjectViewPanes;
+import org.apache.grails.intellij.plugin.structure.Grails9Projects;
 import org.apache.grails.intellij.plugin.structure.GrailsApplicationManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -57,6 +58,7 @@ import org.jetbrains.plugins.gradle.util.GradleConstants;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -105,7 +107,10 @@ public final class GrailsGradleSyncStatus implements Disposable {
     }
   }
 
-  /** A directory with a {@code grails-app} child that no provider recognises because its Gradle project is blocked. */
+  /**
+   * A directory with a {@code grails-app} child or a {@code .grails/project.yml} record that no provider recognises
+   * because its Gradle project is blocked.
+   */
   public record BlockedGrailsRoot(@NotNull VirtualFile root, @NotNull BlockedProject project) {
   }
 
@@ -212,8 +217,10 @@ public final class GrailsGradleSyncStatus implements Disposable {
   }
 
   /**
-   * Directories with a {@code grails-app} child that {@link GrailsApplicationManager} does not recognise
-   * and that a blocked Gradle project covers. Needs read access; empty while indexing.
+   * Directories that are the root of a Grails project by their files, that {@link GrailsApplicationManager}
+   * does not recognise and that a blocked Gradle project covers. A directory is such a root when it has a
+   * {@code grails-app} child, or the record Grails 9 writes for a project ({@code .grails/project.yml}, see
+   * {@link Grails9Projects}). Needs read access; empty while indexing.
    */
   public @NotNull List<BlockedGrailsRoot> findBlockedGrailsRoots() {
     ApplicationManager.getApplication().assertReadAccessAllowed();
@@ -221,11 +228,19 @@ public final class GrailsGradleSyncStatus implements Disposable {
     if (!ContainerUtil.exists(knownProjectPaths(), path -> getBlockedProject(path) != null)) return List.of();
 
     GrailsApplicationManager manager = GrailsApplicationManager.getInstance(myProject);
+    GlobalSearchScope scope = GlobalSearchScope.projectScope(myProject);
+    Set<VirtualFile> roots = new LinkedHashSet<>();
+    for (VirtualFile appDir : FilenameIndex.getVirtualFilesByName(GRAILS_APP, scope)) {
+      if (appDir.isDirectory() && appDir.getParent() != null) roots.add(appDir.getParent());
+    }
+    for (VirtualFile record : FilenameIndex.getVirtualFilesByName(Grails9Projects.RECORD_FILE, scope)) {
+      VirtualFile root = Grails9Projects.projectRootOfRecord(record);
+      if (root != null) roots.add(root);
+    }
+
     List<BlockedGrailsRoot> result = new ArrayList<>();
-    for (VirtualFile appDir : FilenameIndex.getVirtualFilesByName(GRAILS_APP, GlobalSearchScope.projectScope(myProject))) {
-      if (!appDir.isDirectory()) continue;
-      VirtualFile root = appDir.getParent();
-      if (root == null || manager.getApplicationByRoot(root) != null) continue;
+    for (VirtualFile root : roots) {
+      if (manager.getApplicationByRoot(root) != null) continue;
       BlockedProject blocked = findBlockingProject(root);
       if (blocked != null) result.add(new BlockedGrailsRoot(root, blocked));
     }

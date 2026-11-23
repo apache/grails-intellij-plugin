@@ -25,6 +25,7 @@ import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.apache.grails.intellij.plugin.GrailsBundle;
 import org.apache.grails.intellij.plugin.GroovyMvcIcons;
+import org.apache.grails.intellij.plugin.structure.Grails9Projects;
 import org.apache.grails.intellij.plugin.structure.GrailsApplication;
 import org.apache.grails.intellij.plugin.util.version.Version;
 
@@ -69,8 +70,14 @@ public final class GrailsRunConfigurationType implements ConfigurationType {
    * org.apache.grails:grails-shell-cli for Apache Grails 7+), so they are runnable whenever the Gradle
    * import resolved that shell.
    */
+  /**
+   * @return whether a Grails run configuration can run {@code application}: up to Grails 6 always, from Grails 9 on
+   * always too, since {@code run-app} is the Gradle task {@code bootRun} there, which needs no Grails command line, and
+   * in between when the Grails shell can be started
+   */
   public static boolean isRunnable(@NotNull GrailsApplication application) {
     return application.getGrailsVersion().isLessThan(Version.GRAILS_6_0)
+           || Grails9Projects.isGrails9OrLater(application)
            || GrailsCommandExecutor.getGrailsExecutor(application) != null;
   }
 

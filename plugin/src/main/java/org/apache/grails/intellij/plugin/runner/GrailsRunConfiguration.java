@@ -41,6 +41,7 @@ import org.jdom.Element;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.apache.grails.intellij.plugin.GrailsBundle;
+import org.apache.grails.intellij.plugin.runner.impl.Grails9RunApp;
 import org.apache.grails.intellij.plugin.runner.ui.GrailsRunConfigurationEditor;
 import org.apache.grails.intellij.plugin.structure.GrailsApplication;
 import org.apache.grails.intellij.plugin.structure.GrailsApplicationManager;
@@ -116,6 +117,13 @@ public final class GrailsRunConfiguration
 
   @Override
   public @Nullable RunProfileState getState(@NotNull Executor executor, @NotNull ExecutionEnvironment environment) throws ExecutionException {
+    final GrailsApplication application = getGrailsApplicationNullable();
+    final MvcCommand command = getGrailsCommandNullable();
+    if (application != null && command != null && Grails9RunApp.runsAsBootRun(application, command)) {
+      // The Gradle support of the IDE runs it, in a run of its own: there is nothing more to start here.
+      Grails9RunApp.run(this, executor);
+      return null;
+    }
     final GrailsCommandExecutor grailsExecutor = getGrailsExecutor();
     return grailsExecutor.getState(this, executor, environment);
   }
@@ -130,7 +138,7 @@ public final class GrailsRunConfiguration
     if (grailsCommand == null) throw new RuntimeConfigurationException(GrailsBundle.message("run.configuration.error.command.not.specified"));
 
     final GrailsCommandExecutor grailsExecutor = GrailsCommandExecutor.getGrailsExecutor(grailsApplication);
-    if (grailsExecutor == null) throw new RuntimeConfigurationException(
+    if (grailsExecutor == null && !Grails9RunApp.runsAsBootRun(grailsApplication, grailsCommand)) throw new RuntimeConfigurationException(
       GrailsBundle.message("run.configuration.error.cannot.execute.command", grailsApplication.getRoot().getPath()));
 
     if (isLaunchBrowser()) {

@@ -21,6 +21,8 @@ package org.apache.grails.intellij.lib.gradle.tooling.builder;
 
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.internal.artifacts.dependencies.DefaultExternalModuleDependency;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -38,6 +40,9 @@ import java.util.stream.Collectors;
 public class GrailsModuleModelBuilderImpl extends AbstractModelBuilderService {
   /** Title of the Build tool window message reported when the Grails shell cannot be resolved. */
   public static final String SHELL_NOT_RESOLVED_TITLE = "Grails shell could not be resolved";
+
+  /** Title of the Build tool window message reported when the command line of Grails 9+ cannot be resolved. */
+  public static final String COMMAND_LINE_NOT_RESOLVED_TITLE = "Grails command line could not be resolved";
 
   @Override
   public boolean canBuild(String modelName) {
@@ -65,6 +70,10 @@ public class GrailsModuleModelBuilderImpl extends AbstractModelBuilderService {
     }
     if (version == null || version.isEmpty()) return null;
 
+    if (grailsVersionInfo == GrailsVersionInfo.GRAILS_7 && GrailsCommandLine.isUsedBy(version)) {
+      return buildGrails9(project, context, grailsContext, version);
+    }
+
     // A detached configuration is resolvable from the start. Copying 'implementation' instead is rejected
     // by Gradle 9+ ("Calling configuration method 'copy(Spec)' is not allowed"), since that configuration
     // is declarable only, which made the whole model build fail and left Gradle 9 projects (Grails 8)
@@ -76,6 +85,67 @@ public class GrailsModuleModelBuilderImpl extends AbstractModelBuilderService {
 
     return new GrailsModuleImpl(version, grailsContext.grailsPluginCoordinates,
                                 resolveShellUrls(project, context, configuration, shell));
+  }
+
+  /**
+   * Grails 9 publishes no shell: a project's commands run in the one command line, which is the {@code all} jar of
+   * {@code org.apache.grails:grails-cli} (see {@link GrailsCommandLine}). That jar holds every class the command line
+   * needs, so the dependency is not transitive.
+   * <p>
+   * The builds of Grails 9 from before that command line (snapshots and milestones) still publish the shell of their
+   * version, and their {@code grails-cli} jar does not answer {@code help --json}; the IDE then runs the commands in the
+   * shell, as for Grails 8. So the shell is resolved too. A release of Grails 9 has none, so its absence alone is not
+   * reported; that neither of the two can be resolved is, once. As for Grails 8, it costs the module only its Grails
+   * commands: the Grails run configuration runs {@code bootRun}.
+   */
+  private @NotNull GrailsModuleImpl buildGrails9(Project project, ModelBuilderContext context, Context grailsContext, String version) {
+    String coordinates = GrailsCommandLine.coordinates(version);
+    Dependency commandLine = project.getDependencies().create(coordinates);
+    if (commandLine instanceof ModuleDependency) {
+      ((ModuleDependency)commandLine).setTransitive(false);
+    }
+    Configuration commandLineConfiguration = project.getConfigurations().detachedConfiguration(commandLine);
+    commandLineConfiguration.setTransitive(false);
+    Resolution commandLineUrls = resolve(commandLineConfiguration);
+
+    DefaultExternalModuleDependency shell = new DefaultExternalModuleDependency(
+      grailsContext.myGrailsVersionInfo.gradleDependencyGroup, grailsContext.myGrailsVersionInfo.shellArtifactId, version);
+    Resolution shellUrls = resolve(project.getConfigurations().detachedConfiguration(shell));
+
+    if (commandLineUrls.urls == null && shellUrls.urls == null) {
+      context.getMessageReporter().createMessage()
+        .withGroup(this)
+        .withKind(Message.Kind.WARNING)
+        .withTitle(COMMAND_LINE_NOT_RESOLVED_TITLE)
+        .withText("Unable to resolve " + coordinates + " for '" + project.getName() + "', so Grails commands are not" +
+                  " available for it (nor is " + GrailsCommandLine.shellCoordinates(version) + ", the Grails shell that" +
+                  " builds of Grails 9 from before its command line have). The Grails run configuration still runs the" +
+                  " application with the Gradle task bootRun. Add a repository that provides the Grails command line" +
+                  " (Maven Central has every release), then reload the Gradle project.")
+        .withException(commandLineUrls.failure)
+        .reportMessage(project);
+    }
+    return new GrailsModuleImpl(version, grailsContext.grailsPluginCoordinates, shellUrls.urls, commandLineUrls.urls);
+  }
+
+  /** The files of a configuration, or why it could not be resolved. */
+  private static final class Resolution {
+    private final @Nullable List<String> urls;
+    private final @Nullable RuntimeException failure;
+
+    private Resolution(@Nullable List<String> urls, @Nullable RuntimeException failure) {
+      this.urls = urls;
+      this.failure = failure;
+    }
+  }
+
+  private static @NotNull Resolution resolve(Configuration configuration) {
+    try {
+      return new Resolution(configuration.resolve().stream().map(file -> file.getAbsolutePath()).collect(Collectors.toList()), null);
+    }
+    catch (RuntimeException e) {
+      return new Resolution(null, e);
+    }
   }
 
   private static @Nullable String findResolvedVersion(Project project, String group, String name) {

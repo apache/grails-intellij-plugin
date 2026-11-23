@@ -41,6 +41,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.apache.grails.intellij.plugin.runner.GrailsRunConfiguration;
 import org.apache.grails.intellij.plugin.runner.GrailsRunConfigurationType;
+import org.apache.grails.intellij.plugin.structure.Grails9Projects;
 import org.apache.grails.intellij.plugin.structure.GrailsApplication;
 import org.apache.grails.intellij.plugin.structure.GrailsApplicationManager;
 import org.apache.grails.intellij.plugin.tests.GrailsTestUtils;
@@ -67,6 +68,9 @@ final class GrailsTestConfigurationProducer extends LazyRunConfigurationProducer
                                                   @NotNull Ref<PsiElement> sourceElementRef) {
     final GrailsApplication application = GrailsApplicationManager.findApplication(context.getPsiLocation());
     if (application == null) return false;
+    // The tests of a Grails 9 project are Gradle test tasks, which the Gradle support of the IDE runs and shows;
+    // its command line has no test proxy of the IDE to run them through.
+    if (Grails9Projects.isGrails9OrLater(application)) return false;
 
     final PsiElement sourceElement = setupConfigurationFromContext0(configuration, application, context);
     if (sourceElement == null) return false;
@@ -145,6 +149,7 @@ final class GrailsTestConfigurationProducer extends LazyRunConfigurationProducer
   public boolean isConfigurationFromContext(@NotNull GrailsRunConfiguration configuration, @NotNull ConfigurationContext context) {
     final GrailsApplication application = GrailsApplicationManager.findApplication(context.getPsiLocation());
     if (application == null || !application.equals(configuration.getGrailsApplicationNullable())) return false;
+    if (Grails9Projects.isGrails9OrLater(application)) return false;
 
     if (configuration.getVMParameters() == null) return false;
 

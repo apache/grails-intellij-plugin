@@ -23,6 +23,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.projectRoots.JavaSdk;
 import com.intellij.openapi.projectRoots.Sdk;
 import com.intellij.openapi.options.ConfigurationException;
+import com.intellij.openapi.ui.ComboBox;
 import com.intellij.testFramework.IdeaTestUtil;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBTextArea;
@@ -474,6 +475,54 @@ public class GrailsCustomFoldersConfigurableUiTest extends GrailsTestCase {
       assertEquals("the rebuilt panel starts from the services again, not from the edited rows",
                    List.of("global/stored"), globalRows(configurable).getRows());
     });
+  }
+
+  /**
+   * The page also chooses the command line of this project's applications of Grails 9 and later: it opens on the stored
+   * choice, an edit makes it modified, and Apply stores it.
+   */
+  public void testTheCommandLineOfGrails9IsChosenOnThePage() throws ConfigurationException {
+    GrailsCommandLineSettings settings = GrailsCommandLineSettings.getInstance(getProject());
+    settings.setChoice(GrailsCommandLineSettings.Choice.SHELL);
+    try {
+      withGlobalDefaults(() -> {
+        GrailsCustomFoldersConfigurable configurable = page();
+        configurable.createComponent();
+        configurable.reset();
+        ComboBox<?> choice = commandLineChoice(configurable);
+
+        assertEquals(GrailsCommandLineSettings.Choice.SHELL, choice.getSelectedItem());
+        assertEquals("every choice is offered, automatic first", List.of(GrailsCommandLineSettings.Choice.values()), items(choice));
+        assertFalse(configurable.isModified());
+
+        choice.setSelectedItem(GrailsCommandLineSettings.Choice.AUTOMATIC);
+        assertTrue("another choice alone makes the page modified", configurable.isModified());
+        configurable.apply();
+
+        assertEquals(GrailsCommandLineSettings.Choice.AUTOMATIC, settings.getChoice());
+        assertFalse(configurable.isModified());
+      });
+    }
+    finally {
+      settings.setChoice(GrailsCommandLineSettings.Choice.AUTOMATIC);
+    }
+    assertEquals("Automatic", GrailsCustomFoldersConfigurable.commandLineText(GrailsCommandLineSettings.Choice.AUTOMATIC));
+    assertTrue(GrailsCustomFoldersConfigurable.commandLineText(GrailsCommandLineSettings.Choice.COMMAND_LINE).contains("grails-cli"));
+    assertTrue(GrailsCustomFoldersConfigurable.commandLineText(GrailsCommandLineSettings.Choice.SHELL).contains("grails-shell-cli"));
+  }
+
+  private static @NotNull ComboBox<?> commandLineChoice(@NotNull GrailsCustomFoldersConfigurable page) {
+    ComboBox<?> found = firstOfType(page.createComponent(), ComboBox.class);
+    assertNotNull("the page carries the choice of the command line", found);
+    return found;
+  }
+
+  private static @NotNull List<Object> items(@NotNull ComboBox<?> choice) {
+    List<Object> items = new ArrayList<>();
+    for (int i = 0; i < choice.getItemCount(); i++) {
+      items.add(choice.getItemAt(i));
+    }
+    return items;
   }
 
   private @NotNull GrailsCustomFoldersConfigurable page() {
