@@ -35,10 +35,13 @@ import org.apache.grails.intellij.lib.testFramework.UltimateOnlyTest;
 import org.apache.grails.intellij.plugin.commands.Grails9CommandLineProbe;
 import org.apache.grails.intellij.plugin.commands.Grails9CommandLines;
 import org.apache.grails.intellij.plugin.config.GrailsFramework;
+import org.apache.grails.intellij.plugin.mvc.MvcCommand;
 import org.apache.grails.intellij.plugin.runner.GrailsCommandExecutor;
 import org.apache.grails.intellij.plugin.runner.GrailsRunConfigurationType;
 import org.apache.grails.intellij.plugin.runner.impl.Grails3GradleCommandExecutor;
 import org.apache.grails.intellij.plugin.runner.impl.Grails9CommandExecutor;
+import org.apache.grails.intellij.plugin.runner.impl.Grails9RunApp;
+import org.apache.grails.intellij.plugin.structure.Grails3Application;
 import org.apache.grails.intellij.plugin.structure.Grails9Projects;
 import org.apache.grails.intellij.plugin.structure.GrailsApplication;
 import org.apache.grails.intellij.plugin.structure.GrailsApplicationProvider;
@@ -132,6 +135,9 @@ public class GradleApacheGrailsImportingTest extends GradleImportingTestCase {
       GrailsApplication application = createApplication();
       TestCase.assertTrue(Grails9Projects.isGrails9OrLater(application));
       TestCase.assertTrue(ReadAction.compute(() -> GrailsCommandExecutor.getGrailsExecutor(application) instanceof Grails9CommandExecutor));
+      TestCase.assertEquals("the path the import gives the root project of the build", ":", ((Grails3Application)application).getGradlePath());
+      TestCase.assertEquals("run-app is the task of this project and of none below it", List.of(":bootRun"),
+                            Grails9RunApp.createSettings(application, MvcCommand.parse("run-app"), "Grails: project").getTaskNames());
       buildView.assertSyncViewTreeEquals(tree -> {
         TestCase.assertFalse(tree, tree.contains(GrailsModuleModelBuilderImpl.COMMAND_LINE_NOT_RESOLVED_TITLE));
         TestCase.assertFalse(tree, tree.contains(GrailsModuleModelBuilderImpl.SHELL_NOT_RESOLVED_TITLE));

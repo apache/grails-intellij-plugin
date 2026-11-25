@@ -70,7 +70,17 @@ public final class GradleGrailsApplications {
                                                         @NotNull String grailsVersion,
                                                         @NotNull List<String> commandLineClassPath,
                                                         @NotNull List<String> shellClassPath) {
-    return new GradleGrailsApplication(project, root, grailsVersion, commandLineClassPath, shellClassPath);
+    return new GradleGrailsApplication(project, root, grailsVersion, commandLineClassPath, shellClassPath, null);
+  }
+
+  /**
+   * An application of Grails 9 whose Gradle project has {@code gradlePath} in its build, {@code :} for the root project.
+   */
+  public static @NotNull Grails3Application applicationAt(@NotNull Project project,
+                                                          @NotNull VirtualFile root,
+                                                          @NotNull String grailsVersion,
+                                                          @NotNull String gradlePath) {
+    return new GradleGrailsApplication(project, root, grailsVersion, List.of(), List.of(), gradlePath);
   }
 
   /**
@@ -93,16 +103,24 @@ public final class GradleGrailsApplications {
 
   private static final class GradleGrailsApplication extends GrailsApplicationBase implements Grails3Application {
     private final GrailsModuleData myData;
+    private final @Nullable String myGradlePath;
 
     private GradleGrailsApplication(@NotNull Project project, @NotNull VirtualFile root, @NotNull String grailsVersion,
-                                    @NotNull List<String> commandLineClassPath, @NotNull List<String> shellClassPath) {
+                                    @NotNull List<String> commandLineClassPath, @NotNull List<String> shellClassPath,
+                                    @Nullable String gradlePath) {
       super(project, root);
+      myGradlePath = gradlePath;
       myData = new GrailsModuleData(GradleConstants.SYSTEM_ID, grailsVersion, PLUGIN_ID, shellClassPath, commandLineClassPath);
     }
 
     @Override
     public @NotNull GrailsModuleData getGradleData() {
       return myData;
+    }
+
+    @Override
+    public @Nullable String getGradlePath() {
+      return myGradlePath;
     }
 
     @Override

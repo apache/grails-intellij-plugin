@@ -20,9 +20,10 @@ For a project of Grails 9 and later, which has no Grails shell, the plugin follo
 Grails 9 gives IDEs (upgrade note 51 of the Grails guide): *Run Grails Command* and the *New* actions
 run the Grails 9 command line (`org.apache.grails:grails-cli`, which the Gradle import resolves for
 the project's `grailsVersion`), and completion offers the commands `grails help --json` lists in the
-project. The Grails run configuration runs the application with the Gradle task `bootRun`, so Run,
-Debug and Stop work as they do for any Gradle task, and the tests run with the IDE's Gradle test
-runner. Projects on Grails 7 and 8 keep the Grails shell.
+project. The Grails run configuration runs the application with the Gradle task `bootRun` of the
+application's own Gradle project (`:bootRun`, or `:path:bootRun` for a subproject, so that no other
+application of the build is started), and Run, Debug and Stop work as they do for any Gradle task; the
+tests run with the IDE's Gradle test runner. Projects on Grails 7 and 8 keep the Grails shell.
 
 An environment typed in front of a command, as the Grails shell took it (`prod war`,
 `-Dgrails.env=staging war`), is given to the Grails 9 command line where the command takes it: after the

@@ -111,11 +111,42 @@ public class Grails9RunAppTest extends GrailsTestCase {
 
     assertEquals(GradleConstants.SYSTEM_ID, settings.getExternalSystemId());
     assertEquals(root.getPath(), settings.getExternalProjectPath());
-    assertEquals(List.of("bootRun"), settings.getTaskNames());
+    assertEquals("the helper gives the application no path in its build", List.of("bootRun"), settings.getTaskNames());
     assertEquals(List.of("-Dgrails.env=development", "-Dgrails.server.port=9090"), ParametersListUtil.parse(settings.getScriptParameters()));
     assertEquals(Map.of("SPRING_PROFILES_ACTIVE", "local"), settings.getEnv());
     assertFalse(settings.isPassParentEnvs());
     assertEquals("Grails: shop", settings.getExecutionName());
+  }
+
+  /**
+   * The name {@code bootRun} alone selects the task of every project below the directory Gradle is run in, so the run
+   * of a root application would start the applications below it too. The task is named by the path of the project.
+   */
+  public void testTheTaskIsTheOneOfTheGradleProjectOfTheApplicationAndOfNoOther() throws Exception {
+    VirtualFile root = myFixture.getTempDirFixture().findOrCreateDir("shop");
+    VirtualFile child = myFixture.getTempDirFixture().findOrCreateDir("shop/admin");
+    VirtualFile nested = myFixture.getTempDirFixture().findOrCreateDir("shop/apps/store");
+
+    assertEquals("the root project, also one with projects below it", ":bootRun",
+                 Grails9RunApp.taskPath(GradleGrailsApplications.applicationAt(getProject(), root, "9.0.0", ":")));
+    assertEquals(":admin:bootRun", Grails9RunApp.taskPath(GradleGrailsApplications.applicationAt(getProject(), child, "9.0.0", ":admin")));
+    assertEquals(":apps:store:bootRun",
+                 Grails9RunApp.taskPath(GradleGrailsApplications.applicationAt(getProject(), nested, "9.0.0", ":apps:store")));
+    assertEquals("a project the import says no path of", "bootRun",
+                 Grails9RunApp.taskPath(GradleGrailsApplications.application(getProject(), root, "9.0.0", List.of())));
+    assertEquals("what is no path of a project", "bootRun",
+                 Grails9RunApp.taskPath(GradleGrailsApplications.applicationAt(getProject(), root, "9.0.0", "")));
+
+    ExternalSystemTaskExecutionSettings ofTheRoot = Grails9RunApp.createSettings(
+      GradleGrailsApplications.applicationAt(getProject(), root, "9.0.0", ":"), MvcCommand.parse("run-app"), "Grails: shop");
+    assertEquals(root.getPath(), ofTheRoot.getExternalProjectPath());
+    assertEquals(List.of(":bootRun"), ofTheRoot.getTaskNames());
+
+    ExternalSystemTaskExecutionSettings ofTheChild = Grails9RunApp.createSettings(
+      GradleGrailsApplications.applicationAt(getProject(), child, "9.0.0", ":admin"), MvcCommand.parse("prod run-app"), "Grails: admin");
+    assertEquals(child.getPath(), ofTheChild.getExternalProjectPath());
+    assertEquals(List.of(":admin:bootRun"), ofTheChild.getTaskNames());
+    assertEquals(List.of("-Dgrails.env=production"), ParametersListUtil.parse(ofTheChild.getScriptParameters()));
   }
 
   public void testVmOptionsAreRefusedSinceTheyWouldNotReachTheApplication() throws Exception {

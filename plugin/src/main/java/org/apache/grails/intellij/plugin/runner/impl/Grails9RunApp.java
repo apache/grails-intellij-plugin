@@ -33,6 +33,7 @@ import com.intellij.util.execution.ParametersListUtil;
 import org.apache.grails.intellij.plugin.GrailsBundle;
 import org.apache.grails.intellij.plugin.mvc.MvcCommand;
 import org.apache.grails.intellij.plugin.runner.GrailsRunConfiguration;
+import org.apache.grails.intellij.plugin.structure.Grails3Application;
 import org.apache.grails.intellij.plugin.structure.Grails9Projects;
 import org.apache.grails.intellij.plugin.structure.GrailsApplication;
 import org.jetbrains.annotations.NotNull;
@@ -46,7 +47,8 @@ import java.util.Map;
 
 /**
  * {@code run-app} of a Grails run configuration for a project of Grails 9 and later: the Gradle task
- * {@code bootRun}, run by the Gradle support of the IDE.
+ * {@code bootRun} of the project of the application, named by its path ({@link #taskPath}) and run by the Gradle
+ * support of the IDE.
  * <p>
  * The command line of Grails 9 runs {@code run-app} as {@code gradlew bootRun} too, and its build commands are
  * Gradle tasks that an IDE runs itself (upgrade note 51 of the Grails guide). Run that way, the application is
@@ -115,11 +117,26 @@ public final class Grails9RunApp {
     settings.setExternalSystemIdString(GradleConstants.SYSTEM_ID.getId());
     settings.setExternalProjectPath(application.getRoot().getPath());
     settings.setExecutionName(name);
-    settings.setTaskNames(List.of(TASK));
+    settings.setTaskNames(List.of(taskPath(application)));
     settings.setScriptParameters(ParametersListUtil.join(gradleArguments(command)));
     settings.setEnv(new HashMap<>(command.getEnvVariables()));
     settings.setPassParentEnvs(command.isPassParentEnvs());
     return settings;
+  }
+
+  /**
+   * The task {@code bootRun} of the Gradle project of {@code application} and of no other, by its path:
+   * {@code :bootRun} for the root project of a build, {@code :shop:web:bootRun} for the project {@code :shop:web}.
+   * The name alone selects the task of that name in every project below the directory Gradle is run in, so
+   * {@code bootRun} for a root application whose build has other applications would start those too. The command line
+   * of Grails 9 names the tasks of the project it is run in by their path for the same reason. The path is the one the
+   * Gradle import gave the project ({@link Grails3Application#getGradlePath()}); for an application the import says
+   * no path of, it is the name alone, as before.
+   */
+  public static @NotNull String taskPath(@NotNull GrailsApplication application) {
+    String path = application instanceof Grails3Application gradle ? gradle.getGradlePath() : null;
+    if (path == null || !path.startsWith(":")) return TASK;
+    return (path.endsWith(":") ? path : path + ":") + TASK;
   }
 
   /**

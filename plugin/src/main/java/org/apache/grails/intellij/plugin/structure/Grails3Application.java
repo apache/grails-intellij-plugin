@@ -19,9 +19,18 @@
 package org.apache.grails.intellij.plugin.structure;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.apache.grails.intellij.plugin.gradle.GrailsModuleData;
 
 public interface Grails3Application extends GrailsApplication {
 
   @NotNull GrailsModuleData getGradleData();
+
+  /**
+   * @return the path of the Gradle project of the application in its build, as the Gradle import has it: {@code :} for
+   * the root project, {@code :shop:web} for a project below it; {@code null} when the import says none
+   */
+  default @Nullable String getGradlePath() {
+    return null;
+  }
 }
