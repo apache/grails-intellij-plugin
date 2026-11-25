@@ -24,6 +24,14 @@ project. The Grails run configuration runs the application with the Gradle task 
 Debug and Stop work as they do for any Gradle task, and the tests run with the IDE's Gradle test
 runner. Projects on Grails 7 and 8 keep the Grails shell.
 
+An environment typed in front of a command, as the Grails shell took it (`prod war`,
+`-Dgrails.env=staging war`), is given to the Grails 9 command line where the command takes it: after the
+name of a command of `grails` itself (`war -Dgrails.env=production`), and through `run-command` for a
+command of the application or of a plugin (`prod dbm-update` runs
+`run-command -Dgrails.env=production dbm-update`), which would otherwise run in development. Which of the
+two a command is comes from the list of `help --json`; while that list cannot be had, a command with an
+environment in front of it is not run, and the message names both forms to type instead.
+
 The snapshots and milestones of Grails 9 published before its command line still have the Grails shell, so
 the version alone does not decide which one a project gets. The plugin asks the jar of `grails-cli` for
 `help --json` once (in the background, for at most 30 seconds) and uses the Grails 9 command line when the

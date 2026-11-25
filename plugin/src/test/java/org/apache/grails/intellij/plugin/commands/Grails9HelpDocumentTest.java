@@ -83,6 +83,11 @@ public class Grails9HelpDocumentTest extends TestCase {
     assertEquals(List.of("add", "list"), feature.commands().stream().map(Grails9HelpDocument.Command::name).toList());
 
     assertTrue(command(document, "generate-all").origin().startsWith("org.apache.grails:grails-scaffolding-cli:"));
+    assertEquals("descriptor", command(document, "generate-all").registration());
+    assertFalse(command(document, "generate-all").isBuiltIn());
+    assertFalse(command(document, "generate-all").isScript());
+    assertTrue(controller.isBuiltIn());
+    assertEquals("a command of the command line itself is not registered by the build", "", controller.registration());
     assertEquals("a command of the plugin that has the name of one of the command line itself is not one: " + document.getDiagnostics(),
                  1, document.getCommands().stream().filter(command -> command.name().equals("install-templates")).count());
   }
@@ -167,6 +172,32 @@ public class Grails9HelpDocumentTest extends TestCase {
   public void testTheEmptyDocumentHasNoCommands() {
     assertEmpty(Grails9HelpDocument.EMPTY.getCommandNames());
     assertFalse(Grails9HelpDocument.EMPTY.isComplete());
+  }
+
+  public void testACommandIsFoundByItsNameAndByItsOtherNames() throws IOException {
+    Grails9HelpDocument document = Grails9HelpDocument.parse(recorded("web-app.json"));
+
+    assertSame(command(document, "assemble"), document.getCommand("assemble"));
+    assertSame(command(document, "assemble"), document.getCommand("war"));
+    assertSame(command(document, "schema-export"), document.getCommand("schema-export"));
+    assertNull("a command of a command is not typed first", document.getCommand("add"));
+    assertNull(document.getCommand("dbm-update"));
+    assertNull(Grails9HelpDocument.EMPTY.getCommand("war"));
+  }
+
+  public void testAScriptOfTheApplicationIsToldFromACommandOfIt() throws IOException {
+    Grails9HelpDocument document = Grails9HelpDocument.parse("""
+      {"format":1,"complete":true,"diagnostics":[],"projectDirectory":"/home/me/shop","commands":[
+        {"name":"audit-report","aliases":[],"description":"Reports","project":true,"origin":"application",
+         "target":"application","registration":"class","commands":[]},
+        {"name":"seed-data","aliases":[],"description":"","project":true,"origin":"application",
+         "target":"standalone","registration":"script","commands":[]}]}
+      """);
+
+    assertFalse(document.getCommand("audit-report").isScript());
+    assertFalse(document.getCommand("audit-report").isBuiltIn());
+    assertTrue(document.getCommand("seed-data").isScript());
+    assertFalse(document.getCommand("seed-data").isBuiltIn());
   }
 
   private static Grails9HelpDocument.Command command(Grails9HelpDocument document, String name) {

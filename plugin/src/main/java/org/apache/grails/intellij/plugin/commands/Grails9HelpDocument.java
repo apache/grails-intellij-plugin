@@ -71,6 +71,8 @@ public final class Grails9HelpDocument {
    * @param description one line of plain text
    * @param origin      {@code built-in} for a command of the command line itself, otherwise {@code application},
    *                    the coordinates of the plugin artifact it comes from, or a jar
+   * @param registration how the build of the project came to list a command of the application or of a plugin,
+   *                     {@code script} for a script of the application; empty for a command of the command line itself
    * @param project     whether the command works on a project and cannot be used outside one
    * @param commands    the commands of the command, such as {@code add} of {@code feature}
    */
@@ -78,8 +80,25 @@ public final class Grails9HelpDocument {
                         @NotNull @Unmodifiable List<String> aliases,
                         @NotNull String description,
                         @NotNull String origin,
+                        @NotNull String registration,
                         boolean project,
                         @NotNull @Unmodifiable List<Command> commands) {
+
+    /** The {@link #origin()} of a command of the command line itself. */
+    public static final String BUILT_IN = "built-in";
+
+    /** The {@link #registration()} of a script of the application. */
+    public static final String SCRIPT = "script";
+
+    /** @return whether this is a command of the command line itself, as {@code war} is, and not one the project adds */
+    public boolean isBuiltIn() {
+      return BUILT_IN.equals(origin);
+    }
+
+    /** @return whether this is a script of the application, which the build runs without the application */
+    public boolean isScript() {
+      return SCRIPT.equals(registration);
+    }
   }
 
   private final boolean myComplete;
@@ -153,6 +172,7 @@ public final class Grails9HelpDocument {
                              List.copyOf(aliases),
                              command.path("description").asText(""),
                              command.path("origin").asText(""),
+                             command.path("registration").asText(""),
                              command.path("project").asBoolean(false),
                              List.copyOf(commands(command.path("commands")))));
     }
@@ -184,6 +204,14 @@ public final class Grails9HelpDocument {
   /** @return the commands, in the order {@code help} lists them */
   public @NotNull @Unmodifiable List<Command> getCommands() {
     return myCommands;
+  }
+
+  /** @return the command that is typed as {@code name}, its name or one of its aliases, or {@code null} when none is listed */
+  public @Nullable Command getCommand(@NotNull String name) {
+    for (Command command : myCommands) {
+      if (command.name().equals(name) || command.aliases().contains(name)) return command;
+    }
+    return null;
   }
 
   /** @return what can be typed as the first word of a command: every name and alias, in the order of the help */

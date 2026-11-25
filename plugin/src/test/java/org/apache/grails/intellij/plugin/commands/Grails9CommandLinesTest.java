@@ -132,7 +132,11 @@ public class Grails9CommandLinesTest extends GrailsTestCase {
   }
 
   private static List<String> programArguments(Grails3Application application) throws ExecutionException {
-    return new Grails9CommandExecutor().createJavaParameters(application, MvcCommand.parse("create-controller Book"))
+    return programArguments(application, "create-controller Book");
+  }
+
+  private static List<String> programArguments(Grails3Application application, String commandLine) throws ExecutionException {
+    return new Grails9CommandExecutor().createJavaParameters(application, MvcCommand.parse(commandLine))
       .getProgramParametersList().getList();
   }
 
@@ -171,6 +175,47 @@ public class Grails9CommandLinesTest extends GrailsTestCase {
     assertEquals(1, myNotices.size());
     assertEquals(NotificationType.WARNING, myNotices.get(0).getType());
     assertTrue(myNotices.get(0).getContent(), myNotices.get(0).getContent().contains("format 2"));
+  }
+
+  /**
+   * The command line that is started for a command with an environment in front of it: where the command takes the
+   * environment is read from the commands the command line lists in the project.
+   */
+  public void testTheEnvironmentInFrontOfACommandIsGivenWhereTheCommandOfTheProjectTakesIt() throws Exception {
+    Path jar = myJars.answering("grails-cli-9.0.0-SNAPSHOT-all.jar", FakeGrailsCommandLines.FORMAT_1);
+    Grails3Application grails9 = application(jar, List.of());
+    assertEquals(Grails9CommandLineProbe.Kind.COMMAND_LINE, capability(grails9).kind());
+
+    assertEquals("a command of a plugin would run in development with the environment after its name",
+                 List.of("--plain-output", "--non-interactive", "run-command", "-Dgrails.env=production", "schema-export"),
+                 inBackground(() -> programArguments(grails9, "prod schema-export")));
+    assertEquals(List.of("--plain-output", "--non-interactive", "war", "-Dgrails.env=production"),
+                 inBackground(() -> programArguments(grails9, "prod war")));
+    assertEquals(List.of("--plain-output", "--non-interactive", "run-command", "-Dgrails.env=production", "schema-export"),
+                 inBackground(() -> programArguments(grails9, "prod run-command schema-export")));
+    assertEquals("the commands of the project are listed once", 1, myListings.get());
+  }
+
+  /** A command line that does not list its commands is not given an environment where it might not be read. */
+  public void testTheEnvironmentInFrontOfACommandIsRefusedWhenTheCommandsCannotBeListed() throws Exception {
+    Path jar = myJars.answering("grails-cli-9.1.0-all.jar", FakeGrailsCommandLines.FORMAT_2);
+    Grails3Application grails9 = application("shop", "9.1.0", jar, List.of());
+    assertEquals(Grails9CommandLineProbe.Kind.OTHER_FORMAT, capability(grails9).kind());
+
+    String refusal = inBackground(() -> {
+      try {
+        return "ran " + programArguments(grails9, "prod schema-export");
+      }
+      catch (ExecutionException e) {
+        return e.getMessage();
+      }
+    });
+    assertFalse("the command would run in development: " + refusal, refusal.startsWith("ran "));
+    assertTrue(refusal, refusal.contains("run-command -Dgrails.env=production schema-export"));
+    assertEquals(List.of("--plain-output", "--non-interactive", "run-command", "-Dgrails.env=production", "schema-export"),
+                 inBackground(() -> programArguments(grails9, "run-command -Dgrails.env=production schema-export")));
+    assertEquals(List.of("--plain-output", "--non-interactive", "war", "-Dgrails.env=production"),
+                 inBackground(() -> programArguments(grails9, "war -Dgrails.env=production")));
   }
 
   public void testAJarFromBeforeTheCommandLineGivesWayToTheShell() throws Exception {
