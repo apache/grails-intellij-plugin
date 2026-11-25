@@ -84,6 +84,13 @@ public class GrailsCustomFoldersList extends JPanel {
   private final @NotNull TableView<Row> table;
   private final @NotNull List<Runnable> listeners = new ArrayList<>();
 
+  // Depth of in-flight cell commits. setValueAt fires the model listener, which can call back into
+  // getRows()/rawRows() (and from there stopEditing) before the commit has finished. Guarding
+  // stopEditing while this is non-zero breaks the re-entrant setValueAt loop that otherwise
+  // overflows the stack (see issue #470). A counter rather than a boolean keeps the guard correct
+  // if a commit ever triggers another commit before the outer one finishes.
+  private int committingEditDepth = 0;
+
   /**
    * @param applicationRoot the root relative paths are resolved against, for the row status and for
    *                        storing a chosen folder relative to it; null when it is not known
@@ -99,14 +106,24 @@ public class GrailsCustomFoldersList extends JPanel {
       @Override
       public void editingStopped(ChangeEvent e) {
         int row = getEditingRow();
-        super.editingStopped(e);
+        committingEditDepth++;
+        try {
+          super.editingStopped(e);
+        } finally {
+          committingEditDepth--;
+        }
         dropIfBlank(row);
       }
 
       @Override
       public void editingCanceled(ChangeEvent e) {
         int row = getEditingRow();
-        super.editingCanceled(e);
+        committingEditDepth++;
+        try {
+          super.editingCanceled(e);
+        } finally {
+          committingEditDepth--;
+        }
         dropIfBlank(row);
       }
     };
@@ -141,7 +158,7 @@ public class GrailsCustomFoldersList extends JPanel {
 
   /** The trimmed non-empty paths, in row order. Nothing is capped here: the cap belongs to the view. */
   public @NotNull List<String> getRows() {
-    TableUtil.stopEditing(table);
+    if (committingEditDepth == 0) TableUtil.stopEditing(table);
     List<String> result = new ArrayList<>();
     for (Row row : model.getItems()) {
       String path = row.path.trim();
@@ -155,7 +172,7 @@ public class GrailsCustomFoldersList extends JPanel {
    * reported against one row must name the number beside that row.
    */
   public @NotNull List<String> rawRows() {
-    TableUtil.stopEditing(table);
+    if (committingEditDepth == 0) TableUtil.stopEditing(table);
     List<String> result = new ArrayList<>();
     for (Row row : model.getItems()) {
       result.add(row.path);
@@ -169,7 +186,7 @@ public class GrailsCustomFoldersList extends JPanel {
 
   /** Replaces every row with the given paths, in order. */
   public void setRows(@NotNull Collection<String> paths) {
-    TableUtil.stopEditing(table);
+    if (committingEditDepth == 0) TableUtil.stopEditing(table);
     List<Row> rows = new ArrayList<>();
     for (String path : paths) {
       rows.add(row(path == null ? "" : path.trim()));
@@ -185,7 +202,7 @@ public class GrailsCustomFoldersList extends JPanel {
   /** Removes the row at the given index, if there is one, keeping a neighbour selected. */
   public void removeRow(int index) {
     if (index < 0 || index >= model.getRowCount()) return;
-    TableUtil.stopEditing(table);
+    if (committingEditDepth == 0) TableUtil.stopEditing(table);
     model.removeRow(index);
     select(Math.min(index, model.getRowCount() - 1));
   }
@@ -193,7 +210,7 @@ public class GrailsCustomFoldersList extends JPanel {
   /** Moves the row at the given index one place up, so the Grails view renders it earlier. */
   void moveUp(int index) {
     if (index <= 0 || index >= model.getRowCount()) return;
-    TableUtil.stopEditing(table);
+    if (committingEditDepth == 0) TableUtil.stopEditing(table);
     model.exchangeRows(index - 1, index);
     select(index - 1);
   }
@@ -201,7 +218,7 @@ public class GrailsCustomFoldersList extends JPanel {
   /** Moves the row at the given index one place down, so the Grails view renders it later. */
   void moveDown(int index) {
     if (index < 0 || index >= model.getRowCount() - 1) return;
-    TableUtil.stopEditing(table);
+    if (committingEditDepth == 0) TableUtil.stopEditing(table);
     model.exchangeRows(index, index + 1);
     select(index + 1);
   }
@@ -217,6 +234,8 @@ public class GrailsCustomFoldersList extends JPanel {
     if (chosen == null) return;
     String path = FolderPaths.toConfiguredPath(root, chosen);
     if (path == null) return;
+    // Only relative paths are supported: an absolute location cannot be read across projects.
+    if (FolderPaths.isAbsolute(path)) return;
     String normalized = FolderPaths.normalize(path);
     for (int i = 0; i < model.getRowCount(); i++) {
       if (FolderPaths.normalize(model.getItem(i).path).equals(normalized)) {
@@ -230,7 +249,7 @@ public class GrailsCustomFoldersList extends JPanel {
 
   /** Appends an empty row and starts editing it, for a path the chooser cannot pick yet. */
   void addTypedPath() {
-    TableUtil.stopEditing(table);
+    if (committingEditDepth == 0) TableUtil.stopEditing(table);
     model.addRow(row(""));
     int index = model.getRowCount() - 1;
     select(index);
@@ -245,13 +264,21 @@ public class GrailsCustomFoldersList extends JPanel {
     return table.isEditing() && table.getEditingRow() == index;
   }
 
+  /** Whether any row is currently being edited. */
+  boolean isEditingAny() {
+    return table.isEditing();
+  }
+
   /** Ends any edit in progress, keeping the typed text; a row left empty is dropped. */
   void stopEditing() {
-    TableUtil.stopEditing(table);
+    if (committingEditDepth == 0) TableUtil.stopEditing(table);
   }
 
   /** Ends any edit in progress, discarding the typed text; a row left empty is dropped. */
   void cancelEditing() {
+    // Do not cancel an editor while a commit is already in flight: it would call cancelCellEditing
+    // on an editor that super.editingStopped has not yet removed.
+    if (committingEditDepth > 0) return;
     if (table.isEditing()) table.getCellEditor().cancelCellEditing();
   }
 

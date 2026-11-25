@@ -226,15 +226,14 @@ public class GrailsCustomFoldersListTest extends GrailsTestCase {
     assertEquals("the added row is selected", 0, table(rows).getSelectedRow());
   }
 
-  public void testChosenFolderOutsideTheApplicationRootIsStoredAbsolute() throws IOException {
+  public void testChosenFolderOutsideTheApplicationRootIsNotStored() throws IOException {
     VirtualFile root = myFixture.getTempDirFixture().findOrCreateDir("app");
     VirtualFile outside = OutsideProjectDirectory.create(getTestRootDisposable(), "list-chooser");
     GrailsCustomFoldersList rows = new GrailsCustomFoldersList(() -> root, (parent, toSelect) -> outside);
 
     rows.addChosenFolder();
 
-    assertEquals(Collections.singletonList(outside.getPath()), rows.getRows());
-    assertEquals(GrailsCustomFoldersList.Status.FOLDER, rows.statusAt(0));
+    assertEquals(0, rows.getRowCount());
   }
 
   public void testChoosingAFolderAlreadyListedSelectsItInsteadOfAddingItTwice() throws IOException {
@@ -315,6 +314,33 @@ public class GrailsCustomFoldersListTest extends GrailsTestCase {
     table(rows).setValueAt("docs", 0, 0);
 
     assertEquals(GrailsCustomFoldersList.Status.FOLDER, rows.statusAt(0));
+  }
+
+  /**
+   * A listener that reads the rows while an edit is being committed must not re-enter editingStopped:
+   * getRows() stops editing only when no commit is in flight, so the stack cannot overflow. This is
+   * the shape of the real settings page, where the preview calls getRows() on every change.
+   */
+  public void testListenerReadingRowsDuringCommitDoesNotOverflow() {
+    GrailsCustomFoldersList rows = list();
+    rows.addRow("docs");
+
+    int[] events = {0};
+    rows.addRowsChangedListener(() -> {
+      events[0]++;
+      // Reading the rows is what the settings page does in its preview; doing it here, during the
+      // commit, is what used to overflow the stack.
+      rows.getRows();
+      rows.rawRows();
+    });
+
+    rows.addTypedPath();
+    assertTrue("the new row is opened for editing", rows.isEditing(1));
+    editor(rows).setText("build");
+    rows.stopEditing();
+
+    assertEquals(Arrays.asList("docs", "build"), rows.getRows());
+    assertTrue("the commit must reach the listener", events[0] > 0);
   }
 
   /** Without an application root only an absolute path can be checked. */
