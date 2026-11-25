@@ -201,9 +201,9 @@ public class GrailsCustomFoldersConfigurableTest extends GrailsTestCase {
     assertTrue(GrailsCustomFoldersConfigurable.description(6).contains("resolved against the Grails application root"));
   }
 
-  public void testDescriptionStatesThatAnAbsolutePathCanNameAnyFolder() {
-    assertTrue(GrailsCustomFoldersConfigurable.description(6).contains("an absolute path"));
-    assertTrue(GrailsCustomFoldersConfigurable.description(6).contains("any folder on disk"));
+  public void testDescriptionStatesThatOnlyRelativePathsAreSupported() {
+    assertTrue(GrailsCustomFoldersConfigurable.description(6).contains("A relative path"));
+    assertFalse(GrailsCustomFoldersConfigurable.description(6).contains("an absolute path"));
   }
 
   public void testDescriptionStatesTheOrder() {
@@ -215,20 +215,20 @@ public class GrailsCustomFoldersConfigurableTest extends GrailsTestCase {
     assertFalse(GrailsCustomFoldersConfigurable.description(20).contains("at most 3"));
   }
 
-  /** A folder outside the application, or the project, is a legitimate custom folder. */
-  public void testAbsolutePathToAFolderIsAccepted() throws IOException {
+  /** Only relative paths are supported, so an absolute path is rejected. */
+  public void testAbsolutePathIsRejected() throws IOException {
     VirtualFile root = myFixture.getTempDirFixture().findOrCreateDir("app");
     VirtualFile outside = OutsideProjectDirectory.create(getTestRootDisposable(), "configurable-folder");
 
-    assertNull(GrailsCustomFoldersConfigurable.invalidPathReason(outside.getPath(), root));
-    assertNull(GrailsCustomFoldersConfigurable.invalidPathReason(outside.getPath(), null));
+    assertNotNull(GrailsCustomFoldersConfigurable.invalidPathReason(outside.getPath(), root));
+    assertNotNull(GrailsCustomFoldersConfigurable.invalidPathReason(outside.getPath(), null));
   }
 
-  /** Nothing there yet is a placeholder, not an error, whatever the spelling. */
-  public void testAbsolutePathsThatResolveToNothingAreAccepted() {
-    assertNull(GrailsCustomFoldersConfigurable.invalidPathReason("/no-such-home/notes", null));
-    assertNull(GrailsCustomFoldersConfigurable.invalidPathReason("C:\\grails-app", null));
-    assertNull(GrailsCustomFoldersConfigurable.invalidPathReason("\\\\server\\share", null));
+  /** Absolute paths are not supported, even when they resolve to nothing. */
+  public void testAbsolutePathsAreRejected() {
+    assertNotNull(GrailsCustomFoldersConfigurable.invalidPathReason("/no-such-home/notes", null));
+    assertNotNull(GrailsCustomFoldersConfigurable.invalidPathReason("C:\\grails-app", null));
+    assertNotNull(GrailsCustomFoldersConfigurable.invalidPathReason("\\\\server\\share", null));
   }
 
   public void testPathClimbingOutOfTheApplicationRootIsAccepted() throws IOException {

@@ -132,6 +132,10 @@ public class GrailsCustomFoldersConfigurable implements Configurable {
   public boolean isModified() {
     if (maxFoldersSpinner != null
         && ((Integer)maxFoldersSpinner.getValue()) != appService.getMaxFolders()) return true;
+    // While a row is being edited, treat the page as modified without committing the in-progress edit:
+    // calling getRows() here would stop editing and steal the keystrokes the user is still typing.
+    if (globalRows != null && globalRows.isEditingAny()) return true;
+    if (projectRows != null && projectRows.isEditingAny()) return true;
     // The rows are normalized before they are compared, the same way the store normalizes them on
     // save: otherwise a list holding two spellings of one folder never stops reading as modified.
     if (globalRows != null && !FolderPaths.dedupe(globalRows.getRows()).equals(appService.getFolders())) return true;
@@ -226,6 +230,9 @@ public class GrailsCustomFoldersConfigurable implements Configurable {
    * application root is known.
    */
   static @Nullable String invalidPathReason(@NotNull String path, @Nullable VirtualFile appRoot) {
+    if (FolderPaths.isAbsolute(path)) {
+      return key("grails.settings.custom.folders.must.be.relative");
+    }
     return GrailsCustomFoldersList.statusOf(appRoot, path) == GrailsCustomFoldersList.Status.NOT_A_FOLDER
            ? key("grails.settings.custom.folders.not.a.folder")
            : null;

@@ -263,26 +263,23 @@ public class GrailsCustomFoldersConfigurableUiTest extends GrailsTestCase {
   }
 
   /**
-   * Paths outside the application root are what the custom folders are for: an absolute path, one
-   * starting with {@code ~} and one climbing out with {@code ..} are all stored as typed.
+   * Only relative paths are supported: a path climbing out of the application root with {@code ..}
+   * is still relative and is stored as typed.
    */
-  public void testApplyAcceptsPathsOutsideTheApplicationRoot() throws ConfigurationException {
+  public void testApplyAcceptsRelativePathsClimbingOutOfTheApplicationRoot() throws ConfigurationException {
     withGlobalDefaults(() -> {
       appService().setFolders(Collections.<String>emptyList());
       projectService().setFolders(Collections.<String>emptyList());
-      String outside = OutsideProjectDirectory.create(getTestRootDisposable(), "ui-outside").getPath();
       GrailsCustomFoldersConfigurable configurable = page();
       configurable.createComponent();
       configurable.reset();
 
-      projectRows(configurable).addRow(outside);
       projectRows(configurable).addRow("../shared/docs");
-      globalRows(configurable).addRow("~/notes");
 
       configurable.apply();
 
-      assertEquals(List.of(outside, "../shared/docs"), projectService().getFolders());
-      assertEquals(List.of("~/notes"), appService().getFolders());
+      assertEquals(List.of("../shared/docs"), projectService().getFolders());
+      assertEquals(Collections.<String>emptyList(), appService().getFolders());
     });
   }
 
