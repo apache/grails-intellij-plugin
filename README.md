@@ -27,9 +27,9 @@ tests run with the IDE's Gradle test runner. Projects on Grails 7 and 8 keep the
 
 An environment typed in front of a command, as the Grails shell took it (`prod war`,
 `-Dgrails.env=staging war`), is given to the Grails 9 command line where the command takes it: after the
-name of a command of `grails` itself (`war -Dgrails.env=production`), and through `run-command` for a
-command of the application or of a plugin (`prod dbm-update` runs
-`run-command -Dgrails.env=production dbm-update`), which would otherwise run in development. Which of the
+name of a command of `grails` itself (`war -Dgrails.env=production`), and through `run-tool` for a
+tool of the application or of a plugin (`prod dbm-update` runs
+`run-tool -Dgrails.env=production dbm-update`), which would otherwise run in development. Which of the
 two a command is comes from the list of `help --json`; while that list cannot be had, a command with an
 environment in front of it is not run, and the message names both forms to type instead.
 

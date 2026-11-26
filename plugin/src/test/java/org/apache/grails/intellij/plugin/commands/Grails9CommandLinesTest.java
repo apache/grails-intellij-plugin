@@ -187,12 +187,12 @@ public class Grails9CommandLinesTest extends GrailsTestCase {
     assertEquals(Grails9CommandLineProbe.Kind.COMMAND_LINE, capability(grails9).kind());
 
     assertEquals("a command of a plugin would run in development with the environment after its name",
-                 List.of("--plain-output", "--non-interactive", "run-command", "-Dgrails.env=production", "schema-export"),
+                 List.of("--plain-output", "--non-interactive", "run-tool", "-Dgrails.env=production", "schema-export"),
                  inBackground(() -> programArguments(grails9, "prod schema-export")));
     assertEquals(List.of("--plain-output", "--non-interactive", "war", "-Dgrails.env=production"),
                  inBackground(() -> programArguments(grails9, "prod war")));
-    assertEquals(List.of("--plain-output", "--non-interactive", "run-command", "-Dgrails.env=production", "schema-export"),
-                 inBackground(() -> programArguments(grails9, "prod run-command schema-export")));
+    assertEquals(List.of("--plain-output", "--non-interactive", "run-tool", "-Dgrails.env=production", "schema-export"),
+                 inBackground(() -> programArguments(grails9, "prod run-tool schema-export")));
     assertEquals("the commands of the project are listed once", 1, myListings.get());
   }
 
@@ -211,9 +211,9 @@ public class Grails9CommandLinesTest extends GrailsTestCase {
       }
     });
     assertFalse("the command would run in development: " + refusal, refusal.startsWith("ran "));
-    assertTrue(refusal, refusal.contains("run-command -Dgrails.env=production schema-export"));
-    assertEquals(List.of("--plain-output", "--non-interactive", "run-command", "-Dgrails.env=production", "schema-export"),
-                 inBackground(() -> programArguments(grails9, "run-command -Dgrails.env=production schema-export")));
+    assertTrue(refusal, refusal.contains("run-tool -Dgrails.env=production schema-export"));
+    assertEquals(List.of("--plain-output", "--non-interactive", "run-tool", "-Dgrails.env=production", "schema-export"),
+                 inBackground(() -> programArguments(grails9, "run-tool -Dgrails.env=production schema-export")));
     assertEquals(List.of("--plain-output", "--non-interactive", "war", "-Dgrails.env=production"),
                  inBackground(() -> programArguments(grails9, "war -Dgrails.env=production")));
   }

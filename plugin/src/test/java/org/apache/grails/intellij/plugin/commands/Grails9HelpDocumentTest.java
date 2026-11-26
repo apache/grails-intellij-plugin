@@ -54,7 +54,7 @@ public class Grails9HelpDocumentTest extends TestCase {
     assertTrue(names.toString(), names.containsAll(List.of(
       "create-app", "feature", "project", "gradle", "help",
       "create-controller", "create-service", "create-domain-class", "create-taglib", "create-interceptor",
-      "compile", "clean", "assemble", "test-app", "run-app", "stop-app", "console", "shell", "run-script", "run-command",
+      "compile", "clean", "assemble", "test-app", "run-app", "stop-app", "console", "shell", "run-script", "run-tool", "create-tool",
       "update-wrapper")));
     assertTrue("aliases are typed as names: " + names, names.containsAll(List.of("war", "package")));
     assertTrue("the commands of the plugins of the application: " + names,
@@ -191,13 +191,85 @@ public class Grails9HelpDocumentTest extends TestCase {
         {"name":"audit-report","aliases":[],"description":"Reports","project":true,"origin":"application",
          "target":"application","registration":"class","commands":[]},
         {"name":"seed-data","aliases":[],"description":"","project":true,"origin":"application",
-         "target":"standalone","registration":"script","commands":[]}]}
+         "target":"application","startsApplication":false,"registration":"script","commands":[]}]}
       """);
 
     assertFalse(document.getCommand("audit-report").isScript());
     assertFalse(document.getCommand("audit-report").isBuiltIn());
     assertTrue(document.getCommand("seed-data").isScript());
     assertFalse(document.getCommand("seed-data").isBuiltIn());
+  }
+
+  public void testTheMembersOfAToolOfTheContractOfTools() throws IOException {
+    Grails9HelpDocument document = Grails9HelpDocument.parse(recorded("web-app.json"));
+
+    Grails9HelpDocument.Command schemaExport = command(document, "schema-export");
+    assertEquals("application", schemaExport.target());
+    assertTrue(schemaExport.startsApplication());
+    assertEquals(List.of("type"), schemaExport.deprecated());
+    assertTrue(schemaExport.isDeprecated());
+    assertFalse(schemaExport.isStandalone());
+    Grails9HelpDocument.Command queryTail = command(document, "query-tail");
+    assertTrue(queryTail.isStandalone());
+    assertFalse(queryTail.startsApplication());
+    assertFalse(queryTail.isDeprecated());
+    assertFalse(command(document, "generate-all").isDeprecated());
+
+    Grails9HelpDocument.Command runTool = command(document, "run-tool");
+    assertTrue(runTool.isBuiltIn());
+    assertEquals(List.of("run-command"), runTool.aliases());
+    assertEquals(List.of("run-command"), runTool.deprecatedNames());
+    assertTrue(runTool.isDeprecatedName("run-command"));
+    assertEquals(List.of("run-script"), command(document, "run-script").deprecatedNames());
+    assertEquals(List.of(), command(document, "assemble").deprecatedNames());
+    assertFalse(command(document, "assemble").startsApplication());
+    assertSame("a deprecated name still finds the command", runTool, document.getCommand("run-command"));
+  }
+
+  public void testCreateToolIsOfferedAndCreateCommandIsNot() throws IOException {
+    List<String> names = Grails9HelpDocument.parse(recorded("web-app.json")).getCommandNames();
+
+    assertTrue(names.toString(), names.contains("create-tool"));
+    assertFalse(names.toString(), names.contains("create-command"));
+    assertTrue(names.toString(), names.contains("run-tool"));
+    assertFalse("a deprecated name is not offered: " + names, names.contains("run-command"));
+    assertTrue("a command is offered by its name, though it is also a deprecated one: " + names, names.contains("run-script"));
+  }
+
+  public void testADocumentOfAnEarlierBuildOfGrails9IsStillRead() throws IOException {
+    Grails9HelpDocument document = Grails9HelpDocument.parse(recorded("web-app-earlier-build.json"));
+
+    assertTrue(document.isComplete());
+    assertTrue(document.getCommandNames().contains("create-command"));
+    assertTrue(document.getCommandNames().contains("run-command"));
+    assertEquals(List.of(), command(document, "run-command").deprecatedNames());
+    Grails9HelpDocument.Command schemaExport = command(document, "schema-export");
+    assertTrue("a tool without startsApplication starts the application", schemaExport.startsApplication());
+    assertEquals(List.of(), schemaExport.deprecated());
+    assertTrue(command(document, "query-tail").isStandalone());
+    assertFalse("a standalone tool does not start it", command(document, "query-tail").startsApplication());
+    assertFalse("a command of the command line itself does not", command(document, "assemble").startsApplication());
+    assertFalse(command(document, "install-templates").isStandalone());
+  }
+
+  public void testATargetThatIsNotKnownIsToleratedAndKeptAsItIs() throws IOException {
+    Grails9HelpDocument document = Grails9HelpDocument.parse("""
+      {"format":1,"complete":true,"commands":[
+        {"name":"old-tool","aliases":[],"origin":"application","target":"gradle","registration":"legacy","commands":[]},
+        {"name":"odd","aliases":[],"origin":"application","target":7,"startsApplication":"yes","deprecated":["folder",1,""],
+         "deprecatedNames":"x","commands":[]}]}
+      """);
+
+    Grails9HelpDocument.Command old = command(document, "old-tool");
+    assertEquals("gradle", old.target());
+    assertEquals("legacy", old.registration());
+    assertFalse(old.isStandalone());
+    assertTrue(old.startsApplication());
+    Grails9HelpDocument.Command odd = command(document, "odd");
+    assertEquals("7", odd.target());
+    assertEquals(List.of("folder"), odd.deprecated());
+    assertEquals(List.of(), odd.deprecatedNames());
+    assertTrue(odd.startsApplication());
   }
 
   private static Grails9HelpDocument.Command command(Grails9HelpDocument document, String name) {

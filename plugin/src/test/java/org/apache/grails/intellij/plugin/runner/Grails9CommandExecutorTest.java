@@ -177,7 +177,7 @@ public class Grails9CommandExecutorTest extends GrailsTestCase {
       Files.readString(Path.of(GrailsTestUtil.getTestRootPath("/testdata/grails9/help-json/web-app.json")), StandardCharsets.UTF_8));
     ObjectNode command = ((ArrayNode)root.get("commands")).addObject();
     command.put("name", name).put("description", "").put("project", true).put("origin", "application")
-      .put("target", "script".equals(registration) ? "standalone" : "application").put("registration", registration);
+      .put("target", "application").put("startsApplication", !"script".equals(registration)).put("registration", registration);
     return Grails9HelpDocument.parse(root.toString());
   }
 
@@ -208,58 +208,77 @@ public class Grails9CommandExecutorTest extends GrailsTestCase {
 
   /**
    * A command of the application or of a plugin is given everything after its name, {@code -Dgrails.env} too, and runs
-   * in development. {@code run-command} takes the environment in front of the name of the command it runs.
+   * in development. {@code run-tool} takes the environment in front of the name of the command it runs.
    */
-  public void testACommandOfAPluginIsRunInTheEnvironmentByRunCommand() throws Exception {
+  public void testACommandOfAPluginIsRunInTheEnvironmentByRunTool() throws Exception {
     Grails9HelpDocument document = webApplication();
     assertEquals("org.apache.grails:grails-data-hibernate5-cli:9.0.0-SNAPSHOT", document.getCommand("schema-export").origin());
 
-    assertEquals(typed("run-command", "-Dgrails.env=production", "schema-export", "--datasource=reports"),
+    assertEquals(typed("run-tool", "-Dgrails.env=production", "schema-export", "--datasource=reports"),
                  programArguments("prod schema-export --datasource=reports", document));
-    assertEquals(typed("run-command", "-Dgrails.env=test", "schema-export"), programArguments("test schema-export", document));
-    assertEquals(typed("run-command", "-Dgrails.env=development", "schema-export"), programArguments("dev schema-export", document));
+    assertEquals(typed("run-tool", "-Dgrails.env=test", "schema-export"), programArguments("test schema-export", document));
+    assertEquals(typed("run-tool", "-Dgrails.env=development", "schema-export"), programArguments("dev schema-export", document));
     assertEquals("a custom environment",
-                 typed("run-command", "-Dgrails.env=staging", "schema-export"), programArguments("-Dgrails.env=staging schema-export", document));
-    assertEquals(typed("run-command", "-Dgrails.env=staging", "schema-export"), programArguments("prod -Dgrails.env=staging schema-export", document));
+                 typed("run-tool", "-Dgrails.env=staging", "schema-export"), programArguments("-Dgrails.env=staging schema-export", document));
+    assertEquals(typed("run-tool", "-Dgrails.env=staging", "schema-export"), programArguments("prod -Dgrails.env=staging schema-export", document));
     assertEquals("system properties are those of the build, not arguments of the command",
-                 typed("run-command", "-Dgrails.env=production", "-Dfoo=bar", "schema-export", "export"),
+                 typed("run-tool", "-Dgrails.env=production", "-Dfoo=bar", "schema-export", "export"),
                  programArguments("-Dfoo=bar prod schema-export export", document));
-    assertEquals(typed("run-command", "-Dfoo=bar", "schema-export"), programArguments("-Dfoo=bar schema-export", document));
+    assertEquals(typed("run-tool", "-Dfoo=bar", "schema-export"), programArguments("-Dfoo=bar schema-export", document));
     assertEquals("what follows the name is the command's, and names no environment for the build",
-                 typed("run-command", "-Dgrails.env=production", "schema-export", "-Dgrails.env=ci"),
+                 typed("run-tool", "-Dgrails.env=production", "schema-export", "-Dgrails.env=ci"),
                  programArguments("prod schema-export -Dgrails.env=ci", document));
   }
 
-  public void testACommandOfTheApplicationIsRunInTheEnvironmentByRunCommand() throws Exception {
+  public void testACommandOfTheApplicationIsRunInTheEnvironmentByRunTool() throws Exception {
     Grails9HelpDocument document = withACommandOfTheApplication("dbm-update", "class");
     assertFalse(document.getCommand("dbm-update").isBuiltIn());
     assertFalse(document.getCommand("dbm-update").isScript());
 
-    assertEquals(typed("run-command", "-Dgrails.env=production", "dbm-update"), programArguments("prod dbm-update", document));
-    assertEquals(typed("run-command", "-Dgrails.env=staging", "dbm-update", "--contexts=live"),
+    assertEquals(typed("run-tool", "-Dgrails.env=production", "dbm-update"), programArguments("prod dbm-update", document));
+    assertEquals(typed("run-tool", "-Dgrails.env=staging", "dbm-update", "--contexts=live"),
                  programArguments("-Dgrails.env=staging dbm-update --contexts=live", document));
   }
 
   public void testRunCommandTakesTheEnvironmentInFrontOfTheNameOfTheCommandItRuns() throws Exception {
     Grails9HelpDocument document = webApplication();
 
-    assertEquals(typed("run-command", "-Dgrails.env=production", "dbm-update", "--contexts=live"),
-                 programArguments("prod run-command dbm-update --contexts=live", document));
-    assertEquals(typed("run-command", "-Dgrails.env=test", "dbm-status"), programArguments("test run-command dbm-status", document));
+    assertEquals(typed("run-tool", "-Dgrails.env=production", "dbm-update", "--contexts=live"),
+                 programArguments("prod run-tool dbm-update --contexts=live", document));
+    assertEquals(typed("run-tool", "-Dgrails.env=test", "dbm-status"), programArguments("test run-tool dbm-status", document));
     assertEquals("a custom environment",
-                 typed("run-command", "-Dgrails.env=staging", "dbm-update"), programArguments("-Dgrails.env=staging run-command dbm-update", document));
-    assertEquals(typed("run-command", "-Dgrails.env=production", "-Dfoo=bar", "dbm-update"),
-                 programArguments("-Dfoo=bar prod run-command dbm-update", document));
-    assertEquals("the environment run-command is given itself comes before the one in front of it",
-                 typed("run-command", "-Dgrails.env=staging", "dbm-update"), programArguments("prod run-command -Dgrails.env=staging dbm-update", document));
-    assertEquals(typed("run-command", "-D", "grails.env=staging", "dbm-update"), programArguments("prod run-command -D grails.env=staging dbm-update", document));
+                 typed("run-tool", "-Dgrails.env=staging", "dbm-update"), programArguments("-Dgrails.env=staging run-tool dbm-update", document));
+    assertEquals(typed("run-tool", "-Dgrails.env=production", "-Dfoo=bar", "dbm-update"),
+                 programArguments("-Dfoo=bar prod run-tool dbm-update", document));
+    assertEquals("the environment run-tool is given itself comes before the one in front of it",
+                 typed("run-tool", "-Dgrails.env=staging", "dbm-update"), programArguments("prod run-tool -Dgrails.env=staging dbm-update", document));
+    assertEquals(typed("run-tool", "-D", "grails.env=staging", "dbm-update"), programArguments("prod run-tool -D grails.env=staging dbm-update", document));
     assertEquals("after the name of the command it runs, it is an argument of that command",
-                 typed("run-command", "-Dgrails.env=production", "dbm-update", "-Dgrails.env=staging"),
-                 programArguments("prod run-command dbm-update -Dgrails.env=staging", document));
-    assertEquals(typed("run-command", "-Dgrails.env=production", "--", "-Dgrails.env=staging"),
-                 programArguments("prod run-command -- -Dgrails.env=staging", document));
-    assertEquals("run-command is known without the commands of the project",
-                 typed("run-command", "-Dgrails.env=production", "dbm-update"), programArguments("prod run-command dbm-update", Grails9HelpDocument.EMPTY));
+                 typed("run-tool", "-Dgrails.env=production", "dbm-update", "-Dgrails.env=staging"),
+                 programArguments("prod run-tool dbm-update -Dgrails.env=staging", document));
+    assertEquals(typed("run-tool", "-Dgrails.env=production", "--", "-Dgrails.env=staging"),
+                 programArguments("prod run-tool -- -Dgrails.env=staging", document));
+    assertEquals("run-tool is known without the commands of the project",
+                 typed("run-tool", "-Dgrails.env=production", "dbm-update"), programArguments("prod run-tool dbm-update", Grails9HelpDocument.EMPTY));
+  }
+
+  /** The deprecated name of {@code run-tool} still works: it is kept as it is typed, and takes the environment in the same place. */
+  public void testTheDeprecatedNameOfRunToolIsKeptAsItIsTyped() throws Exception {
+    Grails9HelpDocument document = webApplication();
+
+    assertEquals(typed("run-command", "-Dgrails.env=production", "dbm-update"), programArguments("prod run-command dbm-update", document));
+    assertEquals(typed("run-command", "-Dgrails.env=staging", "dbm-update"),
+                 programArguments("prod run-command -Dgrails.env=staging dbm-update", document));
+    assertEquals(typed("run-command", "dbm-update"), programArguments("run-command dbm-update", document));
+  }
+
+  /** A standalone tool, which a build of Grails 9 lists with its own {@code target}, is run by {@code run-tool} in an environment too. */
+  public void testAStandaloneToolIsRunInTheEnvironmentByRunTool() throws Exception {
+    Grails9HelpDocument document = webApplication();
+    assertTrue(document.getCommand("query-tail").isStandalone());
+
+    assertEquals(typed("run-tool", "-Dgrails.env=production", "query-tail"), programArguments("prod query-tail", document));
+    assertEquals(typed("query-tail"), programArguments("query-tail", document));
   }
 
   /** A script runs in the environment of the build, and reads {@code -Dgrails.env} among the arguments after its name. */
@@ -272,10 +291,10 @@ public class Grails9CommandExecutorTest extends GrailsTestCase {
 
   /**
    * The command line has no command of a name its document does not list, unless the build has come to know one since:
-   * {@code run-command} runs that one in the environment, and refuses every other name before anything runs.
+   * {@code run-tool} runs that one in the environment, and refuses every other name before anything runs.
    */
   public void testACommandTheDocumentDoesNotListIsNotRunInDevelopment() throws Exception {
-    assertEquals(typed("run-command", "-Dgrails.env=production", "dbm-update"), programArguments("prod dbm-update", webApplication()));
+    assertEquals(typed("run-tool", "-Dgrails.env=production", "dbm-update"), programArguments("prod dbm-update", webApplication()));
   }
 
   /**
@@ -291,7 +310,7 @@ public class Grails9CommandExecutorTest extends GrailsTestCase {
       catch (ExecutionException e) {
         String environment = commandLine.contains("staging") ? "staging" : commandLine.startsWith("test") ? "test" : "production";
         String name = commandLine.endsWith("war") ? "war" : "dbm-update";
-        assertTrue(e.getMessage(), e.getMessage().contains("'run-command -Dgrails.env=" + environment + " " + name + "'"));
+        assertTrue(e.getMessage(), e.getMessage().contains("'run-tool -Dgrails.env=" + environment + " " + name + "'"));
         assertTrue(e.getMessage(), e.getMessage().contains("'" + name + " -Dgrails.env=" + environment + "'"));
       }
     }
@@ -304,8 +323,8 @@ public class Grails9CommandExecutorTest extends GrailsTestCase {
       throw new AssertionError("the commands of the project are not needed");
     };
     for (String commandLine : List.of("war", "schema-export --datasource=reports", "dbm-update -Dgrails.env=production",
-                                      "gradle build --tests example.BookSpec", "help --json", "run-command dbm-update",
-                                      "prod run-command dbm-update")) {
+                                      "gradle build --tests example.BookSpec", "help --json", "run-tool dbm-update",
+                                      "prod run-tool dbm-update")) {
       List<String> arguments = Grails9CommandExecutor.programArguments(MvcCommand.parse(commandLine), OPTIONS, notAsked);
       if (!commandLine.startsWith("prod")) {
         assertEquals(typed(commandLine.split(" ")), arguments);

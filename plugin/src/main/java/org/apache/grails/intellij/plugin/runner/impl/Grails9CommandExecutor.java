@@ -82,7 +82,10 @@ public final class Grails9CommandExecutor extends GrailsCommandLineExecutor {
   /** The option that has the command line never wait for what a user types. */
   public static final String NON_INTERACTIVE = "--non-interactive";
 
-  /** The command that runs a command of the application or of a plugin, and takes its environment in front of its name. */
+  /** The command that runs a tool of the application or of a plugin, and takes its environment in front of its name. */
+  public static final String RUN_TOOL = "run-tool";
+
+  /** The deprecated name of {@link #RUN_TOOL}, which still works and warns; it takes the environment in the same place. */
   public static final String RUN_COMMAND = "run-command";
 
   private static final String ENVIRONMENT_OPTION = "-Dgrails.env=";
@@ -170,16 +173,17 @@ public final class Grails9CommandExecutor extends GrailsCommandLineExecutor {
    * the Grails guide), so they are moved there:
    * <ul>
    *   <li>a command of the command line itself takes them after its name: {@code war -Dgrails.env=production};</li>
-   *   <li>a command of the application or of a plugin takes everything after its name as its own arguments, and would
+   *   <li>a tool of the application or of a plugin takes everything after its name as its own arguments, and would
    *       run in {@code development} with {@code -Dgrails.env=production} as one of them. It is run with
-   *       {@code run-command}, which takes them in front of the name of the command it runs:
-   *       {@code run-command -Dgrails.env=production dbm-update};</li>
-   *   <li>{@code run-command} takes them in front of the name of the command it runs too;</li>
+   *       {@code run-tool}, which takes them in front of the name of the tool it runs:
+   *       {@code run-tool -Dgrails.env=production dbm-update};</li>
+   *   <li>{@code run-tool} takes them in front of the name of the tool it runs too, and so does its deprecated name
+   *       {@code run-command}, which is kept as it is typed;</li>
    *   <li>a script of the application runs in the environment of the build and reads {@code -Dgrails.env} among the
    *       arguments after its name, where it is given.</li>
    * </ul>
    * Which of these a command is, {@code document} says. A name it does not list is no command of the command line
-   * itself, and is run with {@code run-command}, which runs a command the build has come to know since and refuses
+   * itself, and is run with {@code run-tool}, which runs a tool the build has come to know since and refuses
    * every other name. An environment the command names itself where it takes one comes before the one in front of
    * it. A command without environment or system properties in front of it is run as it is typed, and
    * {@code document} is not asked.
@@ -204,9 +208,9 @@ public final class Grails9CommandExecutor extends GrailsCommandLineExecutor {
       arguments.addAll(commandArguments);
       return arguments;
     }
-    if (RUN_COMMAND.equals(name)) {
+    if (RUN_TOOL.equals(name) || RUN_COMMAND.equals(name)) {
       arguments.add(name);
-      if (!namesEnvironment(optionsOfRunCommand(commandArguments))) {
+      if (!namesEnvironment(optionsOfRunTool(commandArguments))) {
         ContainerUtil.addIfNotNull(arguments, environment);
       }
       arguments.addAll(properties);
@@ -233,7 +237,7 @@ public final class Grails9CommandExecutor extends GrailsCommandLineExecutor {
       arguments.addAll(properties);
     }
     else {
-      arguments.add(RUN_COMMAND);
+      arguments.add(RUN_TOOL);
       ContainerUtil.addIfNotNull(arguments, environment);
       arguments.addAll(properties);
       arguments.add(name);
@@ -243,11 +247,11 @@ public final class Grails9CommandExecutor extends GrailsCommandLineExecutor {
   }
 
   /**
-   * @return of the arguments of {@code run-command}, those in front of the name of the command it runs, which are its
+   * @return of the arguments of {@code run-tool}, those in front of the name of the tool it runs, which are its
    * own, as the command line reads them: every argument that starts with a dash, a {@code -D} that stands alone
    * joined with the name and value after it, up to {@code --} or the first argument that is neither
    */
-  private static @NotNull List<String> optionsOfRunCommand(@NotNull List<String> arguments) {
+  private static @NotNull List<String> optionsOfRunTool(@NotNull List<String> arguments) {
     List<String> options = new ArrayList<>();
     for (int i = 0; i < arguments.size(); i++) {
       String argument = arguments.get(i);

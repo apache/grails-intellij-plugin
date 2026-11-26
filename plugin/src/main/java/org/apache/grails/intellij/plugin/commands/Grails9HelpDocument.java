@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * What {@code grails help --json} says of the commands of a directory, for a project of Grails 9 and later.
+ * What {@code grails help --json} says of the commands of a directory and the tools of its project, for a project of Grails 9 and later.
  * <p>
  * The document is described in "Help" of the chapter "The Command Line" of the Grails guide. This reads the members
  * the plugin uses and ignores the others, as the document asks of a reader; a document of another {@code format}
@@ -64,15 +64,26 @@ public final class Grails9HelpDocument {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   /**
-   * One command of the document.
+   * One command of the document: a command of {@code grails} itself, or a tool the application or a plugin adds.
+   * The members of a tool that an earlier build of Grails 9 does not write have the defaults named below.
    *
    * @param name        what is typed
    * @param aliases     other names of the command, such as {@code war} of {@code assemble}
    * @param description one line of plain text
    * @param origin      {@code built-in} for a command of the command line itself, otherwise {@code application},
    *                    the coordinates of the plugin artifact it comes from, or a jar
-   * @param registration how the build of the project came to list a command of the application or of a plugin,
+   * @param target      of a tool, {@code application} for one the build runs and {@code standalone} for one the command
+   *                    line starts as a process of its own; empty for a command of the command line itself, and for
+   *                    a build that does not say. A value other than those two is kept as it is
+   * @param startsApplication whether the build starts the application around the tool; {@code false} for a command of
+   *                    the command line itself, for a standalone tool and for a script. Where the document has no such
+   *                    member, {@code true} for a tool that is neither a standalone tool nor a script
+   * @param registration how the build of the project came to list a tool of the application or of a plugin,
    *                     {@code script} for a script of the application; empty for a command of the command line itself
+   * @param deprecated  of a tool, what of it is deprecated: {@code type} for a class of a deprecated type and
+   *                    {@code folder} for a tool in the deprecated {@code grails-app/commands}; empty where nothing is
+   * @param deprecatedNames the names of a command of the command line itself that are deprecated, as {@code run-command}
+   *                    of {@code run-tool}; empty where it has none
    * @param project     whether the command works on a project and cannot be used outside one
    * @param commands    the commands of the command, such as {@code add} of {@code feature}
    */
@@ -80,7 +91,11 @@ public final class Grails9HelpDocument {
                         @NotNull @Unmodifiable List<String> aliases,
                         @NotNull String description,
                         @NotNull String origin,
+                        @NotNull String target,
+                        boolean startsApplication,
                         @NotNull String registration,
+                        @NotNull @Unmodifiable List<String> deprecated,
+                        @NotNull @Unmodifiable List<String> deprecatedNames,
                         boolean project,
                         @NotNull @Unmodifiable List<Command> commands) {
 
@@ -89,6 +104,27 @@ public final class Grails9HelpDocument {
 
     /** The {@link #registration()} of a script of the application. */
     public static final String SCRIPT = "script";
+
+    /** The {@link #target()} of a tool the build runs. */
+    public static final String TARGET_APPLICATION = "application";
+
+    /** The {@link #target()} of a tool the command line starts as a process of its own. */
+    public static final String TARGET_STANDALONE = "standalone";
+
+    /** @return whether this is a tool the command line starts as a process of its own, without Gradle */
+    public boolean isStandalone() {
+      return TARGET_STANDALONE.equals(target);
+    }
+
+    /** @return whether something of this tool is deprecated: its type, or the folder it is in */
+    public boolean isDeprecated() {
+      return !deprecated.isEmpty();
+    }
+
+    /** @return whether {@code name} is a deprecated name of this command, which still works */
+    public boolean isDeprecatedName(@NotNull String name) {
+      return deprecatedNames.contains(name);
+    }
 
     /** @return whether this is a command of the command line itself, as {@code war} is, and not one the project adds */
     public boolean isBuiltIn() {
@@ -164,19 +200,35 @@ public final class Grails9HelpDocument {
     for (JsonNode command : array) {
       JsonNode name = command.get("name");
       if (name == null || !name.isTextual() || name.textValue().isBlank()) continue;
-      List<String> aliases = new ArrayList<>();
-      for (JsonNode alias : command.path("aliases")) {
-        if (alias.isTextual() && !alias.textValue().isBlank()) aliases.add(alias.textValue());
-      }
+      List<String> aliases = strings(command.path("aliases"));
+      String registration = command.path("registration").asText("");
+      String target = command.path("target").asText("");
+      JsonNode starts = command.get("startsApplication");
+      boolean startsApplication = starts != null && starts.isBoolean()
+                                  ? starts.booleanValue()
+                                  : !Command.TARGET_STANDALONE.equals(target) && !Command.SCRIPT.equals(registration)
+                                    && !Command.BUILT_IN.equals(command.path("origin").asText(""));
       result.add(new Command(name.textValue(),
                              List.copyOf(aliases),
                              command.path("description").asText(""),
                              command.path("origin").asText(""),
-                             command.path("registration").asText(""),
+                             target,
+                             startsApplication,
+                             registration,
+                             strings(command.path("deprecated")),
+                             strings(command.path("deprecatedNames")),
                              command.path("project").asBoolean(false),
                              List.copyOf(commands(command.path("commands")))));
     }
     return result;
+  }
+
+  private static @NotNull List<String> strings(@NotNull JsonNode array) {
+    List<String> result = new ArrayList<>();
+    for (JsonNode element : array) {
+      if (element.isTextual() && !element.textValue().isBlank()) result.add(element.textValue());
+    }
+    return List.copyOf(result);
   }
 
   /** @return {@code false} when not every command of the directory could be found; {@link #getDiagnostics()} says why */
@@ -214,12 +266,17 @@ public final class Grails9HelpDocument {
     return null;
   }
 
-  /** @return what can be typed as the first word of a command: every name and alias, in the order of the help */
+  /**
+   * @return what can be offered as the first word of a command: every name and alias, in the order of the help, except
+   * the aliases that are deprecated names ({@code run-command}), which still work and are not offered
+   */
   public @NotNull @Unmodifiable List<String> getCommandNames() {
     Set<String> names = new LinkedHashSet<>();
     for (Command command : myCommands) {
       names.add(command.name());
-      names.addAll(command.aliases());
+      for (String alias : command.aliases()) {
+        if (!command.isDeprecatedName(alias)) names.add(alias);
+      }
     }
     return List.copyOf(names);
   }

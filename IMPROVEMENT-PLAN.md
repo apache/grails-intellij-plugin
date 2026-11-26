@@ -317,8 +317,8 @@ Controller, Domain, Service, TagLib, UrlMappings (fixed name, lives in
       the Grails 9 command line, the `all` jar of `org.apache.grails:grails-cli` that the Gradle import resolves
       for `grailsVersion`, with `--plain-output --non-interactive`; the command list is what `grails help --json`
       lists in the project, cached per project; an environment in front of a command is given where the command
-      takes it, after the name of a command of `grails` itself and through `run-command -Dgrails.env=NAME` for a
-      command of the application or of a plugin; the Grails run configuration's `run-app` runs Gradle `bootRun`
+      takes it, after the name of a command of `grails` itself and through `run-tool -Dgrails.env=NAME` for a
+      tool of the application or of a plugin; the Grails run configuration's `run-app` runs Gradle `bootRun`
       of the application's own Gradle project, by its path (`:bootRun`, `:path:bootRun`);
       the Grails test configuration producer leaves the tests to the Gradle test runner. Grails 7/8 keep the shell
       and the items below.
