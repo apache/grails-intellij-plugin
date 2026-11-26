@@ -95,6 +95,7 @@
   </extensions>
 
   <extensions defaultExtensionNs="org.intellij.grails">
+    <commandExecutor implementation="org.apache.grails.intellij.plugin.runner.impl.Grails9CommandExecutor"/>
     <commandExecutor implementation="org.apache.grails.intellij.plugin.runner.impl.Grails3GradleCommandExecutor"/>
     <commandExecutor implementation="org.apache.grails.intellij.plugin.runner.impl.GrailsInstallationCommandExecutor"/>
     <commandExecutor implementation="org.apache.grails.intellij.plugin.runner.impl.Grails3InstallationCommandExecutor"/>
@@ -102,6 +103,7 @@
     <applicationProvider implementation="org.apache.grails.intellij.plugin.structure.impl.Grails3ApplicationProvider"/>
     <commandProvider implementation="org.apache.grails.intellij.plugin.commands.OldGrailsCommandProvider"/>
     <commandProvider implementation="org.apache.grails.intellij.plugin.commands.Grails3CommandProvider"/>
+    <commandProvider implementation="org.apache.grails.intellij.plugin.commands.Grails9CommandProvider"/>
     <viewNodeProvider implementation="org.apache.grails.intellij.plugin.projectView.impl.GrailsAppNodeProvider"/>
     <viewNodeProvider implementation="org.apache.grails.intellij.plugin.projectView.impl.OldGrailsNodeProvider"/>
     <viewNodeProvider implementation="org.apache.grails.intellij.plugin.projectView.impl.Grails3NodeProvider"/>
@@ -418,6 +420,7 @@
     <notificationGroup id="grails" displayType="BALLOON" bundle="messages.GrailsBundle" key="notification.group.grails"/>
     <notificationGroup id="Grails Configure" displayType="BALLOON" key="notification.group.display.name.grails.configure"/>
     <notificationGroup id="Grails Gradle import" displayType="BALLOON" bundle="messages.GrailsBundle" key="notification.group.grails.gradle.sync"/>
+    <notificationGroup id="Grails command line" displayType="BALLOON" bundle="messages.GrailsBundle" key="notification.group.grails.command.line"/>
     <postStartupActivity implementation="org.apache.grails.intellij.plugin.mvc.MvcModuleStructureSynchronizer$MyPostStartUpActivity"/>
     <roots.watchedRootsProvider implementation="org.apache.grails.intellij.plugin.mvc.MvcWatchedRootProvider"/>
     <pathMacroContributor implementation="org.apache.grails.intellij.plugin.mvc.MvcPathMacros"/>
@@ -425,6 +428,15 @@
     <dependencySupport coordinate="org.grails:grails-core" kind="java" displayName="Grails Framework"/>
     <dependencySupport coordinate="org.grails:grails-datastore-gorm" kind="java" displayName="GORM"/>
   </extensions>
+
+  <projectListeners>
+    <!-- opens the browser for run-app of a Grails 9 project, which the Gradle support runs as bootRun -->
+    <listener class="org.apache.grails.intellij.plugin.runner.impl.Grails9RunAppBrowserLauncher"
+              topic="com.intellij.execution.ExecutionListener"/>
+    <!-- asks the jar of the Grails 9 command line what it is as soon as the Grails applications are known -->
+    <listener class="org.apache.grails.intellij.plugin.commands.Grails9CommandLines$Prefetch"
+              topic="org.apache.grails.intellij.plugin.structure.GrailsApplicationListener"/>
+  </projectListeners>
 
   <actions>
     <action id="grails.ViewGrailsEditorToolbarAction" class="org.apache.grails.intellij.plugin.editor.ViewGrailsEditorToolbarAction">

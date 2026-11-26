@@ -30,6 +30,7 @@ import com.intellij.util.TextFieldCompletionProvider;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.apache.grails.intellij.plugin.GrailsBundle;
+import org.apache.grails.intellij.plugin.commands.Grails9CommandCatalog;
 import org.apache.grails.intellij.plugin.commands.GrailsCommandCompletionUtil;
 import org.apache.grails.intellij.plugin.runner.GrailsCommandExecutor;
 import org.apache.grails.intellij.plugin.runner.ui.GrailsApplicationCombobox;
@@ -63,7 +64,10 @@ public class GrailsRunCommandDialog extends DialogWrapper {
     myApplicationsLabel.setLabelFor(myApplications);
     myApplications.disallowEmptySelection();
     myApplications.setApplications(GrailsApplicationManager.getInstance(myProject).getApplications());
-    myApplications.addItemListener(e -> checkOkAction());
+    myApplications.addItemListener(e -> {
+      checkOkAction();
+      prefetchCommands();
+    });
 
     myCommandLabel.setLabelFor(myCommand);
     myCommand.getEditorComponent().addDocumentListener(new DocumentListener() {
@@ -80,6 +84,15 @@ public class GrailsRunCommandDialog extends DialogWrapper {
     setTitle(GrailsBundle.message("dialog.title.run.grails.command"));
     init();
     checkOkAction();
+    prefetchCommands();
+  }
+
+  /** For a Grails 9 project, has its command line list the commands before they are completed. */
+  private void prefetchCommands() {
+    GrailsApplication application = getSelectedApplicationNullable();
+    if (application != null) {
+      Grails9CommandCatalog.getInstance(myProject).prefetch(application);
+    }
   }
 
   private void createUIComponents() {
@@ -123,6 +136,7 @@ public class GrailsRunCommandDialog extends DialogWrapper {
 
   public @NotNull GrailsRunCommandDialog setSelectedApplication(@Nullable GrailsApplication application) {
     myApplications.setSelectedApplication(application);
+    prefetchCommands();
     return this;
   }
 

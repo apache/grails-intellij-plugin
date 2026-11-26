@@ -39,15 +39,26 @@ public final class GrailsModuleData extends AbstractExternalEntityData {
 
   private final @Nullable List<String> shellUrls;
 
-  @PropertyMapping({"owner", "grailsVersion", "grailsPluginId", "shellUrls"})
+  private final @Nullable List<String> commandLineUrls;
+
   public GrailsModuleData(@NotNull ProjectSystemId owner,
                           @NotNull String grailsVersion,
                           @NotNull String grailsPluginId,
                           @Nullable List<String> shellUrls) {
+    this(owner, grailsVersion, grailsPluginId, shellUrls, null);
+  }
+
+  @PropertyMapping({"owner", "grailsVersion", "grailsPluginId", "shellUrls", "commandLineUrls"})
+  public GrailsModuleData(@NotNull ProjectSystemId owner,
+                          @NotNull String grailsVersion,
+                          @NotNull String grailsPluginId,
+                          @Nullable List<String> shellUrls,
+                          @Nullable List<String> commandLineUrls) {
     super(owner);
     this.grailsVersion = grailsVersion;
     this.grailsPluginId = grailsPluginId;
     this.shellUrls = shellUrls;
+    this.commandLineUrls = commandLineUrls;
   }
 
   public @NotNull String getGrailsVersion() {
@@ -58,8 +69,22 @@ public final class GrailsModuleData extends AbstractExternalEntityData {
     return grailsPluginId;
   }
 
+  /**
+   * @return the class path of the Grails shell of the project's version; empty when the import could not resolve it,
+   * which for a project of Grails 9 and later is the rule, since only the builds of Grails 9 from before its command line
+   * have the shell
+   */
   public @NotNull List<String> getShellUrls() {
     return shellUrls == null ? Collections.emptyList() : shellUrls;
+  }
+
+  /**
+   * @return for a project of Grails 9 and later, the jar of its command line, the {@code all} jar of
+   * {@code org.apache.grails:grails-cli}; empty for an earlier version, when the import could not resolve it, and for
+   * a project imported before the plugin resolved it
+   */
+  public @NotNull List<String> getCommandLineUrls() {
+    return commandLineUrls == null ? Collections.emptyList() : commandLineUrls;
   }
 
   @Override
@@ -73,6 +98,7 @@ public final class GrailsModuleData extends AbstractExternalEntityData {
     if (!grailsVersion.equals(data.grailsVersion)) return false;
     if (!grailsPluginId.equals(data.grailsPluginId)) return false;
     if (shellUrls != null ? !shellUrls.equals(data.shellUrls) : data.shellUrls != null) return false;
+    if (commandLineUrls != null ? !commandLineUrls.equals(data.commandLineUrls) : data.commandLineUrls != null) return false;
 
     return true;
   }
@@ -83,6 +109,7 @@ public final class GrailsModuleData extends AbstractExternalEntityData {
     result = 31 * result + grailsVersion.hashCode();
     result = 31 * result + grailsPluginId.hashCode();
     result = 31 * result + (shellUrls != null ? shellUrls.hashCode() : 0);
+    result = 31 * result + (commandLineUrls != null ? commandLineUrls.hashCode() : 0);
     return result;
   }
 }

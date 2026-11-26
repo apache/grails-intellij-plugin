@@ -25,6 +25,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.plugins.gradle.util.GradleModuleDataKt;
 import org.apache.grails.intellij.plugin.gradle.GrailsModuleData;
 import org.apache.grails.intellij.plugin.structure.Grails3Application;
 import org.apache.grails.intellij.plugin.structure.GrailsApplicationBase;
@@ -67,6 +68,11 @@ abstract class Grails3ApplicationBase extends GrailsApplicationBase implements G
       myGradleData = result;
     }
     return result;
+  }
+
+  @Override
+  public @Nullable String getGradlePath() {
+    return GradleModuleDataKt.getGradlePathOrNull(myModuleDataNode.getData());
   }
 
   @Override

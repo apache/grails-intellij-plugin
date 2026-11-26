@@ -27,7 +27,9 @@ import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.ui.SimpleListCellRenderer;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.components.JBTextArea;
@@ -39,6 +41,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.JComponent;
+import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
@@ -50,12 +53,14 @@ import java.util.List;
  * The Grails settings page. It edits the global defaults (application service) and
  * this project's own folders (project service) together and previews the folders the Grails view
  * will actually show. The global defaults apply to every Grails project; this project's folders
- * are added to them.
+ * are added to them. It also chooses the command line of this project's applications of Grails 9 and
+ * later ({@link GrailsCommandLineSettings}).
  */
 public class GrailsCustomFoldersConfigurable implements Configurable {
 
   private final @NotNull GrailsCustomFoldersAppService appService;
   private final @NotNull GrailsCustomFoldersProjectService projectService;
+  private final @NotNull GrailsCommandLineSettings commandLineSettings;
   private final @NotNull Project project;
 
   private @Nullable JPanel component;
@@ -66,11 +71,13 @@ public class GrailsCustomFoldersConfigurable implements Configurable {
   private @Nullable JBLabel sourceLabel;
   private @Nullable JBLabel warningLabel;
   private @Nullable JBLabel descriptionLabel;
+  private @Nullable ComboBox<GrailsCommandLineSettings.Choice> commandLineChoice;
 
   public GrailsCustomFoldersConfigurable(@NotNull Project project) {
     this.project = project;
     this.appService = ApplicationManager.getApplication().getService(GrailsCustomFoldersAppService.class);
     this.projectService = project.getService(GrailsCustomFoldersProjectService.class);
+    this.commandLineSettings = GrailsCommandLineSettings.getInstance(project);
   }
 
   @Override
@@ -109,6 +116,19 @@ public class GrailsCustomFoldersConfigurable implements Configurable {
       preview.setEditable(false);
       effectiveArea = preview;
 
+      ComboBox<GrailsCommandLineSettings.Choice> choice = new ComboBox<>(GrailsCommandLineSettings.Choice.values());
+      choice.setRenderer(new SimpleListCellRenderer<>() {
+        @Override
+        public void customize(@NotNull JList<? extends GrailsCommandLineSettings.Choice> list,
+                              GrailsCommandLineSettings.Choice value,
+                              int index,
+                              boolean selected,
+                              boolean hasFocus) {
+          setText(value == null ? "" : commandLineText(value));
+        }
+      });
+      commandLineChoice = choice;
+
       component = FormBuilder.createFormBuilder()
         .addComponent(description)
         .addComponent(warningLabel)
@@ -121,6 +141,9 @@ public class GrailsCustomFoldersConfigurable implements Configurable {
         .addComponent(sourceLabel)
         .addLabeledComponent(new JBLabel(key("grails.settings.custom.folders.effective.folders")),
                              new JBScrollPane(preview), 1, true)
+        .addSeparator()
+        .addLabeledComponent(new JBLabel(key("grails.settings.command.line.label")), choice)
+        .addComponentToRightColumn(new JBLabel(key("grails.settings.command.line.comment")))
         .getPanel();
 
       reset();
@@ -130,6 +153,7 @@ public class GrailsCustomFoldersConfigurable implements Configurable {
 
   @Override
   public boolean isModified() {
+    if (commandLineChoice != null && commandLineChoice.getItem() != commandLineSettings.getChoice()) return true;
     if (maxFoldersSpinner != null
         && ((Integer)maxFoldersSpinner.getValue()) != appService.getMaxFolders()) return true;
     // The rows are normalized before they are compared, the same way the store normalizes them on
@@ -154,6 +178,9 @@ public class GrailsCustomFoldersConfigurable implements Configurable {
 
     appService.setGlobalDefaults(globalRows.getRows(), (Integer)maxFoldersSpinner.getValue());
     projectService.setFolders(projectRows.getRows());
+    if (commandLineChoice != null && commandLineChoice.getItem() != null) {
+      commandLineSettings.setChoice(commandLineChoice.getItem());
+    }
     updateEffectivePreview();
   }
 
@@ -162,6 +189,7 @@ public class GrailsCustomFoldersConfigurable implements Configurable {
     if (globalRows != null) globalRows.setRows(appService.getFolders());
     if (projectRows != null) projectRows.setRows(projectService.getFolders());
     if (maxFoldersSpinner != null) maxFoldersSpinner.setValue(appService.getMaxFolders());
+    if (commandLineChoice != null) commandLineChoice.setItem(commandLineSettings.getChoice());
     updateEffectivePreview();
   }
 
@@ -175,6 +203,16 @@ public class GrailsCustomFoldersConfigurable implements Configurable {
     sourceLabel = null;
     warningLabel = null;
     descriptionLabel = null;
+    commandLineChoice = null;
+  }
+
+  /** The text that names {@code choice} in the list of command lines. */
+  static @NotNull String commandLineText(@NotNull GrailsCommandLineSettings.Choice choice) {
+    return switch (choice) {
+      case AUTOMATIC -> key("grails.settings.command.line.automatic");
+      case COMMAND_LINE -> key("grails.settings.command.line.command.line");
+      case SHELL -> key("grails.settings.command.line.shell");
+    };
   }
 
   private void updateEffectivePreview() {

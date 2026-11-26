@@ -50,7 +50,8 @@ public final class GrailsProjectResolverExtension extends AbstractProjectResolve
         GradleConstants.SYSTEM_ID,
         grailsModule.getGrailsVersion(),
         grailsModule.getGrailsPluginId(),
-        grailsModule.getShellUrls()
+        grailsModule.getShellUrls(),
+        grailsModule.getCommandLineUrls()
       ));
     }
 
